@@ -31,7 +31,7 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
     }
 }
 
-register_activation_hook(__FILE__, [OctavawMS\WooCommerce\Activation::class, 'run']);
+register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);
 
 add_action('plugins_loaded', static function () {
     if (! function_exists('wc_get_logger') || ! class_exists(\WooCommerce::class, false)) {
@@ -40,23 +40,23 @@ add_action('plugins_loaded', static function () {
 
     if (is_readable(__DIR__ . '/src/SettingsPage.php') && class_exists(\WC_Integration::class, false)) {
         require_once __DIR__ . '/src/SettingsPage.php';
-        if (class_exists(\OctavawMS\WooCommerce\SettingsPage::class, false)) {
+        if (class_exists(\OctavaWMS\WooCommerce\SettingsPage::class, false)) {
             add_filter('woocommerce_integrations', static function (array $list): array {
-                $list[] = new \OctavawMS\WooCommerce\SettingsPage();
+                $list[] = new \OctavaWMS\WooCommerce\SettingsPage();
                 return $list;
             });
         }
     }
 
-    $connect = new \OctavawMS\WooCommerce\ConnectService();
+    $connect = new \OctavaWMS\WooCommerce\ConnectService();
     $connect->register();
 
-    $labelService = new \OctavawMS\WooCommerce\LabelService();
-    $adminActions = new \OctavawMS\WooCommerce\AdminLabelActions($labelService);
+    $labelService = new \OctavaWMS\WooCommerce\LabelService();
+    $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService);
     $adminActions->register();
 }, 5);
 
 if (is_admin() && is_readable(__DIR__ . '/src/Notices.php')) {
     require_once __DIR__ . '/src/Notices.php';
-    (new \OctavawMS\WooCommerce\Notices())->register();
+    (new \OctavaWMS\WooCommerce\Notices())->register();
 }

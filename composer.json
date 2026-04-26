@@ -20,10 +20,15 @@
       "php -l src/LabelService.php",
       "php -l src/Notices.php",
       "php -l src/Options.php",
-      "php -l src/SettingsPage.php"
+      "php -l src/SettingsPage.php",
+      "php -l test/PluginBootstrapTest.php"
+    ],
+    "test": [
+      "php test/PluginBootstrapTest.php"
     ],
     "check": [
-      "composer run-script php-lint"
+      "composer run-script php-lint",
+      "composer run-script test"
     ]
   }
 }
