@@ -1,0 +1,29 @@
+{
+  "name": "octavawms/module-woocommerce",
+  "description": "OctavaWMS label integration for WordPress + WooCommerce",
+  "type": "wordpress-plugin",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "OctavaWMS\\WooCommerce\\": "src/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "scripts": {
+    "php-lint": [
+      "php -l octavawms-woocommerce.php",
+      "php -l src/Activation.php",
+      "php -l src/AdminLabelActions.php",
+      "php -l src/ConnectService.php",
+      "php -l src/LabelService.php",
+      "php -l src/Notices.php",
+      "php -l src/Options.php",
+      "php -l src/SettingsPage.php"
+    ],
+    "check": [
+      "composer run-script php-lint"
+    ]
+  }
+}

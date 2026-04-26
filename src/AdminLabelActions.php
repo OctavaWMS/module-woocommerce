@@ -132,10 +132,14 @@ class AdminLabelActions
             wp_die(esc_html__('Label file unavailable.', 'octavawms'));
         }
 
+        $mime = self::mimeTypeForFilePath($filePath);
+        $ext = self::fileExtension($filePath);
+        $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
+
         nocache_headers();
         header('Content-Description: File Transfer');
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="order-' . $orderId . '-label.pdf"');
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: attachment; filename="' . $fileBase . '"');
         header('Content-Length: ' . (string) filesize($filePath));
         readfile($filePath);
         exit;
@@ -143,11 +147,49 @@ class AdminLabelActions
 
     private function orderEditUrl(int $orderId, string $state): string
     {
+        if (function_exists('wc_get_order')) {
+            $order = wc_get_order($orderId);
+            if ($order && function_exists('wc_get_order_edit_url')) {
+                return add_query_arg('octavawms_label', $state, (string) wc_get_order_edit_url($order->get_id()));
+            }
+        }
+
         return add_query_arg([
             'post' => $orderId,
             'action' => 'edit',
             'octavawms_label' => $state,
         ], admin_url('post.php'));
+    }
+
+    private static function fileExtension(string $filePath): string
+    {
+        $base = (string) pathinfo($filePath, PATHINFO_EXTENSION);
+        $base = preg_replace('/[^a-z0-9]/i', '', $base) ?? '';
+
+        return $base !== '' ? strtolower($base) : 'pdf';
+    }
+
+    private static function mimeTypeForFilePath(string $filePath): string
+    {
+        $ext = self::fileExtension($filePath);
+        $map = [
+            'pdf' => 'application/pdf',
+            'zpl' => 'text/plain',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+        ];
+
+        if (class_exists('finfo') && is_readable($filePath)) {
+            $f = new \finfo(FILEINFO_MIME_TYPE);
+            $detected = $f->file($filePath);
+            if (is_string($detected) && $detected !== '') {
+                return $detected;
+            }
+        }
+
+        return $map[$ext] ?? 'application/octet-stream';
     }
 
     private function buildDownloadMarkup(int $orderId, string $labelFile, string $labelUrl): string

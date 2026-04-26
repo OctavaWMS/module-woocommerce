@@ -31,8 +31,8 @@ class LabelService
      */
     public function requestLabel(string $externalOrderId): array
     {
-        $endpoint = (string) get_option('octavawms_label_endpoint', '');
-        $apiKey = (string) get_option('octavawms_api_key', '');
+        $endpoint = Options::getLabelEndpoint();
+        $apiKey = Options::getApiKey();
 
         if ($endpoint === '') {
             $this->logger->error('Label request aborted: endpoint missing.', $this->logContext + ['external_order_id' => $externalOrderId]);
@@ -152,7 +152,7 @@ class LabelService
             return null;
         }
 
-        $targetDirectory = trailingslashit((string) $uploadDir['basedir']) . 'octavawms-labels/';
+        $targetDirectory = trailingslashit((string) $uploadDir['basedir']) . Activation::LABEL_SUBDIR . '/';
 
         if (! wp_mkdir_p($targetDirectory)) {
             $this->logger->error('Unable to create label directory.', $this->logContext + [
