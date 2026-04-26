@@ -1,6 +1,6 @@
 {
   "name": "octavawms/module-woocommerce",
-  "description": "OctavaWMS label integration for WordPress + WooCommerce",
+  "description": "OctavaWMS Connector for WordPress and WooCommerce (labels today; more integrations to come).",
   "type": "wordpress-plugin",
   "license": "proprietary",
   "autoload": {

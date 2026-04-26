@@ -1,6 +1,6 @@
-# OctavaWMS WooCommerce Labels
+# OctavaWMS Connector (WooCommerce)
 
-WordPress + WooCommerce plugin: generate shipping labels from your OctavaWMS (Orderadmin) connection, with optional **one-click connect** to create credentials on the OctavaWMS cloud.
+WordPress + WooCommerce plugin that **connects your store to OctavaWMS**. It already includes **shipping label** generation and download, **one-click connect** to provision credentials on the OctavaWMS cloud, and is structured so we can add more features over time.
 
 ## Requirements
 
@@ -14,11 +14,11 @@ WordPress + WooCommerce plugin: generate shipping labels from your OctavaWMS (Or
 
 1. Copy this folder to `wp-content/plugins/octavawms-woocommerce` (or your chosen slug).
 2. (Optional) From the plugin directory: `composer install` to generate `vendor/autoload.php`. If you skip this, the plugin still loads a built-in `require` list of classes.
-3. In WordPress, activate **OctavaWMS WooCommerce Labels** under *Plugins*.
+3. In WordPress, activate **OctavaWMS Connector** under *Plugins*.
 
 ## One-click connect
 
-1. Go to **WooCommerce → Settings → Integrations → OctavaWMS**.
+1. Go to **WooCommerce → Settings → Integrations → OctavaWMS Connector**.
 2. Click **Connect to OctavaWMS**. The plugin will POST to the connect URL (default: `https://pro.oawms.com/apps/woocommerce/connect` — override in **Connect service URL** or via the `octavawms_connect_url` filter).
 3. On success, the **Label endpoint URL** and **API key** are stored; click **Save changes** on the form if the fields are open.
 
@@ -29,7 +29,7 @@ If you are self-hosted or were given values by your operator:
 | Setting | Description |
 |--------|-------------|
 | **Connect service URL** | Optional. Overrides the default one-click `POST` target. |
-| **Label endpoint URL** | Full URL that accepts the label request (`POST` JSON `{"externalOrderId":"…"}`) and returns PDF, a JSON `labelUrl` / `labelBase64` payload, or a binary stream, as [documented] in the plugin. |
+| **Label endpoint URL** | Full URL that accepts the label request (`POST` JSON `{"externalOrderId":"…"}`) and returns PDF, a JSON `labelUrl` / `labelBase64` payload, or a binary stream. |
 | **API key** | Optional Bearer token sent as `Authorization: Bearer …` to the label endpoint. |
 
 ## Order metadata

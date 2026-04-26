@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: OctavaWMS WooCommerce Labels
- * Description: Adds OctavaWMS shipping label generation, one-click connect, and download actions to WooCommerce orders.
+ * Plugin Name: OctavaWMS Connector
+ * Description: Connects WooCommerce to OctavaWMS. Includes shipping label generation, one-click connect, and is built to add more features over time.
  * Version: 1.0.0
  * Requires at least: 6.0
  * Requires PHP: 8.1

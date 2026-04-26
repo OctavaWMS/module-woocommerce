@@ -107,7 +107,7 @@ class AdminLabelActions
         }
 
         echo '<div class="order_data_column">';
-        echo '<h4>' . esc_html__('OctavaWMS Label', 'octavawms') . '</h4>';
+        echo '<h4>' . esc_html__('OctavaWMS Connector', 'octavawms') . '</h4>';
         echo wp_kses_post($this->buildDownloadMarkup($orderId, $labelFile, $labelUrl));
         echo '</div>';
     }

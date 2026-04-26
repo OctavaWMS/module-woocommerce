@@ -9,9 +9,9 @@ class SettingsPage extends \WC_Integration
     public function __construct()
     {
         $this->id = Options::INTEGRATION_ID;
-        $this->method_title = __('OctavaWMS', 'octavawms');
+        $this->method_title = __('OctavaWMS Connector', 'octavawms');
         $this->method_description = __(
-            'Connect your store to OctavaWMS for label generation, or set the label endpoint and API key manually in Advanced settings.',
+            'Connect your store to OctavaWMS. At minimum this handles shipping label requests; you can set the label endpoint and API key manually in Advanced, or add more as we extend the plugin.',
             'octavawms'
         );
 

@@ -25,7 +25,7 @@ class Notices
 
         echo '<div class="notice notice-warning"><p>';
         esc_html_e(
-            'OctavaWMS: connect your store or set the label endpoint under WooCommerce → Settings → Integrations → OctavaWMS.',
+            'OctavaWMS Connector: connect your store or set the label endpoint under WooCommerce → Settings → Integrations → OctavaWMS Connector.',
             'octavawms'
         );
         echo '</p></div>';
