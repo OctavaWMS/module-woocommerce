@@ -15,9 +15,9 @@ class SettingsPage extends \WC_Integration
             'octavawms'
         );
 
-        $this->has_fields = true;
-
-        parent::__construct();
+        // WC_Settings_API / WC_Integration do not declare __construct(); calling parent::__construct() fatal-errors on PHP.
+        $this->init_form_fields();
+        $this->init_settings();
     }
 
     public function init_settings(): void

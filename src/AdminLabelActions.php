@@ -17,7 +17,13 @@ class AdminLabelActions
 
     public function register(): void
     {
+        // Order **list** table action buttons / row icons (Orders screen).
         add_filter('woocommerce_admin_order_actions', [$this, 'addGenerateLabelOrderAction'], 20, 2);
+
+        // Order **edit** screen: sidebar metabox dropdown "Choose an action…" → Apply.
+        add_filter('woocommerce_order_actions', [$this, 'addOrderEditScreenAction'], 20, 2);
+        add_action('woocommerce_order_action_octavawms_generate_label', [$this, 'handleGenerateLabelFromOrderMetabox']);
+
         add_action('admin_action_octavawms_generate_label', [$this, 'handleGenerateLabelAction']);
         add_action('admin_post_octavawms_download_label', [$this, 'handleDownloadLabelAction']);
         add_action('woocommerce_admin_order_data_after_order_details', [$this, 'renderLabelMetaBox']);
@@ -49,6 +55,46 @@ class AdminLabelActions
         return $actions;
     }
 
+    /**
+     * @param array<string, string>          $actions
+     * @param \WC_Order|null $order
+     *
+     * @return array<string, string>
+     */
+    public function addOrderEditScreenAction(array $actions, ?WC_Order $order): array
+    {
+        if (! $order instanceof WC_Order || ! current_user_can('edit_shop_orders', $order->get_id())) {
+            return $actions;
+        }
+
+        $hasLabel = (bool) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true)
+            || (bool) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
+
+        $actions['octavawms_generate_label'] = $hasLabel
+            ? __('Re-generate shipping label', 'octavawms')
+            : __('Generate shipping label', 'octavawms');
+
+        return $actions;
+    }
+
+    /**
+     * Runs when merchant picks our action under "Order actions" on the edit order screen and clicks Update.
+     */
+    public function handleGenerateLabelFromOrderMetabox(WC_Order $order): void
+    {
+        if (! current_user_can('edit_shop_orders', $order->get_id())) {
+            return;
+        }
+
+        $success = $this->executeLabelGeneration($order);
+
+        if (! $success && class_exists(\WC_Admin_Meta_Boxes::class, false)) {
+            \WC_Admin_Meta_Boxes::add_error(
+                __('OctavaWMS could not generate a shipping label. See order notes.', 'octavawms')
+            );
+        }
+    }
+
     public function handleGenerateLabelAction(): void
     {
         $orderId = isset($_GET['order_id']) ? absint(wp_unslash($_GET['order_id'])) : 0;
@@ -64,6 +110,16 @@ class AdminLabelActions
             wp_die(esc_html__('Order not found.', 'octavawms'));
         }
 
+        $success = $this->executeLabelGeneration($order);
+        wp_safe_redirect($this->orderEditUrl($orderId, $success ? 'success' : 'error'));
+        exit;
+    }
+
+    /**
+     * @return bool Whether label storage succeeded
+     */
+    private function executeLabelGeneration(WC_Order $order): bool
+    {
         $externalOrderId = (string) $order->get_meta('_octavawms_external_order_id', true);
         if ($externalOrderId === '') {
             $externalOrderId = (string) $order->get_order_key();
@@ -72,10 +128,16 @@ class AdminLabelActions
         $result = $this->labelService->requestLabel($externalOrderId);
 
         if ($result['status'] !== 'success') {
-            $order->add_order_note(sprintf('OctavaWMS label generation failed: %s', $result['message'] ?? 'unknown error'));
-            wp_safe_redirect($this->orderEditUrl($orderId, 'error'));
-            exit;
+            $order->add_order_note(sprintf(
+                __('OctavaWMS label generation failed: %s', 'octavawms'),
+                $result['message'] ?? 'unknown error'
+            ));
+            $order->save();
+
+            return false;
         }
+
+        $orderId = (int) $order->get_id();
 
         if (! empty($result['label_url'])) {
             $order->update_meta_data(LabelService::ORDER_META_LABEL_URL, $result['label_url']);
@@ -89,25 +151,45 @@ class AdminLabelActions
 
         $order->save();
 
-        $downloadLink = $this->buildDownloadMarkup($orderId, (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true), (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true));
-        $order->add_order_note('OctavaWMS label generated successfully. ' . wp_strip_all_tags($downloadLink));
+        $downloadLink = $this->buildDownloadMarkup(
+            $orderId,
+            (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true),
+            (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true)
+        );
+        $order->add_order_note(
+            'OctavaWMS label generated successfully. ' . wp_strip_all_tags($downloadLink)
+        );
+        $order->save();
 
-        wp_safe_redirect($this->orderEditUrl($orderId, 'success'));
-        exit;
+        return true;
     }
 
     public function renderLabelMetaBox(WC_Order $order): void
     {
-        $orderId = (int) $order->get_id();
-        $labelUrl = (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true);
-        $labelFile = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
-
-        if ($labelUrl === '' && $labelFile === '') {
+        if (! current_user_can('edit_shop_orders', $order->get_id())) {
             return;
         }
 
+        $orderId = (int) $order->get_id();
+        $labelUrl = (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true);
+        $labelFile = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
+        $hasLabel = ($labelUrl !== '' || $labelFile !== '');
+
         echo '<div class="order_data_column">';
         echo '<h4>' . esc_html__('OctavaWMS Connector', 'octavawms') . '</h4>';
+
+        if (! $hasLabel) {
+            echo '<p class="description">';
+            echo esc_html__(
+                'No label stored yet. Open the sidebar "Order actions" box, choose "Generate shipping label", then click "Update".',
+                'octavawms'
+            );
+            echo '</p>';
+            echo '</div>';
+
+            return;
+        }
+
         echo wp_kses_post($this->buildDownloadMarkup($orderId, $labelFile, $labelUrl));
         echo '</div>';
     }
