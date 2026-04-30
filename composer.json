@@ -8,6 +8,15 @@
       "OctavaWMS\\WooCommerce\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\OctavaWMS\\WooCommerce\\": "tests/"
+    }
+  },
+  "require-dev": {
+    "brain/monkey": "^2.6",
+    "phpunit/phpunit": "^11.5"
+  },
   "config": {
     "sort-packages": true
   },
@@ -16,16 +25,28 @@
       "php -l octavawms-woocommerce.php",
       "php -l src/Activation.php",
       "php -l src/AdminLabelActions.php",
+      "php -l src/Admin/LabelAjax.php",
+      "php -l src/Admin/LabelMetaBox.php",
+      "php -l src/Api/BackendApiClient.php",
+      "php -l src/Api/LabelService.php",
       "php -l src/ConnectService.php",
-      "php -l src/LabelService.php",
       "php -l src/Notices.php",
       "php -l src/Options.php",
+      "php -l src/PluginLog.php",
+      "php -l src/WooRestCredentials.php",
       "php -l src/SettingsPage.php",
-      "php -l test/PluginBootstrapTest.php"
+      "php -l tests/TestCase.php",
+      "php -l tests/bootstrap.php",
+      "php -l tests/OptionsTest.php",
+      "php -l tests/PluginLogTest.php",
+      "php -l tests/WooRestCredentialsTest.php",
+      "php -l tests/ConnectServiceSignTest.php",
+      "php -l tests/PluginBootstrapTest.php",
+      "php -l tests/Admin/LabelAjaxTest.php",
+      "php -l tests/Admin/LabelMetaBoxTest.php",
+      "php -l tests/Api/BackendApiClientTest.php"
     ],
-    "test": [
-      "php test/PluginBootstrapTest.php"
-    ],
+    "test": "./vendor/bin/phpunit --testdox",
     "check": [
       "composer run-script php-lint",
       "composer run-script test"

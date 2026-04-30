@@ -4,29 +4,37 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce;
 
+use OctavaWMS\WooCommerce\Admin\LabelAjax;
+use OctavaWMS\WooCommerce\Admin\LabelMetaBox;
+use OctavaWMS\WooCommerce\Api\LabelService;
 use WC_Order;
 
 class AdminLabelActions
 {
     private LabelService $labelService;
 
-    public function __construct(LabelService $labelService)
+    private LabelMetaBox $labelMetaBox;
+
+    private LabelAjax $labelAjax;
+
+    public function __construct(LabelService $labelService, LabelMetaBox $labelMetaBox, LabelAjax $labelAjax)
     {
         $this->labelService = $labelService;
+        $this->labelMetaBox = $labelMetaBox;
+        $this->labelAjax = $labelAjax;
     }
 
     public function register(): void
     {
-        // Order **list** table action buttons / row icons (Orders screen).
         add_filter('woocommerce_admin_order_actions', [$this, 'addGenerateLabelOrderAction'], 20, 2);
-
-        // Order **edit** screen: sidebar metabox dropdown "Choose an action…" → Apply.
         add_filter('woocommerce_order_actions', [$this, 'addOrderEditScreenAction'], 20, 2);
         add_action('woocommerce_order_action_octavawms_generate_label', [$this, 'handleGenerateLabelFromOrderMetabox']);
 
         add_action('admin_action_octavawms_generate_label', [$this, 'handleGenerateLabelAction']);
         add_action('admin_post_octavawms_download_label', [$this, 'handleDownloadLabelAction']);
-        add_action('woocommerce_admin_order_data_after_order_details', [$this, 'renderLabelMetaBox']);
+
+        $this->labelMetaBox->register();
+        $this->labelAjax->register();
     }
 
     /**
@@ -56,8 +64,7 @@ class AdminLabelActions
     }
 
     /**
-     * @param array<string, string>          $actions
-     * @param \WC_Order|null $order
+     * @param array<string, string> $actions
      *
      * @return array<string, string>
      */
@@ -77,9 +84,6 @@ class AdminLabelActions
         return $actions;
     }
 
-    /**
-     * Runs when merchant picks our action under "Order actions" on the edit order screen and clicks Update.
-     */
     public function handleGenerateLabelFromOrderMetabox(WC_Order $order): void
     {
         if (! current_user_can('edit_shop_orders', $order->get_id())) {
@@ -125,7 +129,11 @@ class AdminLabelActions
             $externalOrderId = (string) $order->get_order_key();
         }
 
-        $result = $this->labelService->requestLabel($externalOrderId);
+        $weightRaw = (float) $order->get_total_weight();
+        $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
+        $weightGrams = max(1, (int) round(self::convertOrderWeightToGrams($weightRaw, $weightUnit)));
+
+        $result = $this->labelService->requestLabel($externalOrderId, $weightGrams, 100, 100, 100, (int) $order->get_id());
 
         if ($result['status'] !== 'success') {
             $order->add_order_note(sprintf(
@@ -151,7 +159,7 @@ class AdminLabelActions
 
         $order->save();
 
-        $downloadLink = $this->buildDownloadMarkup(
+        $downloadLink = $this->labelMetaBox->buildDownloadMarkup(
             $orderId,
             (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true),
             (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true)
@@ -162,36 +170,6 @@ class AdminLabelActions
         $order->save();
 
         return true;
-    }
-
-    public function renderLabelMetaBox(WC_Order $order): void
-    {
-        if (! current_user_can('edit_shop_orders', $order->get_id())) {
-            return;
-        }
-
-        $orderId = (int) $order->get_id();
-        $labelUrl = (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true);
-        $labelFile = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
-        $hasLabel = ($labelUrl !== '' || $labelFile !== '');
-
-        echo '<div class="order_data_column">';
-        echo '<h4>' . esc_html__('OctavaWMS Connector', 'octavawms') . '</h4>';
-
-        if (! $hasLabel) {
-            echo '<p class="description">';
-            echo esc_html__(
-                'No label stored yet. Open the sidebar "Order actions" box, choose "Generate shipping label", then click "Update".',
-                'octavawms'
-            );
-            echo '</p>';
-            echo '</div>';
-
-            return;
-        }
-
-        echo wp_kses_post($this->buildDownloadMarkup($orderId, $labelFile, $labelUrl));
-        echo '</div>';
     }
 
     public function handleDownloadLabelAction(): void
@@ -243,6 +221,19 @@ class AdminLabelActions
         ], admin_url('post.php'));
     }
 
+    /**
+     * Match LabelAjax: convert store weight unit to grams for preprocessing-task payload.
+     */
+    private static function convertOrderWeightToGrams(float $weight, string $unit): float
+    {
+        return match (strtolower($unit)) {
+            'kg' => $weight * 1000.0,
+            'lbs' => $weight * 453.592,
+            'oz' => $weight * 28.3495,
+            default => $weight,
+        };
+    }
+
     private static function fileExtension(string $filePath): string
     {
         $base = (string) pathinfo($filePath, PATHINFO_EXTENSION);
@@ -272,31 +263,5 @@ class AdminLabelActions
         }
 
         return $map[$ext] ?? 'application/octet-stream';
-    }
-
-    private function buildDownloadMarkup(int $orderId, string $labelFile, string $labelUrl): string
-    {
-        if ($labelUrl !== '') {
-            return sprintf(
-                '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
-                esc_url($labelUrl),
-                esc_html__('Download Label', 'octavawms')
-            );
-        }
-
-        if ($labelFile !== '') {
-            $downloadUrl = wp_nonce_url(
-                admin_url('admin-post.php?action=octavawms_download_label&order_id=' . $orderId),
-                'octavawms_download_label_' . $orderId
-            );
-
-            return sprintf(
-                '<a href="%s">%s</a>',
-                esc_url($downloadUrl),
-                esc_html__('Download Label', 'octavawms')
-            );
-        }
-
-        return '';
     }
 }

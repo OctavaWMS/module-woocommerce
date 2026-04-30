@@ -11,7 +11,7 @@ class SettingsPage extends \WC_Integration
         $this->id = Options::INTEGRATION_ID;
         $this->method_title = __('OctavaWMS Connector', 'octavawms');
         $this->method_description = __(
-            'Connect your store to OctavaWMS. At minimum this handles shipping label requests; you can set the label endpoint and API key manually in Advanced, or add more as we extend the plugin.',
+            'Connect your store to OctavaWMS for shipping label generation and order management.',
             'octavawms'
         );
 
@@ -26,13 +26,6 @@ class SettingsPage extends \WC_Integration
 
         if (! is_array($this->settings)) {
             return;
-        }
-
-        if (empty($this->settings['label_endpoint'])) {
-            $legacy = (string) get_option(Options::LEGACY_LABEL_ENDPOINT, '');
-            if ($legacy !== '') {
-                $this->settings['label_endpoint'] = $legacy;
-            }
         }
 
         if (empty($this->settings['api_key'])) {
@@ -50,30 +43,10 @@ class SettingsPage extends \WC_Integration
                 'title' => __('Advanced (manual configuration)', 'octavawms'),
                 'type' => 'title',
             ],
-            'connect_url' => [
-                'title' => __('Connect service URL (optional)', 'octavawms'),
-                'type' => 'url',
-                'description' => __(
-                    'Override the default one-click connect URL. Leave empty to use the default OctavaWMS service.',
-                    'octavawms'
-                ),
-                'default' => '',
-            ],
-            'label_endpoint' => [
-                'title' => __('Label endpoint URL', 'octavawms'),
-                'type' => 'url',
-                'description' => __(
-                    'URL that accepts POST for label requests (set automatically after you connect, or from OctavaWMS / self-hosted).',
-                    'octavawms'
-                ),
-                'desc_tip' => true,
-                'default' => '',
-                'placeholder' => 'https://',
-            ],
             'api_key' => [
                 'title' => __('API key (Bearer token)', 'octavawms'),
                 'type' => 'password',
-                'description' => __('Optional. Leave empty only if the label endpoint is public.', 'octavawms'),
+                'description' => __('Set automatically after you connect. You can also paste it manually.', 'octavawms'),
                 'desc_tip' => true,
                 'default' => '',
             ],
@@ -82,14 +55,9 @@ class SettingsPage extends \WC_Integration
 
     public function getConnectDescriptionHtml(): string
     {
-        $ep = (string) $this->get_option('label_endpoint', '');
         $ak = (string) $this->get_option('api_key', '');
 
-        $connected = $ep !== '' && $ak !== '';
-        if ($ep !== '' && $ak === '') {
-            $connected = true;
-        }
-
+        $connected = $ak !== '';
         $statusClass = $connected ? 'octavawms-badge--ok' : 'octavawms-badge--off';
         $statusText = $connected
             ? esc_html__('Connected to OctavaWMS', 'octavawms')
@@ -114,7 +82,7 @@ class SettingsPage extends \WC_Integration
             <p class="description" id="octavawms-connect-message" style="min-height:1.5em" aria-live="polite"></p>
         </div>
         <hr>
-        <p class="description"><?php esc_html_e('Advanced: you can set the label endpoint and API key manually below.', 'octavawms'); ?></p>
+        <p class="description"><?php esc_html_e('Advanced: you can paste the API key manually below if needed.', 'octavawms'); ?></p>
         <?php
         return (string) ob_get_clean();
     }
@@ -122,14 +90,14 @@ class SettingsPage extends \WC_Integration
     public function process_admin_options(): void
     {
         parent::process_admin_options();
+
         if (! is_array($this->settings)) {
             $this->init_settings();
         }
         if (! is_array($this->settings)) {
             return;
         }
-        if (isset($this->settings['label_endpoint'], $this->settings['api_key'])) {
-            update_option(Options::LEGACY_LABEL_ENDPOINT, (string) $this->settings['label_endpoint']);
+        if (isset($this->settings['api_key'])) {
             update_option(Options::LEGACY_API_KEY, (string) $this->settings['api_key']);
         }
     }

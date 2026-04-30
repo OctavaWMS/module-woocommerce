@@ -19,13 +19,13 @@ class Notices
         if (! function_exists('get_current_screen') || ! get_current_screen() || get_current_screen()->id !== 'woocommerce_page_wc-settings') {
             return;
         }
-        if (Options::getLabelEndpoint() !== '') {
+        if (Options::getApiKey() !== '' || Options::getLabelEndpoint() !== '' || Options::getRefreshToken() !== '') {
             return;
         }
 
-        echo '<div class="notice notice-warning"><p>';
+        echo '<div class="notice notice-info is-dismissible"><p>';
         esc_html_e(
-            'OctavaWMS Connector: connect your store or set the label endpoint under WooCommerce → Settings → Integrations → OctavaWMS Connector.',
+            'OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab.',
             'octavawms'
         );
         echo '</p></div>';

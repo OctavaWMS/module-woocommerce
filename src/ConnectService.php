@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce;
 
+use OctavaWMS\WooCommerce\Api\BackendApiClient;
+
 class ConnectService
 {
     public const ACTION = 'octavawms_connect';
@@ -12,6 +14,35 @@ class ConnectService
     {
         add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
         add_action('admin_enqueue_scripts', [$this, 'maybeEnqueueConnectScript']);
+    }
+
+    /**
+     * Build JSON body + headers for POST /apps/woocommerce/connect (including optional HMAC auth).
+     *
+     * @param array{siteUrl:string, adminEmail:string, storeName:string} $body
+     *
+     * @return array{body_json: string, headers: array<string, string>, key_last7: string|null}
+     */
+    public function prepareConnectHttpRequest(array $body): array
+    {
+        $bodyJson = (string) wp_json_encode($body);
+        $requestHeaders = [
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ];
+        $keyLast7 = null;
+        $creds = WooRestCredentials::findOctavawmsKey();
+        if ($creds !== null) {
+            $signed = WooRestCredentials::signConnectRequest($creds, $bodyJson);
+            $requestHeaders['Authorization'] = $signed['header'];
+            $keyLast7 = $signed['key_last7'];
+        }
+
+        return [
+            'body_json' => $bodyJson,
+            'headers' => $requestHeaders,
+            'key_last7' => $keyLast7,
+        ];
     }
 
     public function maybeEnqueueConnectScript(string $hook): void
@@ -26,47 +57,13 @@ class ConnectService
             return;
         }
 
-        wp_register_script('octavawms-admin-connect', false, ['jquery', 'wp-util'], (string) time(), true);
-        wp_enqueue_script('octavawms-admin-connect');
+        $plugin_root = dirname(__DIR__);
+        $script_rel = 'assets/js/admin-connect.js';
+        $script_path = $plugin_root . '/' . $script_rel;
+        $script_url = plugins_url($script_rel, $plugin_root . '/octavawms-woocommerce.php');
+        $version = is_readable($script_path) ? (string) filemtime($script_path) : '1.0.0';
 
-        wp_add_inline_script(
-            'octavawms-admin-connect',
-            'jQuery(function($) {
-  const btn = $("#octavawms-connect-btn");
-  if (!btn.length) return;
-  const sp = $("#octavawms-connect-spinner");
-  const msg = $("#octavawms-connect-message");
-  const badge = $("#octavawms-status-badge");
-  const data = { action: "octavawms_connect", nonce: octavawmsConnect.nonce, security: octavawmsConnect.nonce };
-  btn.on("click", function() {
-    sp.css("visibility", "visible");
-    msg.text("");
-    btn.prop("disabled", true);
-    $.post(octavawmsConnect.ajaxUrl, data, function(r) {
-      if (r && r.success) {
-        msg.text((r.data && r.data.message) || "");
-        if (r.data && r.data.connected) {
-          badge.text(octavawmsConnect.strings.connected);
-          badge.css({ background: "#e7f4e4", color: "#1e4620" });
-          const ep = (r.data.label_endpoint) || "";
-          const kw = (r.data.api_key) || "";
-          if (ep) { $("input[name*=\"label_endpoint\"]").val(ep).trigger("change"); }
-          if (kw) { $("input[name*=\"api_key\"]").val(kw).trigger("change"); }
-        }
-      } else {
-        msg.text((r && r.data && r.data.message) ? r.data.message : (octavawmsConnect.strings.error || "Error"));
-        badge.text(octavawmsConnect.strings.notConnected);
-        badge.css({ background: "#f0f0f0", color: "#333" });
-      }
-    }, "json").fail(function() {
-      msg.text(octavawmsConnect.strings.error);
-    }).always(function() {
-      sp.css("visibility", "hidden");
-      btn.prop("disabled", false);
-    });
-  });
-});'
-        );
+        wp_register_script('octavawms-admin-connect', $script_url, ['jquery'], $version, true);
 
         wp_localize_script('octavawms-admin-connect', 'octavawmsConnect', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -77,6 +74,8 @@ class ConnectService
                 'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'octavawms'),
             ],
         ]);
+
+        wp_enqueue_script('octavawms-admin-connect');
     }
 
     public function handleAjaxConnect(): void
@@ -125,19 +124,29 @@ class ConnectService
             );
         }
 
+        $prepared = $this->prepareConnectHttpRequest($body);
+        $bodyJson = $prepared['body_json'];
+        $requestHeaders = $prepared['headers'];
+        $keyLast7 = $prepared['key_last7'];
+
         $response = wp_remote_post(
             $url,
             [
                 'timeout' => 45,
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ],
-                'body' => wp_json_encode($body),
+                'headers' => $requestHeaders,
+                'body' => $bodyJson,
             ]
         );
 
         if ($response instanceof \WP_Error) {
+            PluginLog::log(
+                'error',
+                'connect',
+                array_merge(
+                    PluginLog::httpExchange('POST', $url, $requestHeaders, $body, $response),
+                    ['signed_with_key_last7' => $keyLast7]
+                )
+            );
             wp_send_json_error(
                 [
                     'message' => $response->get_error_message(),
@@ -150,6 +159,17 @@ class ConnectService
         $raw = (string) wp_remote_retrieve_body($response);
         $data = json_decode($raw, true);
         if (! is_array($data)) {
+            PluginLog::log(
+                'error',
+                'connect',
+                array_merge(
+                    PluginLog::httpExchange('POST', $url, $requestHeaders, $body, $response),
+                    [
+                        'signed_with_key_last7' => $keyLast7,
+                        'parse_note' => 'body is not a JSON object',
+                    ]
+                )
+            );
             wp_send_json_error(
                 [
                     'message' => sprintf(
@@ -162,21 +182,33 @@ class ConnectService
             );
         }
 
-        $apiKey = (string) ($data['apiKey'] ?? $data['api_key'] ?? '');
-        $labelEndpoint = (string) ($data['labelEndpoint'] ?? $data['label_endpoint'] ?? '');
-        $sourceId = (int) ($data['sourceId'] ?? $data['source_id'] ?? 0);
-
-        if (($data['status'] ?? '') === 'ok' && $apiKey !== '' && $labelEndpoint !== '') {
-            $this->storeCredentials($labelEndpoint, $apiKey, $sourceId);
+        $apiClient = new BackendApiClient();
+        if ($apiClient->ingestConnectResponseArray($data)) {
             wp_send_json_success(
                 [
                     'connected' => true,
-                    'message' => __('Connected. Your credentials are saved. Click "Save" below if the form is open.', 'octavawms'),
-                    'label_endpoint' => $labelEndpoint,
-                    'api_key' => $apiKey,
+                    'message' => __('Connected. Your credentials are saved.', 'octavawms'),
+                    'api_key' => Options::getApiKey(),
                 ]
             );
         }
+
+        PluginLog::log(
+            'error',
+            'connect',
+            array_merge(
+                PluginLog::httpExchange('POST', $url, $requestHeaders, $body, $response),
+                [
+                    'signed_with_key_last7' => $keyLast7,
+                    'response_status_field' => (string) ($data['status'] ?? ''),
+                    'response_message' => (string) ($data['message'] ?? ''),
+                    'has_api_key' => (string) ($data['apiKey'] ?? $data['api_key'] ?? '') !== '',
+                    'has_refresh_token' => (string) ($data['refreshToken'] ?? $data['refresh_token'] ?? '') !== '',
+                    'has_domain' => (string) ($data['domain'] ?? '') !== '',
+                    'source_id' => (int) ($data['sourceId'] ?? $data['source_id'] ?? 0),
+                ]
+            )
+        );
 
         $err = (string) ($data['message'] ?? __('Connection failed.', 'octavawms'));
         wp_send_json_error(
@@ -187,31 +219,12 @@ class ConnectService
         );
     }
 
+    public const CONNECT_PATH = '/apps/woocommerce/connect';
+
     private function getConnectUrlFromForm(): string
     {
-        $o = (array) get_option('woocommerce_' . Options::INTEGRATION_ID . '_settings', []);
-        if (! empty($o['connect_url']) && is_string($o['connect_url'])) {
-            return (string) $o['connect_url'];
-        }
+        $default = rtrim(Options::DEFAULT_API_BASE, '/') . self::CONNECT_PATH;
 
-        return (string) apply_filters('octavawms_default_connect_url', 'https://pro.oawms.com/apps/woocommerce/connect');
-    }
-
-    private function storeCredentials(string $labelEndpoint, string $apiKey, int $sourceId): void
-    {
-        update_option(Options::LEGACY_LABEL_ENDPOINT, $labelEndpoint);
-        update_option(Options::LEGACY_API_KEY, $apiKey);
-
-        $name = 'woocommerce_' . Options::INTEGRATION_ID . '_settings';
-        $settings = (array) get_option($name, []);
-        if (! is_array($settings)) {
-            $settings = [];
-        }
-        $settings['label_endpoint'] = $labelEndpoint;
-        $settings['api_key'] = $apiKey;
-        if ($sourceId > 0) {
-            $settings['source_id'] = (string) $sourceId;
-        }
-        update_option($name, $settings);
+        return (string) apply_filters('octavawms_default_connect_url', $default);
     }
 }

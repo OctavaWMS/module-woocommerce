@@ -18,9 +18,14 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
 } else {
     $octavawmsWooAutoload = [
         __DIR__ . '/src/Options.php',
+        __DIR__ . '/src/PluginLog.php',
+        __DIR__ . '/src/WooRestCredentials.php',
         __DIR__ . '/src/Activation.php',
-        __DIR__ . '/src/LabelService.php',
+        __DIR__ . '/src/Api/BackendApiClient.php',
+        __DIR__ . '/src/Api/LabelService.php',
         __DIR__ . '/src/ConnectService.php',
+        __DIR__ . '/src/Admin/LabelMetaBox.php',
+        __DIR__ . '/src/Admin/LabelAjax.php',
         __DIR__ . '/src/AdminLabelActions.php',
         __DIR__ . '/src/Notices.php',
     ];
@@ -43,6 +48,7 @@ add_action('plugins_loaded', static function () {
         if (class_exists(\OctavaWMS\WooCommerce\SettingsPage::class, false)) {
             add_filter('woocommerce_integrations', static function (array $list): array {
                 $list[] = new \OctavaWMS\WooCommerce\SettingsPage();
+
                 return $list;
             });
         }
@@ -51,8 +57,11 @@ add_action('plugins_loaded', static function () {
     $connect = new \OctavaWMS\WooCommerce\ConnectService();
     $connect->register();
 
-    $labelService = new \OctavaWMS\WooCommerce\LabelService();
-    $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService);
+    $apiClient = new \OctavaWMS\WooCommerce\Api\BackendApiClient();
+    $labelService = new \OctavaWMS\WooCommerce\Api\LabelService($apiClient);
+    $labelMetaBox = new \OctavaWMS\WooCommerce\Admin\LabelMetaBox();
+    $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
+    $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax);
     $adminActions->register();
 }, 5);
 
