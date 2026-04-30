@@ -129,6 +129,10 @@ composer test
 composer check   # php-lint + phpunit
 ```
 
+## Releasing
+
+From the plugin root, run `./release.sh` (same flow as `integration-shopify/release.sh`: semver tag choice, `composer check`, `composer validate --strict`, tests, merge `main` into `release/1.x`, annotated tag, push). Use `./release.sh --help` for options (`--yes`, `--remove-last`, explicit version).
+
 Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notable suites: `tests/Api/BackendApiClientTest.php` (HTTP clients), `tests/Api/LabelServiceTest.php` (label + queue bootstrap), `tests/Admin/LabelAjaxTest.php` (shipment detail payload / admin AJAX), `tests/OrderSyncServiceTest.php` (auto-sync hooks, debouncing, extId persistence), `tests/PluginLogTest.php` (error message shaping, including `deliveryServiceStatus`). `tests/bootstrap.php` defines a minimal `WC_Order` stub and `wc_get_order()` for tests where WooCommerce is not loaded. See `phpunit.xml.dist`.
 
 ## What is **not** in this plugin (vs a full Shopify app)
