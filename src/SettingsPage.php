@@ -50,6 +50,18 @@ class SettingsPage extends \WC_Integration
                 'desc_tip' => true,
                 'default' => '',
             ],
+            'sync_new_orders' => [
+                'title' => __('Auto-sync new orders', 'octavawms'),
+                'type' => 'checkbox',
+                'label' => __('Send new orders to OctavaWMS automatically', 'octavawms'),
+                'default' => 'yes',
+            ],
+            'sync_order_updates' => [
+                'title' => __('Auto-sync order updates', 'octavawms'),
+                'type' => 'checkbox',
+                'label' => __('Re-import orders when they are updated (debounced)', 'octavawms'),
+                'default' => 'yes',
+            ],
         ];
     }
 

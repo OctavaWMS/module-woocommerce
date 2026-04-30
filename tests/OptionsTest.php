@@ -177,4 +177,35 @@ final class OptionsTest extends TestCase
         self::assertSame('keep-me', $settings['refresh_token'] ?? null);
     }
 
+    public function testOrderSyncFlagsDefaultEnabledWhenMissing(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [];
+            }
+
+            return $default;
+        });
+
+        self::assertTrue(Options::isNewOrderSyncEnabled());
+        self::assertTrue(Options::isOrderUpdateSyncEnabled());
+    }
+
+    public function testOrderSyncFlagsRespectNo(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'sync_new_orders' => 'no',
+                    'sync_order_updates' => 'no',
+                ];
+            }
+
+            return $default;
+        });
+
+        self::assertFalse(Options::isNewOrderSyncEnabled());
+        self::assertFalse(Options::isOrderUpdateSyncEnabled());
+    }
+
 }

@@ -121,6 +121,22 @@ class Options
         return 0;
     }
 
+    public static function isNewOrderSyncEnabled(): bool
+    {
+        $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+        $v = $settings['sync_new_orders'] ?? null;
+
+        return ! (is_string($v) && $v === 'no');
+    }
+
+    public static function isOrderUpdateSyncEnabled(): bool
+    {
+        $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+        $v = $settings['sync_order_updates'] ?? null;
+
+        return ! (is_string($v) && $v === 'no');
+    }
+
     public static function saveCredentials(string $apiKey, string $labelEndpoint, int $sourceId): void
     {
         update_option(self::LEGACY_LABEL_ENDPOINT, $labelEndpoint);

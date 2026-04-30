@@ -54,6 +54,17 @@ If you are self-hosted or were given values by your operator:
 | **Connect service URL** | Optional. Overrides the default one-click `POST` target (e.g. `https://alpha.orderadmin.eu/apps/woocommerce/connect`). |
 | **Label endpoint URL** | Optional override. When set, its **host** is used as the API base for REST calls and label requests. When empty, the plugin uses `Options::DEFAULT_API_BASE` (currently **`https://alpha.orderadmin.eu`** while staging; reverts to `https://pro.oawms.com` before release) and posts labels to `/apps/woocommerce/api/label`. |
 | **API key** | Bearer access token sent as `Authorization: Bearer …` after Connect (or manual paste). When Connect returns OAuth bootstrap fields, the access token is obtained via `POST /oauth` and may be rotated with a new refresh token. |
+| **Auto-sync new orders** | When enabled (default), new orders trigger `POST /api/integrations/import` so OctavaWMS can create them without using **Upload order** in the admin. |
+| **Auto-sync order updates** | When enabled (default), order saves and status changes re-import the order. A short debounce (transient, 10 seconds) plus per-request deduplication reduces duplicate API calls when WooCommerce fires several hooks for one change. |
+
+## Automatic order sync (WooCommerce → OctavaWMS)
+
+After Connect (so **source id** and **Bearer** are present), the plugin can push orders automatically:
+
+- **New orders:** `woocommerce_checkout_order_processed` and `woocommerce_new_order` run the same import path. Only one import runs per order per HTTP request if both hooks fire.
+- **Updates:** `woocommerce_update_order` and `woocommerce_order_status_changed` run when **Auto-sync order updates** is on. The same debouncing applies.
+
+Turn either option off under **WooCommerce → Settings → Integrations → OctavaWMS Connector** (checkboxes in the Advanced section). If import fails, check **WooCommerce → Status → Logs** for entries from source **`octavawms`** with subsystem **`order_auto_sync`**.
 
 ## Order edit — OctavaWMS panel
 
@@ -107,6 +118,7 @@ On activation, the plugin creates (if possible) a `.htaccess` in `wp-content/upl
 | Connect debug logging (`octavawms-connect` WC log source) | `src/PluginLog.php` |
 | Admin notices (missing integration hint on WC settings) | `src/Notices.php` |
 | Options | `src/Options.php` |
+| Auto-import on create/update | `src/OrderSyncService.php` |
 
 ## Running tests
 
@@ -117,7 +129,7 @@ composer test
 composer check   # php-lint + phpunit
 ```
 
-Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notable suites: `tests/Api/BackendApiClientTest.php` (HTTP clients), `tests/Api/LabelServiceTest.php` (label + queue bootstrap), `tests/Admin/LabelAjaxTest.php` (shipment detail payload / admin AJAX), `tests/PluginLogTest.php` (error message shaping, including `deliveryServiceStatus`). See `phpunit.xml.dist`.
+Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notable suites: `tests/Api/BackendApiClientTest.php` (HTTP clients), `tests/Api/LabelServiceTest.php` (label + queue bootstrap), `tests/Admin/LabelAjaxTest.php` (shipment detail payload / admin AJAX), `tests/OrderSyncServiceTest.php` (auto-sync hooks, debouncing, extId persistence), `tests/PluginLogTest.php` (error message shaping, including `deliveryServiceStatus`). `tests/bootstrap.php` defines a minimal `WC_Order` stub and `wc_get_order()` for tests where WooCommerce is not loaded. See `phpunit.xml.dist`.
 
 ## What is **not** in this plugin (vs a full Shopify app)
 

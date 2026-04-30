@@ -57,6 +57,8 @@ add_action('plugins_loaded', static function () {
     $connect->register();
 
     $apiClient = new \OctavaWMS\WooCommerce\Api\BackendApiClient();
+    $orderSync = new \OctavaWMS\WooCommerce\OrderSyncService($apiClient);
+    $orderSync->register();
     $labelService = new \OctavaWMS\WooCommerce\Api\LabelService($apiClient);
     $labelMetaBox = new \OctavaWMS\WooCommerce\Admin\LabelMetaBox();
     $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
