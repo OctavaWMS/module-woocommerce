@@ -79,7 +79,7 @@ You can still use **Order actions → Generate shipping label → Update** as be
 
 | Meta key | Purpose |
 |----------|---------|
-| `_octavawms_external_order_id` | If set, sent as `externalOrderId` / used as `extId` for backend lookups. If empty, the WooCommerce **order key** is used. |
+| `_octavawms_external_order_id` | If set, preferred for import filters and tried first for GET lookups. If empty or wrong, the plugin also tries the **order key**, numeric **order id**, and **order number** until the order list API returns a match; it may update this meta from the backend’s `extId` after a successful lookup or import response. |
 | `_octavawms_label_url` / `_octavawms_label_file` | Written when a label is generated: remote URL and/or a local file path in `uploads/octavawms-labels/`. Do not set these manually. |
 
 ## Label files on disk
@@ -94,6 +94,7 @@ On activation, the plugin creates (if possible) a `.htaccess` in `wp-content/upl
 | REST + label HTTP | `src/Api/BackendApiClient.php`, `src/Api/LabelService.php` |
 | Order UI | `src/Admin/LabelMetaBox.php`, `src/Admin/LabelAjax.php` |
 | Order actions / generation orchestration | `src/AdminLabelActions.php` |
+| Woo order → OctavaWMS extId candidates | `src/WooOrderExtId.php` |
 | Settings / connect | `src/SettingsPage.php`, `src/ConnectService.php` |
 | WooCommerce REST key auto-discovery + HMAC signer | `src/WooRestCredentials.php` |
 | Connect debug logging (`octavawms-connect` WC log source) | `src/PluginLog.php` |

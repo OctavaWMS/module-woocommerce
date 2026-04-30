@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Removed
 - Temporary **REST API consumer key / secret** integration fields and `Options::getConnectAuthorizationHeader()` (replaced by `WooRestCredentials` auto-discovery).
 
+### Fixed
+- Order edit panel showed “not in OctavaWMS” after a successful import when the list API used a different HAL `_embedded` key (`orders` / single `order` object) or when `_octavawms_external_order_id` did not match the backend’s canonical `extId`. The plugin now parses several collection shapes, tries multiple Woo identifiers (meta, order key, numeric id, order number), syncs `_octavawms_external_order_id` from the API when found, and reads `extId` from import responses when present.
+
 ### Notes (release checklist)
 - `Options::DEFAULT_API_BASE` currently points at **`https://alpha.orderadmin.eu`** while the signed connect and OAuth paths are verified end-to-end; revert to **`https://pro.oawms.com`** before production release. The **Connect service URL** filter/setting accepts a bare base (e.g. `https://alpha.orderadmin.eu`) as well as the full `/apps/woocommerce/connect` URL.
 

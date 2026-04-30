@@ -7,6 +7,7 @@ namespace OctavaWMS\WooCommerce\Admin;
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
 use OctavaWMS\WooCommerce\Api\LabelService;
 use OctavaWMS\WooCommerce\Options;
+use OctavaWMS\WooCommerce\WooOrderExtId;
 use WC_Order;
 
 class LabelAjax
@@ -45,13 +46,15 @@ class LabelAjax
             wp_send_json_error(['message' => __('Order not found.', 'octavawms')], 404);
         }
 
-        $extId = (string) $order->get_meta('_octavawms_external_order_id', true);
-        if ($extId === '') {
-            $extId = (string) $order->get_order_key();
+        [$backendOrder, $resolvedExtId] = $this->findBackendOrderAndResolvedExtId($order);
+
+        if ($backendOrder !== null) {
+            $this->maybePersistCanonicalExtId($order, $backendOrder);
         }
 
-        $backendOrder = $this->apiClient->findOrderByExtId($extId);
-        $shipments = $backendOrder !== null ? $this->apiClient->findShipmentsByExtId($extId) : [];
+        $shipments = $backendOrder !== null && $resolvedExtId !== null
+            ? $this->apiClient->findShipmentsByExtId($resolvedExtId)
+            : [];
         $first = $shipments[0] ?? null;
         $shipmentPayload = null;
         if (is_array($first) && isset($first['id'])) {
@@ -100,14 +103,17 @@ class LabelAjax
             wp_send_json_error(['message' => __('Connect the plugin under WooCommerce → Settings → Integrations first.', 'octavawms')], 400);
         }
 
-        $extId = (string) $order->get_meta('_octavawms_external_order_id', true);
-        if ($extId === '') {
-            $extId = (string) $order->get_order_key();
-        }
+        $extId = WooOrderExtId::importFilterExtId($order);
 
         $result = $this->apiClient->importOrder($extId, $sourceId);
         if (! $result['ok']) {
             wp_send_json_error(['message' => $result['message'] ?? __('Upload failed.', 'octavawms')], 502);
+        }
+
+        $data = $result['data'] ?? null;
+        if (is_array($data)) {
+            $entity = $this->apiClient->extractFirstOrderFromCollectionJson($data);
+            $this->maybePersistCanonicalExtIdFromEntity($order, $entity);
         }
 
         wp_send_json_success(['imported' => true]);
@@ -133,10 +139,7 @@ class LabelAjax
             wp_send_json_error(['message' => __('Order not found.', 'octavawms')], 404);
         }
 
-        $extId = (string) $order->get_meta('_octavawms_external_order_id', true);
-        if ($extId === '') {
-            $extId = (string) $order->get_order_key();
-        }
+        $extId = $this->resolveExtIdForLabelRequest($order);
 
         $weightRaw = (float) $order->get_total_weight();
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
@@ -178,6 +181,64 @@ class LabelAjax
         }
 
         wp_send_json_success(['has_label' => true, 'download_url' => $downloadUrl]);
+    }
+
+    /**
+     * @return array{0: array<string, mixed>|null, 1: string|null}
+     */
+    private function findBackendOrderAndResolvedExtId(WC_Order $order): array
+    {
+        foreach (WooOrderExtId::lookupCandidates($order) as $extId) {
+            $backendOrder = $this->apiClient->findOrderByExtId($extId);
+            if ($backendOrder !== null) {
+                return [$backendOrder, $extId];
+            }
+        }
+
+        return [null, null];
+    }
+
+    /**
+     * Prefer an extId that already exists in OctavaWMS; fall back to the import filter extId.
+     */
+    private function resolveExtIdForLabelRequest(WC_Order $order): string
+    {
+        [, $resolved] = $this->findBackendOrderAndResolvedExtId($order);
+
+        return $resolved ?? WooOrderExtId::importFilterExtId($order);
+    }
+
+    /**
+     * @param array<string, mixed>|null $entity
+     */
+    private function maybePersistCanonicalExtIdFromEntity(WC_Order $order, ?array $entity): void
+    {
+        if ($entity === null) {
+            return;
+        }
+        $canonical = '';
+        if (isset($entity['extId']) && is_string($entity['extId'])) {
+            $canonical = trim($entity['extId']);
+        } elseif (isset($entity['ext_id']) && is_string($entity['ext_id'])) {
+            $canonical = trim($entity['ext_id']);
+        }
+        if ($canonical === '') {
+            return;
+        }
+        $stored = trim((string) $order->get_meta('_octavawms_external_order_id', true));
+        if ($stored === $canonical) {
+            return;
+        }
+        $order->update_meta_data('_octavawms_external_order_id', $canonical);
+        $order->save();
+    }
+
+    /**
+     * @param array<string, mixed> $backendOrder
+     */
+    private function maybePersistCanonicalExtId(WC_Order $order, array $backendOrder): void
+    {
+        $this->maybePersistCanonicalExtIdFromEntity($order, $backendOrder);
     }
 
     /**

@@ -20,6 +20,7 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
         __DIR__ . '/src/Options.php',
         __DIR__ . '/src/PluginLog.php',
         __DIR__ . '/src/WooRestCredentials.php',
+        __DIR__ . '/src/WooOrderExtId.php',
         __DIR__ . '/src/Activation.php',
         __DIR__ . '/src/Api/BackendApiClient.php',
         __DIR__ . '/src/Api/LabelService.php',
@@ -61,7 +62,7 @@ add_action('plugins_loaded', static function () {
     $labelService = new \OctavaWMS\WooCommerce\Api\LabelService($apiClient);
     $labelMetaBox = new \OctavaWMS\WooCommerce\Admin\LabelMetaBox();
     $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
-    $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax);
+    $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax, $apiClient);
     $adminActions->register();
 }, 5);
 

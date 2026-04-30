@@ -246,6 +246,72 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(99, $order['id']);
     }
 
+    public function testFindOrderByExtIdParsesEmbeddedOrdersPlural(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [];
+            }
+            if ($name === Options::LEGACY_LABEL_ENDPOINT) {
+                return '';
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        Functions\expect('wp_remote_request')
+            ->once()
+            ->andReturn([
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['orders' => [['id' => 7, 'extId' => 'plural']]]], JSON_THROW_ON_ERROR),
+            ]);
+
+        $client = new BackendApiClient();
+        $order = $client->findOrderByExtId('plural');
+        self::assertIsArray($order);
+        self::assertSame(7, $order['id']);
+    }
+
+    public function testFindOrderByExtIdParsesSingleObjectEmbeddedOrder(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [];
+            }
+            if ($name === Options::LEGACY_LABEL_ENDPOINT) {
+                return '';
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        Functions\expect('wp_remote_request')
+            ->once()
+            ->andReturn([
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['order' => ['id' => 3, 'extId' => 'single-obj']]], JSON_THROW_ON_ERROR),
+            ]);
+
+        $client = new BackendApiClient();
+        $order = $client->findOrderByExtId('single-obj');
+        self::assertIsArray($order);
+        self::assertSame(3, $order['id']);
+    }
+
+    public function testExtractFirstOrderFromCollectionJsonTopLevelOrder(): void
+    {
+        $client = new BackendApiClient();
+        $first = $client->extractFirstOrderFromCollectionJson(['order' => ['id' => 2, 'extId' => 'top']]);
+        self::assertIsArray($first);
+        self::assertSame(2, $first['id']);
+    }
+
     public function testImportOrderFailsWhenSourceIdZero(): void
     {
         $client = new BackendApiClient();

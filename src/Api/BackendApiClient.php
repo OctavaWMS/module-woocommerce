@@ -283,18 +283,93 @@ class BackendApiClient
         if (! $result['ok'] || ! is_array($result['data'])) {
             return null;
         }
-        $embedded = $result['data']['_embedded'] ?? null;
-        if (! is_array($embedded)) {
-            return null;
-        }
-        $orders = $embedded['order'] ?? [];
-        if (! is_array($orders) || $orders === []) {
-            return null;
-        }
 
-        $first = $orders[0];
+        $orders = $this->parseOrdersFromProductsOrderListBody($result['data']);
+
+        $first = $orders[0] ?? null;
 
         return is_array($first) ? $first : null;
+    }
+
+    /**
+     * Best-effort first order object from import or list JSON (HAL _embedded or plain collections).
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>|null
+     */
+    public function extractFirstOrderFromCollectionJson(array $data): ?array
+    {
+        $orders = $this->parseOrdersFromProductsOrderListBody($data);
+        if ($orders !== []) {
+            return $orders[0];
+        }
+        foreach (['order', 'resource', 'entity'] as $k) {
+            if (isset($data[$k]) && is_array($data[$k]) && (isset($data[$k]['id']) || isset($data[$k]['extId']) || isset($data[$k]['ext_id']))) {
+                return $data[$k];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function parseOrdersFromProductsOrderListBody(array $data): array
+    {
+        $embedded = $data['_embedded'] ?? null;
+        if (is_array($embedded)) {
+            foreach (['order', 'orders', 'abstractOrder', 'abstractOrders'] as $key) {
+                if (! isset($embedded[$key])) {
+                    continue;
+                }
+                $normalized = $this->normalizeToListOfOrderArrays($embedded[$key]);
+                if ($normalized !== []) {
+                    return $normalized;
+                }
+            }
+        }
+
+        foreach (['items', 'hydra:member', 'member'] as $key) {
+            if (! isset($data[$key]) || ! is_array($data[$key])) {
+                continue;
+            }
+            $normalized = $this->normalizeToListOfOrderArrays($data[$key]);
+            if ($normalized !== []) {
+                return $normalized;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeToListOfOrderArrays(mixed $raw): array
+    {
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+        $keys = array_keys($raw);
+        $isList = $keys === range(0, count($raw) - 1);
+        if ($isList) {
+            $out = [];
+            foreach ($raw as $item) {
+                if (is_array($item)) {
+                    $out[] = $item;
+                }
+            }
+
+            return $out;
+        }
+
+        return [$raw];
     }
 
     /**

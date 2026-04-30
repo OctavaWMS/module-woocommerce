@@ -6,7 +6,9 @@ namespace OctavaWMS\WooCommerce;
 
 use OctavaWMS\WooCommerce\Admin\LabelAjax;
 use OctavaWMS\WooCommerce\Admin\LabelMetaBox;
+use OctavaWMS\WooCommerce\Api\BackendApiClient;
 use OctavaWMS\WooCommerce\Api\LabelService;
+use OctavaWMS\WooCommerce\WooOrderExtId;
 use WC_Order;
 
 class AdminLabelActions
@@ -17,11 +19,14 @@ class AdminLabelActions
 
     private LabelAjax $labelAjax;
 
-    public function __construct(LabelService $labelService, LabelMetaBox $labelMetaBox, LabelAjax $labelAjax)
+    private BackendApiClient $apiClient;
+
+    public function __construct(LabelService $labelService, LabelMetaBox $labelMetaBox, LabelAjax $labelAjax, BackendApiClient $apiClient)
     {
         $this->labelService = $labelService;
         $this->labelMetaBox = $labelMetaBox;
         $this->labelAjax = $labelAjax;
+        $this->apiClient = $apiClient;
     }
 
     public function register(): void
@@ -124,10 +129,7 @@ class AdminLabelActions
      */
     private function executeLabelGeneration(WC_Order $order): bool
     {
-        $externalOrderId = (string) $order->get_meta('_octavawms_external_order_id', true);
-        if ($externalOrderId === '') {
-            $externalOrderId = (string) $order->get_order_key();
-        }
+        $externalOrderId = $this->resolveExtIdForLabelRequest($order);
 
         $weightRaw = (float) $order->get_total_weight();
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
@@ -170,6 +172,20 @@ class AdminLabelActions
         $order->save();
 
         return true;
+    }
+
+    /**
+     * Match {@see LabelAjax::resolveExtIdForLabelRequest} so order actions and the meta box use the same extId rules.
+     */
+    private function resolveExtIdForLabelRequest(WC_Order $order): string
+    {
+        foreach (WooOrderExtId::lookupCandidates($order) as $extId) {
+            if ($this->apiClient->findOrderByExtId($extId) !== null) {
+                return $extId;
+            }
+        }
+
+        return WooOrderExtId::importFilterExtId($order);
     }
 
     public function handleDownloadLabelAction(): void
