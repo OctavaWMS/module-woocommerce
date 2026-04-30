@@ -1069,7 +1069,7 @@ final class BackendApiClientTest extends TestCase
         self::assertCount(2, $urls);
         self::assertStringContainsString('/api/users/users/0', $urls[0]);
         self::assertStringContainsString('/api/users/authenticate/42', $urls[1]);
-        self::assertSame('https://app.izparti.bg/#/login?refreshToken=rt-api', 'https://app.izparti.bg/#/login?refreshToken=' . rawurlencode($out['refresh_token']));
+        self::assertSame('https://app.izprati.bg/#/login?refreshToken=rt-api', 'https://app.izprati.bg/#/login?refreshToken=' . rawurlencode($out['refresh_token']));
     }
 
     public function testGetPanelLoginRefreshTokenFailsWhenNotConfigured(): void

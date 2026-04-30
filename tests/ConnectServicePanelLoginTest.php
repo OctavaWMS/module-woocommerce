@@ -60,6 +60,6 @@ final class ConnectServicePanelLoginTest extends TestCase
         self::assertArrayHasKey('loginUrl', $captured);
         $loginUrl = $captured['loginUrl'] ?? null;
         self::assertIsString($loginUrl);
-        self::assertSame('https://app.izparti.bg/#/login?refreshToken=a%2Bb', $loginUrl);
+        self::assertSame('https://app.izprati.bg/#/login?refreshToken=a%2Bb', $loginUrl);
     }
 }

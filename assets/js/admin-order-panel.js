@@ -1820,7 +1820,7 @@
         postPanelLoginUrl()
           .then(function (j) {
             if (j && j.success && j.data && j.data.loginUrl) {
-              window.location.assign(String(j.data.loginUrl));
+              window.open(String(j.data.loginUrl), '_blank', 'noopener,noreferrer');
               return;
             }
             window.alert((j && j.data && j.data.message) || cfg.strings.panelLoginError || cfg.strings.error);

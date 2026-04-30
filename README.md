@@ -150,6 +150,7 @@ Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notab
 - `octavawms_require_https_for_connect` — `bool` (default `true` except localhost) to require HTTPS for connect.
 - `octavawms_oauth_url` — full URL for `POST /oauth` (default: API base + `/oauth`).
 - `octavawms_oauth_client_id` — OAuth client id for the refresh grant (default: `orderadmin`).
+- `octavawms_panel_app_base` — origin for **Login to the panel** (default: `https://app.izprati.bg`, no trailing slash).
 
 Built-in defaults (no filter required): `Options::DEFAULT_API_BASE` and `BackendApiClient::LABEL_PATH` for the hosted label URL when the integration **label endpoint** field is empty.
 

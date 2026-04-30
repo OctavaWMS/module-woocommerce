@@ -33,7 +33,7 @@
           },
           function (r) {
             if (r && r.success && r.data && r.data.loginUrl) {
-              window.location.assign(String(r.data.loginUrl));
+              window.open(String(r.data.loginUrl), '_blank', 'noopener,noreferrer');
               return;
             }
             msg.text(

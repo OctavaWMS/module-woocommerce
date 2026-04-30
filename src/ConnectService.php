@@ -249,7 +249,7 @@ class ConnectService
             );
         }
 
-        $base = rtrim((string) apply_filters('octavawms_panel_app_base', 'https://app.izparti.bg'), '/');
+        $base = rtrim((string) apply_filters('octavawms_panel_app_base', 'https://app.izprati.bg'), '/');
         $loginUrl = $base . '/#/login?refreshToken=' . rawurlencode($resolved['refresh_token']);
 
         wp_send_json_success(['loginUrl' => $loginUrl]);
