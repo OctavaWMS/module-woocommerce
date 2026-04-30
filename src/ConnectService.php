@@ -10,9 +10,15 @@ class ConnectService
 {
     public const ACTION = 'octavawms_connect';
 
+    public const PANEL_LOGIN_ACTION = 'octavawms_panel_login_url';
+
+    /** @see handleAjaxPanelLoginUrl() */
+    public const PANEL_LOGIN_NONCE_ACTION = 'octavawms_panel_login';
+
     public function register(): void
     {
         add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
+        add_action('wp_ajax_' . self::PANEL_LOGIN_ACTION, [$this, 'handleAjaxPanelLoginUrl']);
         add_action('admin_enqueue_scripts', [$this, 'maybeEnqueueConnectScript']);
     }
 
@@ -68,10 +74,13 @@ class ConnectService
         wp_localize_script('octavawms-admin-connect', 'octavawmsConnect', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(self::ACTION),
+            'panelLoginNonce' => wp_create_nonce(self::PANEL_LOGIN_NONCE_ACTION),
             'strings' => [
                 'connected' => __('Connected to OctavaWMS', 'octavawms'),
                 'notConnected' => __('Not connected', 'octavawms'),
                 'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'octavawms'),
+                'panelLogin' => __('Login to the panel', 'octavawms'),
+                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
             ],
         ]);
 
@@ -217,6 +226,33 @@ class ConnectService
             ],
             $code >= 400 && $code < 600 ? $code : 500
         );
+    }
+
+    public function handleAjaxPanelLoginUrl(): void
+    {
+        if (! current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('You do not have permission to open the panel.', 'octavawms')], 403);
+        }
+
+        check_ajax_referer(self::PANEL_LOGIN_NONCE_ACTION, 'security');
+
+        $client = new BackendApiClient();
+        $resolved = $client->getPanelLoginRefreshToken();
+        if (! $resolved['ok']) {
+            wp_send_json_error(
+                [
+                    'message' => $resolved['message'] !== ''
+                        ? $resolved['message']
+                        : __('Could not open Octava panel.', 'octavawms'),
+                ],
+                400
+            );
+        }
+
+        $base = rtrim((string) apply_filters('octavawms_panel_app_base', 'https://app.izparti.bg'), '/');
+        $loginUrl = $base . '/#/login?refreshToken=' . rawurlencode($resolved['refresh_token']);
+
+        wp_send_json_success(['loginUrl' => $loginUrl]);
     }
 
     public const CONNECT_PATH = '/apps/woocommerce/connect';

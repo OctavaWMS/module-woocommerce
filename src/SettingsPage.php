@@ -77,6 +77,9 @@ class SettingsPage extends \WC_Integration
                 <button type="button" class="button button-primary" id="octavawms-connect-btn">
                     <?php esc_html_e('Connect to OctavaWMS', 'octavawms'); ?>
                 </button>
+                <button type="button" class="button button-secondary" id="octavawms-panel-login-btn">
+                    <?php esc_html_e('Login to the panel', 'octavawms'); ?>
+                </button>
                 <span class="spinner" id="octavawms-connect-spinner" style="float:none;visibility:hidden"></span>
             </p>
             <p class="description" id="octavawms-connect-message" style="min-height:1.5em" aria-live="polite"></p>

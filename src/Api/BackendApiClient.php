@@ -85,6 +85,68 @@ class BackendApiClient
     }
 
     /**
+     * Resolve refresh token for web panel auto-login (stored OAuth, or same flow as Shopify app).
+     *
+     * @return array{ok: bool, refresh_token: string, message: string}
+     */
+    public function getPanelLoginRefreshToken(): array
+    {
+        $stored = Options::getRefreshToken();
+        if ($stored !== '') {
+            return ['ok' => true, 'refresh_token' => $stored, 'message' => ''];
+        }
+
+        if (Options::getApiKey() === '') {
+            return [
+                'ok' => false,
+                'refresh_token' => '',
+                'message' => __(
+                    'Connect the plugin under WooCommerce → Settings → Integrations first.',
+                    'octavawms'
+                ),
+            ];
+        }
+
+        $user = $this->request('GET', 'api/users/users/0');
+        if (! $user['ok'] || ! is_array($user['data'])) {
+            return [
+                'ok' => false,
+                'refresh_token' => '',
+                'message' => __('Could not open panel login (user lookup failed).', 'octavawms'),
+            ];
+        }
+
+        $uid = $user['data']['id'] ?? $user['data']['userId'] ?? null;
+        if (! is_numeric($uid) || (int) $uid <= 0) {
+            return [
+                'ok' => false,
+                'refresh_token' => '',
+                'message' => __('Could not open panel login (invalid user id).', 'octavawms'),
+            ];
+        }
+
+        $auth = $this->request('GET', 'api/users/authenticate/' . (string) (int) $uid);
+        if (! $auth['ok'] || ! is_array($auth['data'])) {
+            return [
+                'ok' => false,
+                'refresh_token' => '',
+                'message' => __('Could not open panel login (authenticate request failed).', 'octavawms'),
+            ];
+        }
+
+        $rt = (string) ($auth['data']['refreshToken'] ?? $auth['data']['refresh_token'] ?? '');
+        if ($rt === '') {
+            return [
+                'ok' => false,
+                'refresh_token' => '',
+                'message' => __('Could not open panel login (missing refresh token).', 'octavawms'),
+            ];
+        }
+
+        return ['ok' => true, 'refresh_token' => $rt, 'message' => ''];
+    }
+
+    /**
      * Obtain a Bearer access token: tries OAuth refresh first, then POST /apps/woocommerce/connect.
      */
     public function refreshBearerToken(): bool
@@ -602,14 +664,24 @@ class BackendApiClient
     public function fetchDeliveryServicesPage(string $search, int $page): array
     {
         $page = max(1, $page);
+        $trimSearch = trim($search);
+        $perPage = ($trimSearch === '' && $page === 1)
+            ? (int) apply_filters('octavawms_delivery_services_initial_per_page', 10)
+            : (int) apply_filters('octavawms_delivery_services_per_page', 25);
+        if ($perPage < 1) {
+            $perPage = 1;
+        }
+        if ($perPage > 100) {
+            $perPage = 100;
+        }
         $parts = [
             'page=' . $page,
-            'perPage=25',
+            'perPage=' . $perPage,
         ];
-        if (trim($search) !== '') {
+        if ($trimSearch !== '') {
             $parts[] = 'filter[0][type]=ilike';
             $parts[] = 'filter[0][field]=name';
-            $parts[] = 'filter[0][value]=' . rawurlencode('%' . $search . '%');
+            $parts[] = 'filter[0][value]=' . rawurlencode('%' . $trimSearch . '%');
         }
         $query = implode('&', $parts);
         $result = $this->request('GET', '/api/delivery-services?' . $query, null);

@@ -13,6 +13,11 @@ use Tests\OctavaWMS\WooCommerce\TestCase;
 
 final class LabelAjaxTest extends TestCase
 {
+    public function testPatchKindRetryPendingErrorMatchesOrderPanelScript(): void
+    {
+        self::assertSame('retry_pending_error', LabelAjax::PATCH_KIND_RETRY_PENDING_ERROR);
+    }
+
     public function testHandleAjaxOrderStatusSendsErrorWhenOrderIdMissing(): void
     {
         $_POST = [];
@@ -81,5 +86,66 @@ final class LabelAjaxTest extends TestCase
         ]);
 
         self::assertSame('', $out['shipment_error_message'] ?? '');
+    }
+
+    public function testBuildShipmentDetailPayloadIncludesServicePointContextFromEav(): void
+    {
+        $api = new BackendApiClient();
+        $labelService = $this->getMockBuilder(LabelService::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $m = new \ReflectionMethod(LabelAjax::class, 'buildShipmentDetailPayload');
+        $m->setAccessible(true);
+        /** @var array<string, mixed> $out */
+        $out = $m->invoke($ajax, [
+            'state' => 'measured',
+            'eav' => [
+                'delivery-request-service-point' => 'Near office A',
+                'delivery-request-service-point-distance' => 12.345,
+            ],
+            '_embedded' => [],
+        ]);
+
+        self::assertSame('Near office A', $out['service_point_context']['ai_message']);
+        self::assertSame(12.35, $out['service_point_context']['distance_m']);
+    }
+
+    public function testSimplifyServicePointRowParsesExtendedApiShape(): void
+    {
+        $api = new BackendApiClient();
+        $labelService = $this->getMockBuilder(LabelService::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $m = new \ReflectionMethod(LabelAjax::class, 'simplifyServicePointRow');
+        $m->setAccessible(true);
+        $rawDesc = json_encode([
+            [
+                'standardSchedule' => true,
+                'workingTimeFrom' => '09:00',
+                'workingTimeTo' => '18:00',
+            ],
+        ], JSON_THROW_ON_ERROR);
+        /** @var array<string, mixed> $out */
+        $out = $m->invoke($ajax, [
+            'id' => 9,
+            'name' => 'Office 1',
+            'extId' => 'EXT-9',
+            'rawAddress' => 'Main St 1',
+            'rawPhone' => '+359 88',
+            'type' => 'service_point',
+            'state' => 'active',
+            'geo' => 'POINT (23.3 42.7)',
+            'rawDescription' => $rawDesc,
+        ]);
+
+        self::assertSame(9, $out['id']);
+        self::assertSame('+359 88', $out['raw_phone']);
+        self::assertStringContainsString('09:00', (string) ($out['working_hours_summary'] ?? ''));
+        self::assertStringContainsString('18:00', (string) ($out['working_hours_summary'] ?? ''));
+        self::assertSame('Main St 1', $out['address']);
     }
 }

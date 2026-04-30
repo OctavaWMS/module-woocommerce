@@ -21,6 +21,9 @@ class LabelAjax
     /** @see shopify-octava-wms MANUAL_STRATEGY */
     public const DELIVERY_STRATEGY_MANUAL = '__manual__';
 
+    /** PATCH body `{ "state": "pending_queued" }` when shipment is `pending_error` (edit-shipment Retry). */
+    public const PATCH_KIND_RETRY_PENDING_ERROR = 'retry_pending_error';
+
     private const STRATEGY_JSON_OFFICE = '{"updateData":{"eav":{"delivery-request-service-point-select":{"mode":"closest","criteria":{"type":"service_point"}}}}}';
 
     private const STRATEGY_JSON_LOCKER = '{"updateData":{"eav":{"delivery-request-service-point-select":{"mode":"closest","criteria":{"type":"self_service_point"}}}}}';
@@ -444,6 +447,12 @@ class LabelAjax
                 $payload['eav'] = $parsed['updateData']['eav'] ?? null;
                 $payload['servicePoint'] = null;
             }
+        } elseif ($kind === self::PATCH_KIND_RETRY_PENDING_ERROR) {
+            $state = isset($detail['state']) && is_string($detail['state']) ? $detail['state'] : '';
+            if ($state !== 'pending_error') {
+                wp_send_json_error(['message' => __('Only a failed shipment (pending_error) can be retried this way.', 'octavawms')], 400);
+            }
+            $payload['state'] = 'pending_queued';
         } else {
             wp_send_json_error(['message' => __('Invalid request.', 'octavawms')], 400);
         }
@@ -795,12 +804,27 @@ class LabelAjax
             $errorMessage = PluginLog::shipmentErrorMessageFromApiShipment($detail);
         }
 
+        $servicePointContext = [];
+        $eav = $detail['eav'] ?? null;
+        if (is_array($eav)) {
+            if (isset($eav['delivery-request-service-point']) && is_string($eav['delivery-request-service-point'])) {
+                $ai = trim($eav['delivery-request-service-point']);
+                if ($ai !== '') {
+                    $servicePointContext['ai_message'] = $ai;
+                }
+            }
+            if (isset($eav['delivery-request-service-point-distance']) && is_numeric($eav['delivery-request-service-point-distance'])) {
+                $servicePointContext['distance_m'] = round((float) $eav['delivery-request-service-point-distance'], 2);
+            }
+        }
+
         return [
             'delivery_service_id' => $deliveryServiceId,
             'delivery_service_name' => $deliveryServiceName,
             'locality_id' => $localityId,
             'locality_label' => $localityLabel,
             'current_service_point' => $currentSp,
+            'service_point_context' => $servicePointContext,
             'shipment_state' => $state,
             'shipment_status_text' => $statusText,
             'shipment_error_message' => $errorMessage,
@@ -1000,19 +1024,80 @@ class LabelAjax
     private function simplifyServicePointRow(array $row): array
     {
         $id = isset($row['id']) ? (int) $row['id'] : 0;
-        $name = isset($row['name']) && is_string($row['name']) ? $row['name'] : '';
-        $extId = isset($row['extId']) && is_string($row['extId']) ? $row['extId'] : (isset($row['ext_id']) && is_string($row['ext_id']) ? $row['ext_id'] : '');
-        $addr = '';
-        if (isset($row['rawAddress']) && is_string($row['rawAddress'])) {
-            $addr = $row['rawAddress'];
-        }
+        $name = self::servicePointPickString($row, ['name']);
+        $extId = self::servicePointPickString($row, ['extId', 'ext_id']);
+        $rawAddress = self::servicePointPickString($row, ['rawAddress', 'raw_address']);
+        $rawPhone = self::servicePointPickString($row, ['rawPhone', 'raw_phone']);
+        $rawTimetable = self::servicePointPickString($row, ['rawTimetable', 'raw_timetable']);
+        $rawDescription = self::servicePointPickString($row, ['rawDescription', 'raw_description']);
+        $type = self::servicePointPickString($row, ['type']);
+        $state = self::servicePointPickString($row, ['state']);
+        $geo = self::servicePointPickString($row, ['geo']);
+        $hours = self::servicePointWorkingHoursFromRawDescription($rawDescription);
 
         return [
             'id' => $id,
             'name' => $name,
             'ext_id' => $extId,
-            'address' => $addr,
+            'address' => $rawAddress,
+            'raw_address' => $rawAddress,
+            'raw_phone' => $rawPhone,
+            'raw_timetable' => $rawTimetable,
+            'raw_description' => $rawDescription,
+            'type' => $type,
+            'state' => $state,
+            'geo' => $geo,
+            'working_hours_summary' => $hours,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param list<string> $keys
+     */
+    private static function servicePointPickString(array $row, array $keys): string
+    {
+        foreach ($keys as $k) {
+            if (isset($row[$k]) && is_string($row[$k])) {
+                $t = trim($row[$k]);
+                if ($t !== '') {
+                    return $t;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private static function servicePointWorkingHoursFromRawDescription(string $raw): string
+    {
+        if ($raw === '' || strlen($raw) > 65536) {
+            return '';
+        }
+        $schedule = json_decode($raw, true);
+        if (! is_array($schedule) || $schedule === []) {
+            return '';
+        }
+        $today = null;
+        foreach ($schedule as $s) {
+            if (is_array($s) && ! empty($s['standardSchedule'])) {
+                $today = $s;
+                break;
+            }
+        }
+        if ($today === null && isset($schedule[0]) && is_array($schedule[0])) {
+            $today = $schedule[0];
+        }
+        if (! is_array($today)) {
+            return '';
+        }
+        $from = isset($today['workingTimeFrom']) && is_string($today['workingTimeFrom']) ? trim($today['workingTimeFrom']) : '';
+        $to = isset($today['workingTimeTo']) && is_string($today['workingTimeTo']) ? trim($today['workingTimeTo']) : '';
+        if ($from === '' && $to === '') {
+            return '';
+        }
+
+        return trim($from . ' – ' . $to);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce\Admin;
 
+use OctavaWMS\WooCommerce\ConnectService;
 use WC_Order;
 use WP_Post;
 
@@ -41,6 +42,7 @@ class LabelMetaBox
 .octavawms-shipment-state-banner__status{margin:0 0 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;}
 .octavawms-shipment-state-banner__extra{font-size:13px;font-weight:400;color:#646970;}
 .octavawms-shipment-state-banner__message{margin:0;font-size:13px;line-height:1.5;color:#50575e;}
+.octavawms-shipment-state-banner__actions{margin:12px 0 0;padding:0;}
 .octavawms-connect-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;row-gap:24px;align-items:start;}
 .octavawms-slot--label{grid-column:1;grid-row:1/span 2;}
 .octavawms-slot--sp{grid-column:2;grid-row:1/span 2;align-self:start;}
@@ -84,6 +86,9 @@ class LabelMetaBox
 .octavawms-sp-preview.is-empty{color:#646970;font-style:italic;}
 .octavawms-sp-preview__head{margin:0 0 6px;font-size:13px;}
 .octavawms-sp-preview__line{margin:0 0 4px;font-size:13px;line-height:1.45;color:#50575e;}
+.octavawms-sp-preview__title{margin:0 0 8px;font-size:14px;line-height:1.35;font-weight:600;color:#1d2327;}
+.octavawms-sp-preview__k{font-weight:600;margin-right:6px;color:#50575e;}
+.octavawms-sp-preview__actions{margin:10px 0 0;padding:0;}
 .octavawms-sp-inline-status{margin:0;min-height:1.35em;font-size:13px;}
 .octavawms-meta--danger{display:inline;color:#b32d2e;font-weight:600;margin:0;padding:0;background:none;border:none;font-style:normal;}
 .octavawms-meta--ok{display:inline;color:#1e8734;font-weight:600;margin:0;padding:0;background:none;border:none;font-style:normal;}
@@ -133,8 +138,7 @@ abbr.octavawms-place-mult{margin:0;border:0;padding:0;font-size:11px;line-height
 .octavawms-place-table.octavawms-place-table--compact thead th{background:#eef0f1;padding:10px 8px;margin:0;border:1px solid #c3c4c7;font-weight:600;font-size:13px;text-align:right;}
 .octavawms-place-table.octavawms-place-table--compact thead th.octavawms-place-th-box{width:3.25em;}
 .octavawms-place-table.octavawms-place-table--compact thead th.octavawms-place-th-actions{width:3.5em;text-align:center;}
-.octavawms-place-table.octavawms-place-table--compact thead th.place-col-whl{width:auto;}
-.octavawms-place-table.octavawms-place-table--compact thead th.place-col-whl:not(:first-child){padding-left:4px;padding-right:4px;}
+.octavawms-place-table.octavawms-place-table--compact thead th.octavawms-place-th-dims{text-align:center;font-weight:600;}
 .octavawms-place-table.octavawms-place-table--compact tbody td{border:1px solid #ddd;padding:8px 6px;vertical-align:middle;text-align:right;}
 .octavawms-place-table.octavawms-place-table--compact tbody td.octavawms-place-td-actions{text-align:center;vertical-align:middle;}
 .octavawms-place-table.octavawms-place-table--compact tbody td.octavawms-place-td-num{font-weight:600;}
@@ -176,7 +180,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.8.1',
+            '1.8.8',
             true
         );
 
@@ -195,6 +199,8 @@ CSS;
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'orderId' => $orderId,
             'orderEditUrl' => $orderEditUrl,
+            'patchKindRetryPendingError' => LabelAjax::PATCH_KIND_RETRY_PENDING_ERROR,
+            'panelLoginNonce' => wp_create_nonce(ConnectService::PANEL_LOGIN_NONCE_ACTION),
             'statusNonce' => wp_create_nonce('octavawms_order_status_' . (string) $orderId),
             'uploadNonce' => wp_create_nonce('octavawms_upload_order_' . (string) $orderId),
             'generateLabelNonce' => wp_create_nonce('octavawms_generate_label_' . (string) $orderId),
@@ -218,6 +224,8 @@ CSS;
                 'generatingLabel' => __('Generating label…', 'octavawms'),
                 'tryAgain' => __('Try again', 'octavawms'),
                 'refreshStatus' => __('Refresh status', 'octavawms'),
+                'loginToPanel' => __('Login to the panel', 'octavawms'),
+                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
                 'servicePointSection' => __('Edit shipment', 'octavawms'),
                 'noShipmentForSection' => __('Available after a shipment exists for this order.', 'octavawms'),
                 'searchPlaceholder' => __('Search pickup point…', 'octavawms'),
@@ -228,6 +236,16 @@ CSS;
                 'chooseServicePoint' => __('— Choose —', 'octavawms'),
                 'servicePointDetails' => __('Details', 'octavawms'),
                 'noDetailsYet' => __('Choose a pickup point from the list.', 'octavawms'),
+                'spPreviewId' => __('ID', 'octavawms'),
+                'spPreviewType' => __('Type', 'octavawms'),
+                'spPreviewState' => __('State', 'octavawms'),
+                'spPreviewAddress' => __('Address', 'octavawms'),
+                'spPreviewPhone' => __('Phone', 'octavawms'),
+                'spPreviewHours' => __('Working hours', 'octavawms'),
+                'spPreviewTimetable' => __('Schedule', 'octavawms'),
+                'spPreviewAiNote' => __('Routing note', 'octavawms'),
+                'spOpenInMaps' => __('Open in Maps', 'octavawms'),
+                'spDistanceMeters' => __('Distance: %s m', 'octavawms'),
                 'saving' => __('Saving…', 'octavawms'),
                 'noServicePoints' => __('No pickup points found.', 'octavawms'),
                 'currentPoint' => __('Current', 'octavawms'),
@@ -238,6 +256,9 @@ CSS;
                 'boxColumn' => __('Box', 'octavawms'),
                 'placeActionsColumn' => __('Actions', 'octavawms'),
                 'weightG' => __('Weight (g)', 'octavawms'),
+                'placeTableWeightHeader' => __('(g)', 'octavawms'),
+                'placeTableDimsHeader' => __('(W, H, L) mm', 'octavawms'),
+                'placeTableDimsHeaderTitle' => __('Width, height, length in millimetres', 'octavawms'),
                 'strategyForAi' => __('Strategy for AI', 'octavawms'),
                 'deliveryCarrier' => __('Delivery carrier', 'octavawms'),
                 'recipientLocality' => __('Recipient locality', 'octavawms'),
@@ -246,6 +267,8 @@ CSS;
                 'pickupPointPlaceholder' => __('Search pickup point…', 'octavawms'),
                 'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'octavawms'),
                 'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'octavawms'),
+                'retryPendingError' => __('Retry', 'octavawms'),
+                'retryingPendingError' => __('Retrying…', 'octavawms'),
                 'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'octavawms'),
                 'localitySearchMin' => __('Type at least 2 characters to search.', 'octavawms'),
                 'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'octavawms'),

@@ -934,10 +934,38 @@ final class BackendApiClientTest extends TestCase
         $r = $client->fetchDeliveryServicesPage('bul', 2);
         self::assertStringContainsString('/api/delivery-services?', $captured);
         self::assertStringContainsString('page=2', $captured);
+        self::assertStringContainsString('perPage=25', $captured);
         self::assertStringContainsString('filter[0][type]=ilike', $captured);
         self::assertCount(1, $r['items']);
         self::assertSame(5, $r['items'][0]['id']);
         self::assertSame(2, $r['total_pages']);
+    }
+
+    public function testFetchDeliveryServicesPageFirstUnfilteredPageUsesInitialPerPage(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['delivery_services' => []], 'page_count' => 1], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $client->fetchDeliveryServicesPage('', 1);
+        self::assertStringContainsString('perPage=10', $captured);
+        self::assertStringContainsString('page=1', $captured);
+        self::assertStringNotContainsString('filter[0][type]=ilike', $captured);
     }
 
     public function testFetchLocalitiesPageWithExactIdUsesIdFilter(): void
@@ -966,5 +994,103 @@ final class BackendApiClientTest extends TestCase
         self::assertStringContainsString('filter[0][field]=id', $captured);
         self::assertStringContainsString('filter[0][value]=900', $captured);
         self::assertCount(1, $r['items']);
+    }
+
+    public function testGetPanelLoginRefreshTokenUsesStoredRefreshWithoutHttp(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'refresh_token' => 'rt-from-db',
+                    'api_key' => '',
+                    'label_endpoint' => 'https://api.example.com/apps/woocommerce/api/label',
+                ];
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        Functions\when('wp_remote_request')->alias(static function (): void {
+            throw new \RuntimeException('wp_remote_request should not run when refresh_token is stored');
+        });
+
+        $client = new BackendApiClient();
+        $out = $client->getPanelLoginRefreshToken();
+        self::assertTrue($out['ok']);
+        self::assertSame('rt-from-db', $out['refresh_token']);
+        self::assertSame('', $out['message']);
+    }
+
+    public function testGetPanelLoginRefreshTokenFetchesFromUserEndpointsWhenNoStoredRefresh(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'api_key' => 'bearer-token',
+                    'label_endpoint' => 'https://api.example.com/apps/woocommerce/api/label',
+                ];
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        $urls = [];
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) use (&$urls) {
+            $urls[] = $url;
+            if (str_contains($url, '/api/users/users/0')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['id' => 42], JSON_THROW_ON_ERROR),
+                ];
+            }
+            if (str_contains($url, '/api/users/authenticate/42')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['refreshToken' => 'rt-api'], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            return [
+                'response' => ['code' => 500],
+                'body' => '{}',
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $out = $client->getPanelLoginRefreshToken();
+        self::assertTrue($out['ok']);
+        self::assertSame('rt-api', $out['refresh_token']);
+        self::assertCount(2, $urls);
+        self::assertStringContainsString('/api/users/users/0', $urls[0]);
+        self::assertStringContainsString('/api/users/authenticate/42', $urls[1]);
+        self::assertSame('https://app.izparti.bg/#/login?refreshToken=rt-api', 'https://app.izparti.bg/#/login?refreshToken=' . rawurlencode($out['refresh_token']));
+    }
+
+    public function testGetPanelLoginRefreshTokenFailsWhenNotConfigured(): void
+    {
+        Functions\when('__')->returnArg(1);
+
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [];
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        $client = new BackendApiClient();
+        $out = $client->getPanelLoginRefreshToken();
+        self::assertFalse($out['ok']);
+        self::assertSame('', $out['refresh_token']);
+        self::assertNotSame('', $out['message']);
     }
 }

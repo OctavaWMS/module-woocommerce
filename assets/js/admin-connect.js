@@ -3,7 +3,8 @@
 
   $(function () {
     const btn = $('#octavawms-connect-btn');
-    if (!btn.length) {
+    const panelBtn = $('#octavawms-panel-login-btn');
+    if (!btn.length && !panelBtn.length) {
       return;
     }
     const sp = $('#octavawms-connect-spinner');
@@ -20,39 +21,73 @@
       security: cfg.nonce,
     };
 
-    btn.on('click', function () {
-      sp.css('visibility', 'visible');
-      msg.text('');
-      btn.prop('disabled', true);
-
-      $.post(cfg.ajaxUrl, data, function (r) {
-        if (r && r.success) {
-          msg.text((r.data && r.data.message) || '');
-          if (r.data && r.data.connected) {
-            badge.text(cfg.strings.connected);
-            badge.css({ background: '#e7f4e4', color: '#1e4620' });
-            const kw = (r.data.api_key) || '';
-            if (kw) {
-              $('input[name*="api_key"]').val(kw).trigger('change');
+    if (panelBtn.length) {
+      panelBtn.on('click', function () {
+        msg.text('');
+        panelBtn.prop('disabled', true);
+        $.post(
+          cfg.ajaxUrl,
+          {
+            action: 'octavawms_panel_login_url',
+            security: cfg.panelLoginNonce,
+          },
+          function (r) {
+            if (r && r.success && r.data && r.data.loginUrl) {
+              window.location.assign(String(r.data.loginUrl));
+              return;
             }
+            msg.text(
+              r && r.data && r.data.message
+                ? r.data.message
+                : (cfg.strings && cfg.strings.panelLoginError) || 'Error'
+            );
+          },
+          'json'
+        )
+          .fail(function () {
+            msg.text((cfg.strings && cfg.strings.panelLoginError) || 'Error');
+          })
+          .always(function () {
+            panelBtn.prop('disabled', false);
+          });
+      });
+    }
+
+    if (btn.length) {
+      btn.on('click', function () {
+        sp.css('visibility', 'visible');
+        msg.text('');
+        btn.prop('disabled', true);
+
+        $.post(cfg.ajaxUrl, data, function (r) {
+          if (r && r.success) {
+            msg.text((r.data && r.data.message) || '');
+            if (r.data && r.data.connected) {
+              badge.text(cfg.strings.connected);
+              badge.css({ background: '#e7f4e4', color: '#1e4620' });
+              const kw = (r.data.api_key) || '';
+              if (kw) {
+                $('input[name*="api_key"]').val(kw).trigger('change');
+              }
+            }
+          } else {
+            msg.text(
+              r && r.data && r.data.message
+                ? r.data.message
+                : cfg.strings.error || 'Error'
+            );
+            badge.text(cfg.strings.notConnected);
+            badge.css({ background: '#f0f0f0', color: '#333' });
           }
-        } else {
-          msg.text(
-            r && r.data && r.data.message
-              ? r.data.message
-              : cfg.strings.error || 'Error'
-          );
-          badge.text(cfg.strings.notConnected);
-          badge.css({ background: '#f0f0f0', color: '#333' });
-        }
-      }, 'json')
-        .fail(function () {
-          msg.text(cfg.strings.error);
-        })
-        .always(function () {
-          sp.css('visibility', 'hidden');
-          btn.prop('disabled', false);
-        });
-    });
+        }, 'json')
+          .fail(function () {
+            msg.text(cfg.strings.error);
+          })
+          .always(function () {
+            sp.css('visibility', 'hidden');
+            btn.prop('disabled', false);
+          });
+      });
+    }
   });
 })(jQuery);

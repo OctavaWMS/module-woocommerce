@@ -10,6 +10,94 @@
   /** @type {{ id?: unknown, state?: string, error_message?: string }|null} */
   let panelShipment = null;
 
+  var carrierFirstPageGen = 0;
+  /** @type {unknown} */
+  var carrierFirstPagePayload = null;
+  /** @type {any} */
+  var carrierFirstPagePromise;
+
+  function beginCarrierFirstPagePrefetch() {
+    if (typeof jQuery === 'undefined') {
+      carrierFirstPagePromise = undefined;
+      carrierFirstPagePayload = null;
+      return;
+    }
+    carrierFirstPageGen += 1;
+    var gen = carrierFirstPageGen;
+    carrierFirstPagePayload = null;
+    carrierFirstPagePromise = jQuery.post(cfg.ajaxUrl, {
+      action: 'octavawms_delivery_services',
+      nonce: cfg.connectorNonce,
+      order_id: String(cfg.orderId),
+      search: '',
+      page: 1,
+    }).done(function (resp) {
+      if (gen === carrierFirstPageGen) {
+        carrierFirstPagePayload = resp;
+      }
+    });
+  }
+
+  /**
+   * @param {string|Record<string, string>|object|undefined} raw
+   * @returns {{ search: string, page: number }}
+   */
+  function parseCarrierAjaxFormData(raw) {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      return {
+        search: raw.search != null ? String(raw.search) : '',
+        page: parseInt(String(raw.page != null ? raw.page : '1'), 10) || 1,
+      };
+    }
+    if (typeof raw === 'string' && raw !== '') {
+      var out = { search: '', page: 1 };
+      raw.split('&').forEach(function (pair) {
+        var i = pair.indexOf('=');
+        if (i === -1) {
+          return;
+        }
+        var k = decodeURIComponent(pair.slice(0, i));
+        var v = decodeURIComponent(pair.slice(i + 1));
+        if (k === 'search') {
+          out.search = v;
+        }
+        if (k === 'page') {
+          var p = parseInt(v, 10);
+          if (!isNaN(p)) {
+            out.page = p;
+          }
+        }
+      });
+      return out;
+    }
+    return { search: '', page: 1 };
+  }
+
+  /**
+   * @param {JQuery.AjaxSettings} params
+   * @param {(data: unknown) => void} success
+   * @param {(xhr?: unknown, status?: string, err?: string) => void} failure
+   */
+  function carrierAjaxTransport(params, success, failure) {
+    var q = parseCarrierAjaxFormData(params.data);
+    var emptySearch = !String(q.search || '').trim();
+    if (emptySearch && q.page === 1 && carrierFirstPagePromise) {
+      if (carrierFirstPagePromise.state() === 'resolved') {
+        success(carrierFirstPagePayload);
+        return carrierFirstPagePromise;
+      }
+      return carrierFirstPagePromise.then(
+        function () {
+          success(carrierFirstPagePayload);
+        },
+        function (xhr, status, err) {
+          failure(xhr, status, err);
+        }
+      );
+    }
+    return jQuery.ajax(params).done(success).fail(failure);
+  }
+
   function esc(s) {
     const d = document.createElement('div');
     d.textContent = s;
@@ -293,11 +381,24 @@
     if (!msg) {
       msg = String(cfg.strings.shipmentPendingErrorGeneric || '').trim();
     }
+    const sid =
+      shipmentStub && shipmentStub.id != null ? parseInt(String(shipmentStub.id), 10) || 0 : 0;
+    let actions = '';
+    if (sid > 0) {
+      actions +=
+        '<p class="octavawms-shipment-state-banner__actions">' +
+        '<button type="button" class="button button-primary" data-octavawms-action="retry-pending-error" data-shipment-id="' +
+        esc(String(sid)) +
+        '">' +
+        esc(cfg.strings.retryPendingError || 'Retry') +
+        '</button></p>';
+    }
     return (
       statusRow +
       '<p class="octavawms-shipment-state-banner__message" id="octavawms-shipment-state-banner-msg">' +
       esc(msg) +
-      '</p>'
+      '</p>' +
+      actions
     );
   }
 
@@ -421,10 +522,27 @@
   function toolbarHtml() {
     return (
       '<div class="octavawms-connect-toolbar">' +
+      '<button type="button" class="button button-small" data-octavawms-action="panel-login">' +
+      esc(cfg.strings.loginToPanel || 'Login to the panel') +
+      '</button>' +
       '<button type="button" class="button button-small" data-octavawms-action="refresh-status">' +
       esc(cfg.strings.refreshStatus) +
       '</button></div>'
     );
+  }
+
+  function postPanelLoginUrl() {
+    const body = new URLSearchParams();
+    body.set('action', 'octavawms_panel_login_url');
+    body.set('security', String(cfg.panelLoginNonce || ''));
+    return fetch(cfg.ajaxUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      credentials: 'same-origin',
+    }).then(function (r) {
+      return r.json();
+    });
   }
 
   /** @returns {boolean} */
@@ -743,6 +861,160 @@
     return raw;
   }
 
+  /** @param {Record<string, unknown>|null|undefined} sp */
+  function servicePointMapsUrl(sp) {
+    if (!sp || typeof sp !== 'object') {
+      return '';
+    }
+    const geo = String(sp.geo || '').trim();
+    const m = geo.match(/POINT\s*\(\s*([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\s*\)/i);
+    if (m) {
+      const lng = parseFloat(m[1]);
+      const lat = parseFloat(m[2]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng);
+      }
+    }
+    const q = String(sp.raw_address || sp.address || sp.name || '').trim();
+    return q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) : '';
+  }
+
+  /** @param {Record<string, unknown>|null|undefined} sp */
+  function servicePointPreviewContextFor(sp) {
+    if (!sp || !spDetail || !spDetail.current_service_point) {
+      return {};
+    }
+    if (String(spDetail.current_service_point.id || '') !== String(sp.id || '')) {
+      return {};
+    }
+    const c = spDetail.service_point_context;
+    return c && typeof c === 'object' ? c : {};
+  }
+
+  /** @param {string} label @param {string} value */
+  function spPreviewLine(label, value) {
+    const v = String(value || '').trim();
+    if (!v) {
+      return '';
+    }
+    return (
+      '<p class="octavawms-sp-preview__line"><span class="octavawms-sp-preview__k">' +
+      esc(label) +
+      '</span> ' +
+      esc(v) +
+      '</p>'
+    );
+  }
+
+  /**
+   * @param {Record<string, unknown>|null} sp
+   * @param {Record<string, unknown>} ctx
+   */
+  function renderSpPreviewUnderSelect(sp, ctx) {
+    const wrap = document.getElementById('octavawms-sp-preview');
+    if (!wrap) {
+      return;
+    }
+    ctx = ctx && typeof ctx === 'object' ? ctx : {};
+    if (!sp || !sp.id) {
+      wrap.className = 'octavawms-sp-preview is-empty';
+      wrap.innerHTML =
+        '<p class="octavawms-sp-preview__head">' +
+        esc(cfg.strings.servicePointDetails) +
+        '</p><p class="octavawms-sp-preview__line octavawms-sp-preview__placeholder">' +
+        esc(cfg.strings.noDetailsYet) +
+        '</p>';
+      return;
+    }
+    const parts = [];
+    parts.push('<p class="octavawms-sp-preview__head">' + esc(cfg.strings.servicePointDetails) + '</p>');
+    const nm = String(sp.name || '').trim();
+    if (nm) {
+      parts.push('<p class="octavawms-sp-preview__title">' + esc(nm) + '</p>');
+    }
+    const ext = String(sp.ext_id || '').trim();
+    if (ext) {
+      parts.push(spPreviewLine(cfg.strings.spPreviewId || 'ID', ext));
+    }
+    const typ = String(sp.type || '').trim();
+    if (typ) {
+      parts.push(spPreviewLine(cfg.strings.spPreviewType || 'Type', typ));
+    }
+    const st = String(sp.state || '').trim();
+    if (st) {
+      parts.push(spPreviewLine(cfg.strings.spPreviewState || 'State', st));
+    }
+    const addr = String(sp.raw_address || sp.address || '').trim();
+    if (addr) {
+      parts.push(
+        '<p class="octavawms-sp-preview__line"><span class="octavawms-sp-preview__k">' +
+          esc(cfg.strings.spPreviewAddress || 'Address') +
+          '</span></p><p class="octavawms-sp-preview__line">' +
+          esc(addr) +
+          '</p>'
+      );
+    }
+    const ph = String(sp.raw_phone || '').trim();
+    if (ph) {
+      parts.push(spPreviewLine(cfg.strings.spPreviewPhone || 'Phone', ph));
+    }
+    const hrs = String(sp.working_hours_summary || '').trim();
+    if (hrs) {
+      parts.push(spPreviewLine(cfg.strings.spPreviewHours || 'Working hours', hrs));
+    }
+    const tt = String(sp.raw_timetable || '').trim();
+    if (tt) {
+      parts.push(spPreviewLine(cfg.strings.spPreviewTimetable || 'Schedule', tt));
+    }
+    const rd = String(sp.raw_description || '').trim();
+    if (rd && !hrs && rd.length < 400 && rd.charAt(0) !== '[') {
+      parts.push(spPreviewLine(cfg.strings.spPreviewAiNote || 'Note', rd));
+    }
+    const ai = ctx && ctx.ai_message ? String(ctx.ai_message).trim() : '';
+    if (ai) {
+      parts.push(
+        '<div class="octavawms-notice octavawms-notice--info" style="margin:8px 0 0">' + esc(ai) + '</div>'
+      );
+    }
+    const dm = ctx && ctx.distance_m != null && ctx.distance_m !== '' ? Number(ctx.distance_m) : NaN;
+    if (!isNaN(dm)) {
+      const tpl = String(cfg.strings.spDistanceMeters || 'Distance: %s m');
+      parts.push(
+        '<p class="octavawms-sp-preview__line octavawms-muted">' + esc(tpl.replace('%s', String(dm))) + '</p>'
+      );
+    }
+    const mapU = servicePointMapsUrl(sp);
+    if (mapU) {
+      parts.push(
+        '<p class="octavawms-sp-preview__actions"><a class="button button-secondary" href="' +
+          hrefAttr(mapU) +
+          '" target="_blank" rel="noopener noreferrer">' +
+          esc(cfg.strings.spOpenInMaps || 'Open in Maps') +
+          '</a></p>'
+      );
+    }
+    wrap.className = 'octavawms-sp-preview';
+    wrap.innerHTML = parts.join('');
+  }
+
+  function refreshSpPreviewFromSelect() {
+    if (typeof jQuery === 'undefined') {
+      return;
+    }
+    const $sp = jQuery('#octavawms-sp-select');
+    if (!$sp.length) {
+      return;
+    }
+    let row = $sp.select2('data');
+    row = Array.isArray(row) ? row[0] : row;
+    let sp = row && row.sp ? row.sp : null;
+    const vid = row && row.id != null ? parseInt(String(row.id), 10) || 0 : 0;
+    if (!sp && spDetail && spDetail.current_service_point && vid === parseInt(String(spDetail.current_service_point.id || 0), 10)) {
+      sp = spDetail.current_service_point;
+    }
+    renderSpPreviewUnderSelect(sp && typeof sp === 'object' ? sp : null, servicePointPreviewContextFor(sp));
+  }
+
   function initEditShipmentSelects(shipmentId) {
     const bodyEl = document.getElementById('octavawms-sp-body');
     if (!bodyEl || !selectWooAvailable()) {
@@ -754,6 +1026,7 @@
       }
       return;
     }
+    beginCarrierFirstPagePrefetch();
     const $ = jQuery;
     const stratOpts = cfg.deliveryStrategyOptions || [];
     const stSel = document.getElementById('octavawms-sp-strategy');
@@ -814,6 +1087,7 @@
           url: cfg.ajaxUrl,
           type: 'POST',
           dataType: 'json',
+          transport: carrierAjaxTransport,
           data: function (params) {
             return {
               action: 'octavawms_delivery_services',
@@ -1040,7 +1314,7 @@
                   const id = parseInt(String(it.id || 0), 10) || 0;
                   const parts = [it.name, it.ext_id].filter(Boolean);
                   const text = parts.join(' · ') || String(id);
-                  return { id: String(id), text: text };
+                  return { id: String(id), text: text, sp: it };
                 })
                 .filter(function (r) {
                   return r.id !== '0';
@@ -1073,10 +1347,22 @@
       $('#octavawms-sp-select').append(o).trigger('change');
     }
 
-    $('#octavawms-sp-select').on('change', syncSpApplyButton);
+    $('#octavawms-sp-select').on('select2:select', function (e) {
+      const d = e.params && e.params.data ? e.params.data : null;
+      const spSel = d && d.sp ? d.sp : null;
+      renderSpPreviewUnderSelect(spSel && typeof spSel === 'object' ? spSel : null, servicePointPreviewContextFor(spSel));
+    });
+    $('#octavawms-sp-select').on('select2:clear', function () {
+      renderSpPreviewUnderSelect(null, {});
+    });
+    $('#octavawms-sp-select').on('change', function () {
+      syncSpApplyButton();
+      window.setTimeout(refreshSpPreviewFromSelect, 0);
+    });
     updateSpGateHint();
     $('#octavawms-sp-select').prop('disabled', spSelectGated());
     syncSpApplyButton();
+    refreshSpPreviewFromSelect();
 
     const applyBtn = document.getElementById('octavawms-sp-apply-btn');
     if (applyBtn) {
@@ -1158,7 +1444,13 @@
     h +=
       '<select id="octavawms-sp-select" class="widefat octavawms-selectwoo" aria-label="' +
       esc(cfg.strings.servicePointFieldLabel) +
-      '"></select></div>';
+      '"></select>';
+    h +=
+      '<div id="octavawms-sp-preview" class="octavawms-sp-preview is-empty"><p class="octavawms-sp-preview__head">' +
+      esc(cfg.strings.servicePointDetails) +
+      '</p><p class="octavawms-sp-preview__line octavawms-sp-preview__placeholder">' +
+      esc(cfg.strings.noDetailsYet) +
+      '</p></div></div>';
 
     h += '<div class="octavawms-sp-card__footer">';
     h +=
@@ -1288,10 +1580,18 @@
     let h = '<p class="octavawms-muted octavawms-places-summary">' + placesSummaryLineHtmlFromPlacesJson(places) + '</p>';
     h += '<div class="octavawms-place-table-wrap"><table class="widefat striped octavawms-place-table octavawms-place-table--compact"><thead><tr>';
     h += '<th class="octavawms-place-th-box">' + esc(cfg.strings.boxColumn) + '</th>';
-    h += '<th>' + esc(cfg.strings.weightG) + '</th>';
-    h += '<th class="place-col-whl">' + dimAbbrev(cfg.strings.widthMm) + '</th>';
-    h += '<th class="place-col-whl">' + dimAbbrev(cfg.strings.heightMm) + '</th>';
-    h += '<th class="place-col-whl">' + dimAbbrev(cfg.strings.lengthMm) + '</th>';
+    h +=
+      '<th title="' +
+      esc(cfg.strings.weightG) +
+      '">' +
+      esc(cfg.strings.placeTableWeightHeader || '(g)') +
+      '</th>';
+    h +=
+      '<th colspan="3" class="octavawms-place-th-dims" title="' +
+      esc(cfg.strings.placeTableDimsHeaderTitle || '') +
+      '">' +
+      esc(cfg.strings.placeTableDimsHeader || '(W, H, L) mm') +
+      '</th>';
     h += '<th class="octavawms-place-th-actions">' + esc(cfg.strings.placeActionsColumn) + '</th>';
     h += '</tr></thead><tbody class="places-tbody">';
 
@@ -1511,9 +1811,58 @@
         fetchStatus();
         return;
       }
+      if (act === 'panel-login') {
+        e.preventDefault();
+        if (btn.disabled) {
+          return;
+        }
+        btn.disabled = true;
+        postPanelLoginUrl()
+          .then(function (j) {
+            if (j && j.success && j.data && j.data.loginUrl) {
+              window.location.assign(String(j.data.loginUrl));
+              return;
+            }
+            window.alert((j && j.data && j.data.message) || cfg.strings.panelLoginError || cfg.strings.error);
+          })
+          .catch(function () {
+            window.alert(cfg.strings.panelLoginError || cfg.strings.error);
+          })
+          .then(function () {
+            btn.disabled = false;
+          });
+        return;
+      }
       if (act === 'refresh-status') {
         e.preventDefault();
         fetchStatus();
+        return;
+      }
+      if (act === 'retry-pending-error') {
+        e.preventDefault();
+        const sidRetry = parseInt(btn.getAttribute('data-shipment-id') || '0', 10) || 0;
+        if (!(sidRetry > 0) || btn.disabled) {
+          return;
+        }
+        const prevLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = String(cfg.strings.retryingPendingError || '…');
+        const pkRetry = cfg.patchKindRetryPendingError || 'retry_pending_error';
+        patchShipmentContext(sidRetry, pkRetry, {})
+          .then(function (j) {
+            if (!j || !j.success) {
+              window.alert((j && j.data && j.data.message) || cfg.strings.error);
+              btn.textContent = prevLabel;
+              btn.disabled = false;
+              return;
+            }
+            fetchStatus();
+          })
+          .catch(function () {
+            window.alert(cfg.strings.error);
+            btn.textContent = prevLabel;
+            btn.disabled = false;
+          });
         return;
       }
       if (act === 'upload-order') {
