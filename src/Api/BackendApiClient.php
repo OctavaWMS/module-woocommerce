@@ -379,10 +379,421 @@ class BackendApiClient
     {
         $query = $this->buildListQuery($extId, 'extId', 25, 1);
         $result = $this->request('GET', '/api/delivery-services/requests?' . $query, null);
+
+        return $this->parseShipmentsFromDeliveryRequestsResponseBody($result['ok'] ? $result['data'] : null);
+    }
+
+    /**
+     * Delivery requests linked to a backend order id (same filter as Shopify admin extensions).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findShipmentsByBackendOrderId(int $backendOrderId): array
+    {
+        if ($backendOrderId <= 0) {
+            return [];
+        }
+        $query = $this->buildListQuery((string) $backendOrderId, 'order', 25, 1);
+        $result = $this->request('GET', '/api/delivery-services/requests?' . $query, null);
+
+        return $this->parseShipmentsFromDeliveryRequestsResponseBody($result['ok'] ? $result['data'] : null);
+    }
+
+    /**
+     * Resolve shipments like Shopify getShipmentsForOrder: by backend order id, then by extId candidates, then embedded deliveryRequest on the order entity.
+     *
+     * @param array<string, mixed>|null $backendOrder First order from Octava when found by extId lookup
+     * @param list<string>               $extIdCandidates Tried in order when the by-order list is empty
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findShipmentsForConnector(?array $backendOrder, array $extIdCandidates): array
+    {
+        $backendNumericId = null;
+        if (is_array($backendOrder) && isset($backendOrder['id'])) {
+            $idRaw = $backendOrder['id'];
+            if (is_int($idRaw)) {
+                $backendNumericId = $idRaw > 0 ? $idRaw : null;
+            } elseif (is_numeric($idRaw)) {
+                $i = (int) $idRaw;
+                $backendNumericId = $i > 0 ? $i : null;
+            }
+        }
+
+        if ($backendNumericId !== null) {
+            $byOrder = $this->findShipmentsByBackendOrderId($backendNumericId);
+            if ($byOrder !== []) {
+                return $byOrder;
+            }
+        }
+
+        foreach ($extIdCandidates as $ext) {
+            $t = trim((string) $ext);
+            if ($t === '') {
+                continue;
+            }
+            $byExt = $this->findShipmentsByExtId($t);
+            if ($byExt !== []) {
+                return $byExt;
+            }
+        }
+
+        $embedded = $this->extractEmbeddedDeliveryRequestFromOrder($backendOrder);
+        if ($embedded !== null) {
+            return [$embedded];
+        }
+
+        return [];
+    }
+
+    /**
+     * GET /api/delivery-services/requests/{id}
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getShipmentById(int $shipmentId): ?array
+    {
+        if ($shipmentId <= 0) {
+            return null;
+        }
+        $result = $this->request('GET', '/api/delivery-services/requests/' . $shipmentId, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return null;
+        }
+
+        return $result['data'];
+    }
+
+    /**
+     * PATCH /api/delivery-services/requests/{id}
+     *
+     * @param array<string, mixed> $jsonBody
+     *
+     * @return array{ok: bool, data: array<string, mixed>|null, message?: string}
+     */
+    public function patchShipment(int $shipmentId, array $jsonBody): array
+    {
+        if ($shipmentId <= 0) {
+            return ['ok' => false, 'data' => null, 'message' => 'Invalid shipment id.'];
+        }
+        $result = $this->request('PATCH', '/api/delivery-services/requests/' . $shipmentId, $jsonBody);
+        if ($result['ok'] && is_array($result['data'])) {
+            return ['ok' => true, 'data' => $result['data']];
+        }
+        $msg = 'Patch failed.';
+        if (is_array($result['data'])) {
+            $msg = PluginLog::userMessageFromApiJson($result['data'], $msg);
+        } elseif ($result['raw'] !== '') {
+            $msg = mb_substr($result['raw'], 0, 500);
+        } else {
+            $msg = sprintf('HTTP %d', $result['status']);
+        }
+
+        return ['ok' => false, 'data' => is_array($result['data']) ? $result['data'] : null, 'message' => $msg];
+    }
+
+    /**
+     * PATCH shipment using HAL self href (relative or absolute), matching Shopify patchShipmentServicePoint.
+     *
+     * @param array<string, mixed> $payload Body keys e.g. servicePoint, deliveryService
+     *
+     * @return array{ok: bool, data: array<string, mixed>|null, message?: string}
+     */
+    public function patchShipmentAtHref(string $selfHref, array $payload): array
+    {
+        $href = trim($selfHref);
+        if ($href === '') {
+            return ['ok' => false, 'data' => null, 'message' => 'Missing shipment href.'];
+        }
+        $body = $payload;
+        if (array_key_exists('deliveryService', $body)) {
+            $body['state'] = 'pending_queued';
+        }
+        if (array_key_exists('eav', $body)) {
+            $body['state'] = 'pending_queued';
+        }
+        $path = $this->normalizeShipmentSelfHrefToRequestPath($href);
+        $result = $this->request('PATCH', $path, $body);
+        if ($result['ok'] && is_array($result['data'])) {
+            return ['ok' => true, 'data' => $result['data']];
+        }
+        $msg = 'Patch failed.';
+        if (is_array($result['data'])) {
+            $msg = PluginLog::userMessageFromApiJson($result['data'], $msg);
+        } elseif ($result['raw'] !== '') {
+            $msg = mb_substr($result['raw'], 0, 500);
+        } else {
+            $msg = sprintf('HTTP %d', $result['status']);
+        }
+
+        return ['ok' => false, 'data' => is_array($result['data']) ? $result['data'] : null, 'message' => $msg];
+    }
+
+    /**
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchServicePoints(array $params): array
+    {
+        $localityId = isset($params['localityId']) && is_int($params['localityId']) ? $params['localityId'] : null;
+        $deliveryServiceId = isset($params['deliveryServiceId']) && is_int($params['deliveryServiceId']) ? $params['deliveryServiceId'] : null;
+        $servicePointType = isset($params['servicePointType']) && is_string($params['servicePointType']) ? trim($params['servicePointType']) : '';
+        $search = isset($params['search']) && is_string($params['search']) ? trim($params['search']) : '';
+        $page = isset($params['page']) && is_int($params['page']) && $params['page'] > 0 ? $params['page'] : 1;
+        $perPageRaw = isset($params['perPage']) && is_int($params['perPage']) ? $params['perPage'] : 250;
+        $perPage = max(1, min(500, $perPageRaw));
+
+        $parts = [];
+        $idx = 0;
+        if ($deliveryServiceId !== null) {
+            $parts[] = 'filter[' . $idx . '][type]=eq';
+            $parts[] = 'filter[' . $idx . '][field]=deliveryService';
+            $parts[] = 'filter[' . $idx . '][value]=' . rawurlencode((string) $deliveryServiceId);
+            ++$idx;
+        }
+        if ($localityId !== null) {
+            $parts[] = 'filter[' . $idx . '][type]=eq';
+            $parts[] = 'filter[' . $idx . '][field]=locality';
+            $parts[] = 'filter[' . $idx . '][value]=' . rawurlencode((string) $localityId);
+            ++$idx;
+        }
+        if ($servicePointType !== '') {
+            $parts[] = 'filter[' . $idx . '][type]=eq';
+            $parts[] = 'filter[' . $idx . '][field]=type';
+            $parts[] = 'filter[' . $idx . '][value]=' . rawurlencode($servicePointType);
+            ++$idx;
+        }
+        $parts[] = 'filter[' . $idx . '][type]=eq';
+        $parts[] = 'filter[' . $idx . '][field]=state';
+        $parts[] = 'filter[' . $idx . '][value]=active';
+        $parts[] = 'page=' . $page;
+        $parts[] = 'perPage=' . $perPage;
+        if ($search !== '') {
+            $term = str_ends_with($search, ':*') ? $search : $search . ':*';
+            $parts[] = 'search=' . rawurlencode($term);
+        }
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/delivery-services/service-points?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+        $data = $result['data'];
+        $embedded = $data['_embedded'] ?? null;
+        $items = [];
+        if (is_array($embedded) && isset($embedded['servicePoints']) && is_array($embedded['servicePoints'])) {
+            foreach ($embedded['servicePoints'] as $row) {
+                if (is_array($row)) {
+                    $items[] = $row;
+                }
+            }
+        }
+        $totalPages = 1;
+        if (isset($data['page_count']) && is_numeric($data['page_count'])) {
+            $totalPages = max(1, (int) $data['page_count']);
+        }
+
+        return ['items' => $items, 'total_pages' => $totalPages];
+    }
+
+    /**
+     * GET /api/delivery-services (paginated carrier list for admin UI).
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchDeliveryServicesPage(string $search, int $page): array
+    {
+        $page = max(1, $page);
+        $parts = [
+            'page=' . $page,
+            'perPage=25',
+        ];
+        if (trim($search) !== '') {
+            $parts[] = 'filter[0][type]=ilike';
+            $parts[] = 'filter[0][field]=name';
+            $parts[] = 'filter[0][value]=' . rawurlencode('%' . $search . '%');
+        }
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/delivery-services?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+        $data = $result['data'];
+        $embedded = $data['_embedded'] ?? null;
+        $items = [];
+        if (is_array($embedded) && isset($embedded['delivery_services']) && is_array($embedded['delivery_services'])) {
+            foreach ($embedded['delivery_services'] as $row) {
+                if (is_array($row)) {
+                    $items[] = $row;
+                }
+            }
+        }
+        $totalPages = 1;
+        if (isset($data['page_count']) && is_numeric($data['page_count'])) {
+            $totalPages = max(1, (int) $data['page_count']);
+        }
+
+        return ['items' => $items, 'total_pages' => $totalPages];
+    }
+
+    /**
+     * GET /api/locations/localities (admin search, aligned with Shopify app.edit-shipment).
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchLocalitiesPage(string $search, int $page, ?string $exactId = null): array
+    {
+        $page = max(1, $page);
+        $parts = [
+            'per_page=25',
+            'page=' . $page,
+        ];
+        $trimSearch = trim($search);
+        if ($exactId !== null && trim($exactId) !== '') {
+            $idTrim = trim($exactId);
+            $parts[] = 'filter[0][type]=eq';
+            $parts[] = 'filter[0][field]=id';
+            $parts[] = 'filter[0][value]=' . rawurlencode($idTrim);
+        } else {
+            $parts[] = 'filter[0][type]=eq';
+            $parts[] = 'filter[0][field]=state';
+            $parts[] = 'filter[0][value]=active';
+            if ($trimSearch !== '') {
+                $term = str_ends_with($trimSearch, ':*') ? $trimSearch : $trimSearch . ':*';
+                $parts[] = 'search=' . rawurlencode($term);
+            }
+        }
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/locations/localities?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+        $data = $result['data'];
+        $embedded = $data['_embedded'] ?? null;
+        $items = [];
+        if (is_array($embedded) && isset($embedded['localities']) && is_array($embedded['localities'])) {
+            foreach ($embedded['localities'] as $row) {
+                if (is_array($row)) {
+                    $items[] = $row;
+                }
+            }
+        }
+        $totalPages = 1;
+        if (isset($data['page_count']) && is_numeric($data['page_count'])) {
+            $totalPages = max(1, (int) $data['page_count']);
+        }
+
+        return ['items' => $items, 'total_pages' => $totalPages];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function fetchPlacesForDeliveryRequest(int $deliveryRequestId): array
+    {
+        if ($deliveryRequestId <= 0) {
+            return [];
+        }
+        $query = http_build_query([
+            'filter[0][type]' => 'eq',
+            'filter[0][field]' => 'deliveryRequest',
+            'filter[0][value]' => $deliveryRequestId,
+            'order-by[0][type]' => 'field',
+            'order-by[0][field]' => 'priority',
+            'order-by[0][direction]' => 'desc',
+            'per_page' => 250,
+        ], '', '&', PHP_QUERY_RFC3986);
+        $result = $this->request('GET', '/api/delivery-services/places?' . $query, null);
         if (! $result['ok'] || ! is_array($result['data'])) {
             return [];
         }
         $embedded = $result['data']['_embedded'] ?? null;
+        if (! is_array($embedded) || ! isset($embedded['places']) || ! is_array($embedded['places'])) {
+            return [];
+        }
+        $out = [];
+        foreach ($embedded['places'] as $p) {
+            if (is_array($p)) {
+                $out[] = $p;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{ok: bool, data: array<string, mixed>|null, message?: string}
+     */
+    public function addPlace(int $deliveryRequestId): array
+    {
+        if ($deliveryRequestId <= 0) {
+            return ['ok' => false, 'data' => null, 'message' => 'Invalid delivery request.'];
+        }
+        $payload = [
+            'deliveryRequest' => $deliveryRequestId,
+            'type' => 'simple',
+            'weight' => 0,
+            'dimensions' => ['x' => 0, 'y' => 0, 'z' => 0],
+        ];
+        $result = $this->request('POST', '/api/delivery-services/places', $payload);
+        if ($result['ok'] && is_array($result['data'])) {
+            return ['ok' => true, 'data' => $result['data']];
+        }
+        $msg = 'Add place failed.';
+        if (is_array($result['data'])) {
+            $msg = PluginLog::userMessageFromApiJson($result['data'], $msg);
+        } elseif ($result['raw'] !== '') {
+            $msg = mb_substr($result['raw'], 0, 500);
+        } else {
+            $msg = sprintf('HTTP %d', $result['status']);
+        }
+
+        return ['ok' => false, 'data' => is_array($result['data']) ? $result['data'] : null, 'message' => $msg];
+    }
+
+    /**
+     * @param array<string, mixed> $updates
+     *
+     * @return array{ok: bool, data: array<string, mixed>|null, message?: string}
+     */
+    public function updatePlace(int $placeId, array $updates): array
+    {
+        if ($placeId <= 0) {
+            return ['ok' => false, 'data' => null, 'message' => 'Invalid place id.'];
+        }
+        $result = $this->request('PATCH', '/api/delivery-services/places/' . $placeId, $updates);
+        if ($result['ok'] && is_array($result['data'])) {
+            return ['ok' => true, 'data' => $result['data']];
+        }
+        $msg = 'Update place failed.';
+        if (is_array($result['data'])) {
+            $msg = PluginLog::userMessageFromApiJson($result['data'], $msg);
+        } elseif ($result['raw'] !== '') {
+            $msg = mb_substr($result['raw'], 0, 500);
+        } else {
+            $msg = sprintf('HTTP %d', $result['status']);
+        }
+
+        return ['ok' => false, 'data' => is_array($result['data']) ? $result['data'] : null, 'message' => $msg];
+    }
+
+    /**
+     * @return array{ok: bool, data: array<string, mixed>|null, message?: string}
+     */
+    public function deletePlace(int $placeId): array
+    {
+        return $this->updatePlace($placeId, ['state' => 'deleted']);
+    }
+
+    /**
+     * @param array<string, mixed>|null $data Response body of GET /api/delivery-services/requests
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function parseShipmentsFromDeliveryRequestsResponseBody(mixed $data): array
+    {
+        if (! is_array($data)) {
+            return [];
+        }
+        $embedded = $data['_embedded'] ?? null;
         if (! is_array($embedded)) {
             return [];
         }
@@ -400,6 +811,50 @@ class BackendApiClient
         }
 
         return [];
+    }
+
+    /**
+     * @param array<string, mixed>|null $backendOrder
+     *
+     * @return array<string, mixed>|null
+     */
+    private function extractEmbeddedDeliveryRequestFromOrder(?array $backendOrder): ?array
+    {
+        if (! is_array($backendOrder)) {
+            return null;
+        }
+        $embedded = $backendOrder['_embedded'] ?? null;
+        if (! is_array($embedded)) {
+            return null;
+        }
+        $dr = $embedded['deliveryRequest'] ?? null;
+        if (is_array($dr) && isset($dr['id'])) {
+            return $dr;
+        }
+
+        return null;
+    }
+
+    private function normalizeShipmentSelfHrefToRequestPath(string $href): string
+    {
+        if (preg_match('#^https?://#i', $href)) {
+            $base = rtrim($this->getBaseUrl(), '/');
+            if (str_starts_with($href, $base)) {
+                $rest = substr($href, strlen($base));
+
+                return '/' . ltrim((string) $rest, '/');
+            }
+
+            $parts = wp_parse_url($href);
+            if (is_array($parts) && isset($parts['path']) && is_string($parts['path'])) {
+                $path = $parts['path'];
+                $query = isset($parts['query']) && is_string($parts['query']) ? '?' . $parts['query'] : '';
+
+                return $path . $query;
+            }
+        }
+
+        return '/' . ltrim($href, '/');
     }
 
     /**
@@ -538,6 +993,102 @@ class BackendApiClient
         }
 
         return ['ok' => true, 'task_id' => $taskId, 'queue_id' => $queueId];
+    }
+
+    /**
+     * Sender entity id from GET /api/delivery-services/requests/{id} (HAL / composite shapes).
+     */
+    public static function extractSenderIdFromDeliveryRequestDetail(?array $detail): ?int
+    {
+        if (! is_array($detail)) {
+            return null;
+        }
+        $paths = [
+            ['_embedded', 'sender'],
+            ['sender'],
+            ['_embedded', 'order', 'sender'],
+        ];
+        foreach ($paths as $path) {
+            $v = $detail;
+            foreach ($path as $seg) {
+                if (! is_array($v) || ! array_key_exists($seg, $v)) {
+                    $v = null;
+                    break;
+                }
+                $v = $v[$seg];
+            }
+            if (! is_array($v) || ! isset($v['id']) || ! is_numeric($v['id'])) {
+                continue;
+            }
+            $i = (int) $v['id'];
+
+            return $i > 0 ? $i : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Ensure a labels preprocessing queue exists for the delivery request (sender-scoped on the backend).
+     *
+     * POST /api/delivery-services/delivery-request-service?action=createProcessingQueueForSender
+     *
+     * @return array{ok: bool, message: string, queue_id: int|null}
+     */
+    public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false): array
+    {
+        if ($deliveryRequestId <= 0) {
+            return ['ok' => false, 'message' => 'Invalid delivery request id.', 'queue_id' => null];
+        }
+
+        $body = [
+            'deliveryRequest' => ['id' => $deliveryRequestId],
+        ];
+        if ($senderId !== null && $senderId > 0) {
+            $body['sender'] = ['id' => $senderId];
+        }
+
+        $path = '/api/delivery-services/delivery-request-service?' . http_build_query([
+            'action' => 'createProcessingQueueForSender',
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        $result = $this->request('POST', $path, $body, $retried);
+        if (! $result['ok']) {
+            $msg = PluginLog::userMessageFromApiJson(is_array($result['data']) ? $result['data'] : null, 'Could not create processing queue for this shipment.');
+
+            return ['ok' => false, 'message' => $msg, 'queue_id' => null];
+        }
+
+        $queueId = null;
+        if (is_array($result['data'])) {
+            $queueId = self::extractQueueIdFromCreateProcessingQueueResponse($result['data']);
+        }
+
+        return ['ok' => true, 'message' => '', 'queue_id' => $queueId];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function extractQueueIdFromCreateProcessingQueueResponse(array $data): ?int
+    {
+        foreach ([['queue', 'id'], ['queue', 'queue', 'id']] as $path) {
+            $v = $data;
+            foreach ($path as $seg) {
+                if (! is_array($v) || ! array_key_exists($seg, $v)) {
+                    $v = null;
+                    break;
+                }
+                $v = $v[$seg];
+            }
+            if (is_numeric($v)) {
+                $i = (int) $v;
+
+                return $i > 0 ? $i : null;
+            }
+        }
+
+        return null;
     }
 
     /**

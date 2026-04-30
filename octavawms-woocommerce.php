@@ -13,28 +13,26 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-if (is_readable(__DIR__ . '/vendor/autoload.php')) {
-    require_once __DIR__ . '/vendor/autoload.php';
-} else {
-    $octavawmsWooAutoload = [
-        __DIR__ . '/src/Options.php',
-        __DIR__ . '/src/PluginLog.php',
-        __DIR__ . '/src/WooRestCredentials.php',
-        __DIR__ . '/src/WooOrderExtId.php',
-        __DIR__ . '/src/Activation.php',
-        __DIR__ . '/src/Api/BackendApiClient.php',
-        __DIR__ . '/src/Api/LabelService.php',
-        __DIR__ . '/src/ConnectService.php',
-        __DIR__ . '/src/Admin/LabelMetaBox.php',
-        __DIR__ . '/src/Admin/LabelAjax.php',
-        __DIR__ . '/src/AdminLabelActions.php',
-        __DIR__ . '/src/Notices.php',
-    ];
-    foreach ($octavawmsWooAutoload as $file) {
+// Always resolve plugin classes from /src via PSR-4 (prepend so this wins over an incomplete Composer autoload).
+spl_autoload_register(
+    static function (string $class): void {
+        $prefix = 'OctavaWMS\\WooCommerce\\';
+        $len = strlen($prefix);
+        if (strncmp($class, $prefix, $len) !== 0) {
+            return;
+        }
+        $relative = substr($class, $len);
+        $file = __DIR__ . '/src/' . str_replace('\\', '/', $relative) . '.php';
         if (is_readable($file)) {
             require_once $file;
         }
-    }
+    },
+    true,
+    true
+);
+
+if (is_readable(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
 }
 
 register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);

@@ -360,6 +360,71 @@ final class PluginLog
     }
 
     /**
+     * Human-readable errors from a delivery request entity (embedded list row or GET-by-id body).
+     * Matches Shopify edit-shipment {@code getShipmentError}: {@code errors} (strings or objects with
+     * {@code message}/{@code code}) first, then non-empty {@code deliveryServiceStatus}, then
+     * {@see userMessageFromApiJson} for problem+json-style bodies.
+     *
+     * @param array<string, mixed> $shipment
+     */
+    public static function shipmentErrorMessageFromApiShipment(array $shipment): string
+    {
+        /** @var list<string> $messages */
+        $messages = [];
+
+        if (array_key_exists('errors', $shipment) && $shipment['errors'] !== null) {
+            $errors = $shipment['errors'];
+            /** @var list<mixed> $list */
+            $list = is_array($errors)
+                ? (array_is_list($errors) ? $errors : [$errors])
+                : [$errors];
+            foreach ($list as $error) {
+                if (is_string($error)) {
+                    $t = trim($error);
+                    if ($t !== '') {
+                        $messages[] = $t;
+                    }
+                } elseif (is_array($error)) {
+                    if (isset($error['message']) && is_string($error['message'])) {
+                        $t = trim($error['message']);
+                        if ($t !== '') {
+                            $messages[] = $t;
+                        }
+                    } elseif (isset($error['code']) && (is_string($error['code']) || is_numeric($error['code']))) {
+                        $t = trim((string) $error['code']);
+                        if ($t !== '') {
+                            $messages[] = $t;
+                        }
+                    } else {
+                        $enc = json_encode($error, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                        if (is_string($enc) && $enc !== '' && $enc !== '[]' && $enc !== '{}') {
+                            $messages[] = $enc;
+                        }
+                    }
+                } elseif (is_scalar($error) && ! is_bool($error)) {
+                    $t = trim((string) $error);
+                    if ($t !== '') {
+                        $messages[] = $t;
+                    }
+                }
+            }
+        }
+
+        if (isset($shipment['deliveryServiceStatus']) && is_string($shipment['deliveryServiceStatus'])) {
+            $t = trim($shipment['deliveryServiceStatus']);
+            if ($t !== '') {
+                $messages[] = $t;
+            }
+        }
+
+        if ($messages !== []) {
+            return implode("\n", $messages);
+        }
+
+        return self::userMessageFromApiJson($shipment, '');
+    }
+
+    /**
      * @param array<string, string> $headers
      *
      * @return array<string, string>

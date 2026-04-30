@@ -34,7 +34,7 @@
       "php -l src/Options.php",
       "php -l src/PluginLog.php",
       "php -l src/WooRestCredentials.php",
-      "php -l src/WooOrderExtId.php",
+      "php -l src/WooOrderWeights.php",
       "php -l src/SettingsPage.php",
       "php -l tests/TestCase.php",
       "php -l tests/bootstrap.php",

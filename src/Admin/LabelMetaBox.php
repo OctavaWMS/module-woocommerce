@@ -34,21 +34,115 @@ class LabelMetaBox
         }
 
         $css = <<<'CSS'
-.octavawms-label-box{padding:4px 0 8px;}
-.octavawms-label-box__section{margin-bottom:12px;}
-.octavawms-label-box__section:last-child{margin-bottom:0;}
-.octavawms-notice{padding:10px 12px;margin:0 0 12px;border-left:4px solid #2271b1;background:#f0f6fc;border-radius:2px;font-size:13px;line-height:1.5;}
+.octavawms-label-box{padding:0 0 4px;}
+.octavawms-connect-page{max-width:none;}
+.octavawms-connect-toolbar{margin:0 0 24px;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;}
+.octavawms-shipment-state-banner{margin:0 0 16px;padding:12px 14px;border:1px solid #f0a9ae;background:#fcf0f1;border-radius:4px;box-sizing:border-box;width:100%;}
+.octavawms-shipment-state-banner__status{margin:0 0 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;}
+.octavawms-shipment-state-banner__extra{font-size:13px;font-weight:400;color:#646970;}
+.octavawms-shipment-state-banner__message{margin:0;font-size:13px;line-height:1.5;color:#50575e;}
+.octavawms-connect-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;row-gap:24px;align-items:start;}
+.octavawms-slot--label{grid-column:1;grid-row:1/span 2;}
+.octavawms-slot--sp{grid-column:2;grid-row:1/span 2;align-self:start;}
+@media(max-width:782px){
+.octavawms-connect-grid{grid-template-columns:minmax(0,1fr);row-gap:24px;}
+.octavawms-slot--label{grid-column:1;grid-row:1;}
+.octavawms-slot--sp{grid-column:1;grid-row:2;grid-row-end:auto;}
+}
+@media(min-width:783px){
+.octavawms-slot--sp{position:sticky;top:42px;}
+}
+.octavawms-connect-section{margin:0;}
+.octavawms-connect-section-body{padding:14px 0 0;margin:0;position:relative;}
+.octavawms-panel-label.is-loading .octavawms-connect-section-body{opacity:.55;pointer-events:none;}
+.octavawms-section-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 16px;margin:0 0 14px;padding:0;border:0;background:transparent;}
+.octavawms-section-head--split{border-bottom:none;}
+.octavawms-connect-section-title{flex:0 1 auto;min-width:0;margin:0;padding:0;border:0;background:transparent;font-size:14px;line-height:1.35;font-weight:600;}
+.octavawms-numgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;margin:0 0 16px;padding:0;width:100%;box-sizing:border-box;}
+.octavawms-numgrid__cell{display:flex;flex-direction:column;margin:0;gap:6px;padding:0;min-width:0;}
+.octavawms-numgrid__cell label{font-size:13px;font-weight:600;margin:0;}
+.octavawms-numgrid__control,input.octavawms-numgrid__control{border:1px solid #8c8f94;border-radius:0;box-sizing:border-box;width:100%;height:38px;line-height:normal;padding:0 10px;margin:0;font-size:13px;text-align:right;}
+.octavawms-numgrid__control:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;outline:2px solid transparent;}
+.octavawms-label-extra{margin:0 0 12px;padding:0;}
+.octavawms-actions-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;margin:12px 0 0;padding:0;width:100%;box-sizing:border-box;}
+.octavawms-toolbar-inline-group{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.octavawms-sp-card{background:#fdfdfd;border:1px solid #c3c4c7;border-radius:1px;padding:14px 16px;margin:0;width:100%;box-sizing:border-box;box-shadow:0 1px 1px rgba(0,0,0,.04);}
+.octavawms-sp-card__title{font-size:14px;line-height:1.35;margin:0 0 4px;font-weight:600;}
+.octavawms-sp-card__subtitle{font-size:12px;line-height:1.4;color:#646970;margin:0 0 12px;font-weight:400;}
+.octavawms-sp-card__footer{margin-top:12px;display:flex;flex-direction:column;gap:10px;width:100%;}
+.octavawms-sp-card__footer .button.button-primary{width:100%;justify-content:center;box-sizing:border-box;}
+.octavawms-sp-search-row{display:flex;flex-wrap:nowrap;gap:12px;align-items:stretch;margin:0 0 12px;width:100%;box-sizing:border-box;}
+.octavawms-sp-search-row__field{flex:0 0 calc(70% - 6px);min-width:0;}
+.octavawms-sp-search-row__btn{flex:0 0 calc(30% - 6px);display:flex;align-items:center;justify-content:flex-end;}
+.octavawms-sp-search-row__btn .button{width:100%;justify-content:center;box-sizing:border-box;}
+.octavawms-sp-search-row__field input.regular-text{width:100%;max-width:none;}
+.octavawms-notice{padding:10px 12px;margin:0 0 12px;border-left:4px solid #2271b1;background:#f0f6fc;font-size:13px;line-height:1.5;max-width:100%;box-sizing:border-box;}
 .octavawms-notice--success{border-left-color:#1e8734;background:#edfaef;}
-.octavawms-notice--error{border-left-color:#cc1818;background:#fcf0f1;}
+.octavawms-notice--error{border-left-color:#d63638;background:#fcf0f1;}
 .octavawms-notice--info{border-left-color:#2271b1;background:#f0f6fc;}
-.octavawms-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;line-height:1.6;margin-bottom:10px;}
-.octavawms-badge--success{background:#edfaef;color:#1e8734;border:1px solid #b8e6bf;}
-.octavawms-badge--info{background:#f0f6fc;color:#1d2327;border:1px solid #c3d9ed;}
-.octavawms-badge--error{background:#fcf0f1;color:#cc1818;border:1px solid #f0b8bc;}
-.octavawms-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px;}
-.octavawms-actions .button{min-height:30px;}
-.octavawms-spinner{display:inline-block;width:16px;height:16px;border:2px solid #ccc;border-top-color:#2271b1;border-radius:50%;animation:octava-spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+.octavawms-sp-preview{margin:12px 0 0;padding:10px 0 0;border:0;border-top:1px solid #dcdcde;background:transparent;max-width:100%;box-sizing:border-box;}
+.octavawms-sp-preview.is-empty{color:#646970;font-style:italic;}
+.octavawms-sp-preview__head{margin:0 0 6px;font-size:13px;}
+.octavawms-sp-preview__line{margin:0 0 4px;font-size:13px;line-height:1.45;color:#50575e;}
+.octavawms-sp-inline-status{margin:0;min-height:1.35em;font-size:13px;}
+.octavawms-meta--danger{display:inline;color:#b32d2e;font-weight:600;margin:0;padding:0;background:none;border:none;font-style:normal;}
+.octavawms-meta--ok{display:inline;color:#1e8734;font-weight:600;margin:0;padding:0;background:none;border:none;font-style:normal;}
+.octavawms-label-shipment__badges{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;margin-top:4px;}
+.octavawms-label-shipment__pm{display:block;width:100%;flex-basis:100%;text-align:right;margin:2px 0 0;font-size:12px;line-height:1.35;color:#646970;}
+.octavawms-status-pill{display:inline-flex;align-items:center;max-width:100%;margin:0;padding:2px 9px;font-size:12px;line-height:1.45;font-weight:600;border-radius:3px;box-sizing:border-box;font-style:normal;white-space:normal;text-align:center;}
+.octavawms-status-pill--neutral{background:#f6f7f7;color:#50575f;border:1px solid #c3c4c7;}
+.octavawms-status-pill--success{background:#edfaef;color:#1e4620;border:1px solid #68de7c;}
+.octavawms-status-pill--warn{background:#fcf9e8;color:#734200;border:1px solid #dba617;}
+.octavawms-status-pill--error{background:#fcf0f1;color:#7f1d1d;border:1px solid #f0a9ae;}
+.octavawms-status-pill--info{background:#f0f6fc;color:#1d3e6f;border:1px solid #8cc3f9;}
+.octavawms-cod-pill--no{background:#f6f7f7;color:#646970;border:1px solid #c3c4c7;}
+.octavawms-cod-pill--yes{background:#fcf9e8;color:#734200;border:1px solid #dba617;}
+.octavawms-label-shipment{flex:1 1 220px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right;max-width:100%;min-width:min(100%,12rem);}
+.octavawms-label-shipment__meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;line-height:1.45;text-align:right;max-width:100%;}
+.octavawms-label-shipment__str{display:inline-block;max-width:100%;}
+.octavawms-label-shipment__cod{display:block;max-width:100%;}
+.octavawms-toolbar-inline{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;}
+.octavawms-label-boxes-wrap{margin:0;padding:0;width:100%;}
+.octavawms-label-top-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 12px;width:100%;}
+.octavawms-connect-section--label-boxes .octavawms-actions-row--label-secondary{margin-top:14px;padding-top:0;border-top:none;}
+.octavawms-connect-section--label-boxes .octavawms-actions-row:not(.octavawms-actions-row--label-secondary){margin-top:16px;padding-top:4px;border-top:1px solid #dcdcde;}
+.octavawms-sp-card .widefat{margin-bottom:0;}
+.octavawms-sp-field{margin:0 0 14px;}
+.octavawms-sp-field--sp{margin-bottom:16px;}
+.octavawms-sp-context__label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;}
+.octavawms-sp-label-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 12px;margin:0 0 6px;}
+.octavawms-sp-label-row .octavawms-sp-context__label{margin:0;}
+.octavawms-sp-toggle{font-size:13px;font-weight:400;}
+.octavawms-sp-toggle label{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;}
+.octavawms-sp-gate-hint{margin:0 0 6px;font-size:12px;line-height:1.4;min-height:1.2em;}
+.octavawms-sp-current-line{margin:0 0 12px;}
+.select2-container.octavawms-select2-wrap .select2-selection--single{height:38px;border-radius:0;}
+.select2-container.octavawms-select2-wrap .select2-selection__rendered{line-height:36px;padding-left:10px;}
+.select2-container.octavawms-select2-wrap .select2-selection__arrow{height:36px;}
 @keyframes octava-spin{to{transform:rotate(360deg);}}
+.octavawms-muted{color:#646970;margin:0 0 8px;font-size:13px;line-height:1.5;}
+.octavawms-text-danger{color:#b32d2e;}
+.octavawms-places-summary{margin:0;padding:0 0 8px;font-size:13px;line-height:1.45;color:#50575e;font-weight:600;}
+.octavawms-place-mult-wrap{display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px;width:100%;}
+abbr.octavawms-place-mult{margin:0;border:0;padding:0;font-size:11px;line-height:1.2;font-weight:600;color:#787c82;letter-spacing:.02em;cursor:help;text-decoration:none;}
+.octavawms-place-td-weight{text-align:right;}
+@keyframes octava-place-row-flash{0%,100%{box-shadow:inset 0 0 0 0 transparent}35%{box-shadow:inset 0 0 0 2px #2271b1}}
+.octavawms-place-row--flash td{animation:octava-place-row-flash .9s ease-in-out;}
+.octavawms-place-table-wrap{margin-top:14px;width:100%;overflow-x:auto;}
+.octavawms-place-table.octavawms-place-table--compact{margin:0;width:100%;border-collapse:collapse;}
+.octavawms-place-table.octavawms-place-table--compact thead th{background:#eef0f1;padding:10px 8px;margin:0;border:1px solid #c3c4c7;font-weight:600;font-size:13px;text-align:right;}
+.octavawms-place-table.octavawms-place-table--compact thead th.octavawms-place-th-box{width:3.25em;}
+.octavawms-place-table.octavawms-place-table--compact thead th.octavawms-place-th-actions{width:3.5em;text-align:center;}
+.octavawms-place-table.octavawms-place-table--compact thead th.place-col-whl{width:auto;}
+.octavawms-place-table.octavawms-place-table--compact thead th.place-col-whl:not(:first-child){padding-left:4px;padding-right:4px;}
+.octavawms-place-table.octavawms-place-table--compact tbody td{border:1px solid #ddd;padding:8px 6px;vertical-align:middle;text-align:right;}
+.octavawms-place-table.octavawms-place-table--compact tbody td.octavawms-place-td-actions{text-align:center;vertical-align:middle;}
+.octavawms-place-table.octavawms-place-table--compact tbody td.octavawms-place-td-num{font-weight:600;}
+.octavawms-place-remove.button-link,.octavawms-place-remove.button-link-delete{min-width:2em;text-align:center;font-size:18px;line-height:1;padding:0 4px;}
+.octavawms-place-input{width:100%;max-width:4.75em;margin:0;box-sizing:border-box;height:32px;line-height:normal;padding:0 6px;border:1px solid #8c8f94;border-radius:0;font-size:13px;text-align:right;}
+.octavawms-place-input:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;}
+.octavawms-muted--tight{margin:0;}
+.octavawms-spinner{display:inline-block;width:16px;height:16px;border:2px solid #c3c4c7;border-top-color:#2271b1;border-radius:50%;animation:octava-spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
 CSS;
 
         $handle = 'woocommerce_admin_styles';
@@ -62,20 +156,52 @@ CSS;
 
         wp_add_inline_style($handle, $css);
 
-        wp_register_script('octavawms-order-panel', false, [], '1.0.0', true);
-        wp_enqueue_script('octavawms-order-panel');
-
         $orderId = $this->resolveOrderIdForScreen();
         if ($orderId <= 0) {
             return;
         }
 
+        $pluginMain = dirname(__DIR__, 2) . '/octavawms-woocommerce.php';
+
+        $scriptDeps = ['jquery'];
+        if (wp_script_is('selectWoo', 'registered')) {
+            wp_enqueue_script('selectWoo');
+            $scriptDeps[] = 'selectWoo';
+            if (wp_style_is('woocommerce_admin_styles', 'registered')) {
+                wp_enqueue_style('woocommerce_admin_styles');
+            }
+        }
+
+        wp_enqueue_script(
+            'octavawms-order-panel',
+            plugins_url('assets/js/admin-order-panel.js', $pluginMain),
+            $scriptDeps,
+            '1.8.1',
+            true
+        );
+
+        $orderEditUrl = '';
+        $wcOrder = function_exists('wc_get_order') ? wc_get_order($orderId) : null;
+        if ($wcOrder instanceof WC_Order && function_exists('wc_get_order_edit_url')) {
+            $orderEditUrl = (string) wc_get_order_edit_url($wcOrder);
+        }
+
+        $weightUnitSlug = (string) apply_filters(
+            'octavawms_places_summary_weight_unit',
+            function_exists('get_option') ? (string) get_option('woocommerce_weight_unit', 'kg') : 'kg'
+        );
+
         wp_localize_script('octavawms-order-panel', 'octavawmsOrderPanel', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'orderId' => $orderId,
+            'orderEditUrl' => $orderEditUrl,
             'statusNonce' => wp_create_nonce('octavawms_order_status_' . (string) $orderId),
             'uploadNonce' => wp_create_nonce('octavawms_upload_order_' . (string) $orderId),
             'generateLabelNonce' => wp_create_nonce('octavawms_generate_label_' . (string) $orderId),
+            'connectorNonce' => wp_create_nonce('octavawms_connector_' . (string) $orderId),
+            'deliveryStrategyOptions' => LabelAjax::deliveryStrategyOptionsForScript(),
+            'weightUnit' => $weightUnitSlug,
+            'weightUnitLabel' => $this->weightUnitLabelTranslated($weightUnitSlug),
             'strings' => [
                 'loading' => __('Loading…', 'octavawms'),
                 'error' => __('Could not load OctavaWMS status.', 'octavawms'),
@@ -91,10 +217,70 @@ CSS;
                 'regenerateLabel' => __('Re-generate Label', 'octavawms'),
                 'generatingLabel' => __('Generating label…', 'octavawms'),
                 'tryAgain' => __('Try again', 'octavawms'),
+                'refreshStatus' => __('Refresh status', 'octavawms'),
+                'servicePointSection' => __('Edit shipment', 'octavawms'),
+                'noShipmentForSection' => __('Available after a shipment exists for this order.', 'octavawms'),
+                'searchPlaceholder' => __('Search pickup point…', 'octavawms'),
+                'noLockers' => __('No lockers', 'octavawms'),
+                'select' => __('Select', 'octavawms'),
+                'applyServicePoint' => __('Apply service point', 'octavawms'),
+                'servicePointFieldLabel' => __('Service point', 'octavawms'),
+                'chooseServicePoint' => __('— Choose —', 'octavawms'),
+                'servicePointDetails' => __('Details', 'octavawms'),
+                'noDetailsYet' => __('Choose a pickup point from the list.', 'octavawms'),
+                'saving' => __('Saving…', 'octavawms'),
+                'noServicePoints' => __('No pickup points found.', 'octavawms'),
+                'currentPoint' => __('Current', 'octavawms'),
+                'noPlaces' => __('No boxes/places yet.', 'octavawms'),
+                'addPlace' => __('Add box', 'octavawms'),
+                'save' => __('Save', 'octavawms'),
+                'removePlace' => __('Remove box', 'octavawms'),
+                'boxColumn' => __('Box', 'octavawms'),
+                'placeActionsColumn' => __('Actions', 'octavawms'),
+                'weightG' => __('Weight (g)', 'octavawms'),
+                'strategyForAi' => __('Strategy for AI', 'octavawms'),
+                'deliveryCarrier' => __('Delivery carrier', 'octavawms'),
+                'recipientLocality' => __('Recipient locality', 'octavawms'),
+                'carrierPlaceholder' => __('Search and select carrier…', 'octavawms'),
+                'localityPlaceholder' => __('Search city (e.g. Varna)…', 'octavawms'),
+                'pickupPointPlaceholder' => __('Search pickup point…', 'octavawms'),
+                'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'octavawms'),
+                'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'octavawms'),
+                'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'octavawms'),
+                'localitySearchMin' => __('Type at least 2 characters to search.', 'octavawms'),
+                'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'octavawms'),
+                'createLabelTitle' => __('Create label', 'octavawms'),
+                'widthMm' => __('W', 'octavawms'),
+                'heightMm' => __('H', 'octavawms'),
+                'lengthMm' => __('L', 'octavawms'),
+                'editOrder' => __('Edit order', 'octavawms'),
+                'shipmentLabel' => __('Shipment', 'octavawms'),
+                'shipmentStatus' => __('Status', 'octavawms'),
+                'codNo' => __('No COD', 'octavawms'),
+                'codYes' => __('Cash on delivery', 'octavawms'),
+                'placesTotalOneBox' => __('1 box total', 'octavawms'),
+                'placesTotalBoxes' => __('%d boxes total', 'octavawms'),
+                'placeRemoveBlockedTitle' => __('This box holds items and cannot be removed.', 'octavawms'),
+                'placesSummaryGramsLine' => __('%1$s · %2$d g', 'octavawms'),
+                'generateLabelNeedBoxes' => __('Add at least one box before generating a label.', 'octavawms'),
             ],
         ]);
+    }
 
-        wp_add_inline_script('octavawms-order-panel', $this->inlinePanelScript(), 'after');
+    private function weightUnitLabelTranslated(string $slug): string
+    {
+        switch ($slug) {
+            case 'g':
+                return function_exists('__') ? (string) __('g', 'woocommerce') : $slug;
+            case 'kg':
+                return function_exists('__') ? (string) __('kg', 'woocommerce') : $slug;
+            case 'lbs':
+                return function_exists('__') ? (string) __('lbs', 'woocommerce') : $slug;
+            case 'oz':
+                return function_exists('__') ? (string) __('oz', 'woocommerce') : $slug;
+            default:
+                return $slug;
+        }
     }
 
     private function resolveOrderIdForScreen(): int
@@ -116,91 +302,6 @@ CSS;
         }
 
         return 0;
-    }
-
-    private function inlinePanelScript(): string
-    {
-        return <<<'JS'
-(function(){
-const root=document.getElementById("octavawms-panel");
-if(!root||typeof octavawmsOrderPanel==="undefined"){return;}
-const cfg=octavawmsOrderPanel;
-function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML;}
-function hrefAttr(u){return String(u||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;");}
-function renderError(msg){
-root.innerHTML="<div class=\"octavawms-label-box__section\"><p class=\"octavawms-notice octavawms-notice--error\">"+esc(msg)+"</p><div class=\"octavawms-actions\"><button type=\"button\" class=\"button button-primary\" id=\"octavawms-retry\">"+esc(cfg.strings.tryAgain)+"</button></div></div>";
-const retry=document.getElementById("octavawms-retry");
-if(retry){retry.addEventListener("click",fetchStatus);}
-}
-function renderPanel(data){
-const hasOrder=data.has_order;
-const shipment=data.shipment;
-const hasLocal=data.has_label_locally;
-const dl=data.download_url||"";
-let html="";
-if(!hasOrder){
-html+="<div class=\"octavawms-label-box__section\"><p class=\"octavawms-notice octavawms-notice--info\">"+esc(cfg.strings.noOrder)+"</p>";
-html+="<div class=\"octavawms-actions\"><button type=\"button\" class=\"button button-primary\" id=\"octavawms-upload-order\">"+esc(cfg.strings.uploadOrder)+"</button></div></div>";
-root.innerHTML=html;
-document.getElementById("octavawms-upload-order").addEventListener("click",uploadOrder);
-return;
-}
-if(!shipment||!shipment.id){
-html+="<div class=\"octavawms-label-box__section\"><span class=\"octavawms-badge octavawms-badge--info\">"+esc(cfg.strings.orderSynced)+"</span>";
-html+="<p class=\"description\">"+esc(cfg.strings.awaitingShipment)+"</p></div>";
-root.innerHTML=html;
-return;
-}
-const state=shipment.state||"";
-const bad=["pending_error","error"].indexOf(state)!==-1;
-html+="<div class=\"octavawms-label-box__section\"><p class=\"description\"><strong>"+esc(cfg.strings.shipment)+"</strong> #"+esc(String(shipment.id))+" <span class=\"octavawms-badge "+(bad?"octavawms-badge--error":"octavawms-badge--info")+"\">"+esc(state)+"</span></p>";
-if(hasLocal&&dl){
-html+="<span class=\"octavawms-badge octavawms-badge--success\">"+esc(cfg.strings.labelReady)+"</span>";
-html+="<div class=\"octavawms-actions\"><a class=\"button button-primary\" href=\""+hrefAttr(dl)+"\">"+esc(cfg.strings.downloadLabel)+"</a>";
-html+="<button type=\"button\" class=\"button octavawms-generate-label\">"+esc(cfg.strings.regenerateLabel)+"</button></div>";
-}else{
-html+="<div class=\"octavawms-actions\"><button type=\"button\" class=\"button button-primary octavawms-generate-label\">"+esc(cfg.strings.generateLabel)+"</button></div>";
-}
-html+="</div>";
-root.innerHTML=html;
-root.querySelectorAll(".octavawms-generate-label").forEach(function(btn){btn.addEventListener("click",generateLabel);});
-}
-function fetchStatus(){
-root.innerHTML="<span class=\"octavawms-spinner\"></span> "+esc(cfg.strings.loading);
-const body=new URLSearchParams();
-body.set("action","octavawms_order_status");
-body.set("nonce",cfg.statusNonce);
-body.set("order_id",String(cfg.orderId));
-fetch(cfg.ajaxUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body,credentials:"same-origin"})
-.then(function(r){return r.json();})
-.then(function(j){if(!j||!j.success){renderError((j&&j.data&&j.data.message)||cfg.strings.error);return;}renderPanel(j.data);})
-.catch(function(){renderError(cfg.strings.error);});
-}
-function generateLabel(){
-root.innerHTML="<span class=\"octavawms-spinner\"></span> "+esc(cfg.strings.generatingLabel);
-const body=new URLSearchParams();
-body.set("action","octavawms_generate_label");
-body.set("nonce",cfg.generateLabelNonce);
-body.set("order_id",String(cfg.orderId));
-fetch(cfg.ajaxUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body,credentials:"same-origin"})
-.then(function(r){return r.json();})
-.then(function(j){if(!j||!j.success){renderError((j&&j.data&&j.data.message)||cfg.strings.error);return;}fetchStatus();})
-.catch(function(){renderError(cfg.strings.error);});
-}
-function uploadOrder(){
-root.innerHTML="<span class=\"octavawms-spinner\"></span> "+esc(cfg.strings.uploading);
-const body=new URLSearchParams();
-body.set("action","octavawms_upload_order");
-body.set("nonce",cfg.uploadNonce);
-body.set("order_id",String(cfg.orderId));
-fetch(cfg.ajaxUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body,credentials:"same-origin"})
-.then(function(r){return r.json();})
-.then(function(j){if(!j||!j.success){renderError((j&&j.data&&j.data.message)||cfg.strings.error);return;}fetchStatus();})
-.catch(function(){renderError(cfg.strings.error);});
-}
-fetchStatus();
-})();
-JS;
     }
 
     /**

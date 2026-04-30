@@ -106,6 +106,78 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(99, $out['queue_id']);
     }
 
+    public function testCreateProcessingQueueForSenderPostsToDeliveryRequestService(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) {
+            self::assertStringContainsString('/api/delivery-services/delivery-request-service', $url);
+            self::assertStringContainsString('action=createProcessingQueueForSender', $url);
+            self::assertSame('POST', $args['method']);
+            self::assertStringContainsString('"deliveryRequest":{"id":555}', (string) $args['body']);
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['queue' => ['id' => 77]], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->createProcessingQueueForSender(555, null);
+        self::assertTrue($r['ok']);
+        self::assertSame(77, $r['queue_id']);
+    }
+
+    public function testCreateProcessingQueueForSenderIncludesSenderWhenProvided(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) {
+            self::assertStringContainsString('"sender":{"id":901}', (string) $args['body']);
+
+            return [
+                'response' => ['code' => 200],
+                'body' => '{}',
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->createProcessingQueueForSender(555, 901);
+        self::assertTrue($r['ok']);
+        self::assertNull($r['queue_id']);
+    }
+
+    public function testExtractSenderIdFromDeliveryRequestDetail(): void
+    {
+        self::assertNull(BackendApiClient::extractSenderIdFromDeliveryRequestDetail(null));
+        self::assertSame(
+            42,
+            BackendApiClient::extractSenderIdFromDeliveryRequestDetail([
+                '_embedded' => ['sender' => ['id' => 42]],
+            ])
+        );
+        self::assertSame(
+            3,
+            BackendApiClient::extractSenderIdFromDeliveryRequestDetail([
+                'sender' => ['id' => 3],
+            ])
+        );
+    }
+
     public function testCreateOrUpdatePreprocessingTaskReturnsPdfWhenContentTypePdf(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
@@ -697,5 +769,202 @@ final class BackendApiClientTest extends TestCase
         self::assertTrue((bool) ($result['data']['afterRefresh'] ?? false));
         self::assertSame(2, $requestCount);
         self::assertSame('refreshed-key', $integrationSettings['api_key']);
+    }
+
+    public function testFindShipmentsByBackendOrderIdRequestsOrderFilter(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $capturedUrl = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$capturedUrl) {
+            $capturedUrl = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode([
+                    '_embedded' => [
+                        'deliveryRequest' => [['id' => 555, 'state' => 'pending_queued']],
+                    ],
+                ], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $list = $client->findShipmentsByBackendOrderId(999);
+        self::assertStringContainsString('/api/delivery-services/requests?', $capturedUrl);
+        self::assertStringContainsString('filter%5B0%5D%5Bfield%5D=order', $capturedUrl);
+        self::assertStringContainsString('filter%5B0%5D%5Bvalue%5D=999', $capturedUrl);
+        self::assertCount(1, $list);
+        self::assertSame(555, $list[0]['id']);
+    }
+
+    public function testFindShipmentsForConnectorUsesOrderShipmentsFirst(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $urls = [];
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$urls) {
+            $urls[] = $url;
+            if (str_contains($url, 'filter%5B0%5D%5Bfield%5D=order') || str_contains($url, 'filter[0][field]=order')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode([
+                        '_embedded' => ['deliveryRequest' => [['id' => 1, 'state' => 'a']]],
+                    ], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            self::fail('Unexpected request after order-scoped shipments: ' . $url);
+        });
+
+        $client = new BackendApiClient();
+        $backendOrder = ['id' => 42, 'extId' => 'wc-key'];
+        $out = $client->findShipmentsForConnector($backendOrder, ['wc-key', '99']);
+        self::assertSame(1, $out[0]['id']);
+        self::assertCount(1, $urls);
+    }
+
+    public function testFindShipmentsForConnectorFallsBackToExtIdThenEmbedded(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $n = 0;
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$n) {
+            ++$n;
+            if (str_contains($url, 'filter[0][field]=order') || str_contains($url, 'filter%5B0%5D%5Bfield%5D=order')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['_embedded' => []], JSON_THROW_ON_ERROR),
+                ];
+            }
+            if (str_contains($url, 'filter[0][field]=extId') || str_contains($url, 'filter%5B0%5D%5Bfield%5D=extId')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['_embedded' => []], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            self::fail('Unexpected URL: ' . $url);
+        });
+
+        $client = new BackendApiClient();
+        $order = [
+            'id' => 7,
+            '_embedded' => ['deliveryRequest' => ['id' => 88, 'state' => 'embedded']],
+        ];
+        $out = $client->findShipmentsForConnector($order, ['x']);
+        self::assertCount(1, $out);
+        self::assertSame(88, $out[0]['id']);
+        self::assertGreaterThanOrEqual(2, $n);
+    }
+
+    public function testFetchServicePointsBuildsQueryWithFilters(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['servicePoints' => [['id' => 1, 'name' => 'A']]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->fetchServicePoints([
+            'localityId' => 10,
+            'deliveryServiceId' => 20,
+            'servicePointType' => 'service_point',
+            'search' => 'foo',
+            'page' => 1,
+        ]);
+        self::assertStringContainsString('/api/delivery-services/service-points?', $captured);
+        self::assertStringContainsString('search=', $captured);
+        self::assertCount(1, $r['items']);
+        self::assertSame(1, $r['items'][0]['id']);
+    }
+
+    public function testFetchDeliveryServicesPageBuildsQuery(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['delivery_services' => [['id' => 5, 'name' => 'ACME']]], 'page_count' => 2], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->fetchDeliveryServicesPage('bul', 2);
+        self::assertStringContainsString('/api/delivery-services?', $captured);
+        self::assertStringContainsString('page=2', $captured);
+        self::assertStringContainsString('filter[0][type]=ilike', $captured);
+        self::assertCount(1, $r['items']);
+        self::assertSame(5, $r['items'][0]['id']);
+        self::assertSame(2, $r['total_pages']);
+    }
+
+    public function testFetchLocalitiesPageWithExactIdUsesIdFilter(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['localities' => [['id' => 900, 'name' => 'Варна']]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->fetchLocalitiesPage('', 1, '900');
+        self::assertStringContainsString('/api/locations/localities?', $captured);
+        self::assertStringContainsString('filter[0][field]=id', $captured);
+        self::assertStringContainsString('filter[0][value]=900', $captured);
+        self::assertCount(1, $r['items']);
     }
 }

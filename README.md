@@ -60,7 +60,9 @@ If you are self-hosted or were given values by your operator:
 On the order edit screen (classic `shop_order` or HPOS), a meta box **OctavaWMS Connector** loads backend state via AJAX:
 
 - If the order is **not** in OctavaWMS yet, you can **Upload order** (requires a stored **source id** from Connect).
-- When shipments exist, the panel shows **shipment id** and **state** and links to **Generate / Re-generate label** (same flow as Order actions).
+- When shipments exist, the panel shows **shipment id** and **state**, **places (boxes)** with weights and dimensions, and **Edit shipment** (carrier, recipient locality, service point, strategy for AI) using the same backend concepts as the Shopify app’s edit-shipment flow.
+- When the shipment state is **`pending_error`**, a full-width banner appears **above** the two columns (Create label | Edit shipment). The message is taken from the API in the same order as the Shopify UI: structured **`errors`** first (strings or objects with `message` / `code`), then **`deliveryServiceStatus`** (e.g. carrier-side text such as “Sender profile should be set”), then generic problem fields (`message`, `detail`, …) via `PluginLog::userMessageFromApiJson`.
+- **Generate / Re-generate label** (same flow as Order actions). If the backend has no preprocessing **queue** yet for that delivery request, the plugin calls **`createProcessingQueueForSender`** and retries resolving the queue before creating the preprocessing task (see API table below).
 - When a label is stored on the order, **Download label** is shown.
 
 You can still use **Order actions → Generate shipping label → Update** as before.
@@ -70,7 +72,12 @@ You can still use **Order actions → Generate shipping label → Update** as be
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/products/order` | Check if an order exists in OctavaWMS (`extId` filter). |
-| `GET` | `/api/delivery-services/requests` | List delivery requests / shipments for `extId`. |
+| `GET` | `/api/delivery-services/requests` | List delivery requests / shipments for `extId` (and related filters). |
+| `GET` | `/api/delivery-services/requests/{id}` | Single delivery request (shipment) for the order panel and label pipeline. |
+| `GET` | `/api/delivery-services/delivery-request-service` | `action=tasks` — resolve existing preprocessing **task** and **queue** ids for a delivery request. |
+| `POST` | `/api/delivery-services/delivery-request-service` | `action=createProcessingQueueForSender` — create sender-scoped processing queue when label generation finds no queue (body: `deliveryRequest`, optional `sender`). |
+| `POST` / `PATCH` | `/api/delivery-services/preprocessing-task` | Create or update preprocessing task (`state: measured`, dimensions, `queue`); may return PDF/HTML synchronously or a task id for polling. |
+| `PATCH` | `/api/delivery-services/requests/{id}` | Update shipment fields (e.g. service point, carrier, locality, EAV) from **Edit shipment**. |
 | `POST` | `/api/integrations/import` | Push the WooCommerce order into OctavaWMS (uses **source id** from Connect). |
 | `POST` | `/apps/woocommerce/api/label` | Request a label PDF/JSON for `externalOrderId` (host from label endpoint override or default). |
 | `POST` | `/oauth` | Exchange `refresh_token` + `domain` (+ `client_id`) for an `access_token` when Connect returns OAuth bootstrap instead of `apiKey`. |
@@ -110,7 +117,7 @@ composer test
 composer check   # php-lint + phpunit
 ```
 
-Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. See `tests/` and `phpunit.xml.dist`.
+Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notable suites: `tests/Api/BackendApiClientTest.php` (HTTP clients), `tests/Api/LabelServiceTest.php` (label + queue bootstrap), `tests/Admin/LabelAjaxTest.php` (shipment detail payload / admin AJAX), `tests/PluginLogTest.php` (error message shaping, including `deliveryServiceStatus`). See `phpunit.xml.dist`.
 
 ## What is **not** in this plugin (vs a full Shopify app)
 

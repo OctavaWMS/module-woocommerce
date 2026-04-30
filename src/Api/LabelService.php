@@ -35,6 +35,8 @@ class LabelService
     /**
      * Generate a label for an order via the generic preprocessing-task pipeline.
      *
+     * @param list<string> $extIdCandidates When non-empty, used with {@see BackendApiClient::findShipmentsForConnector}; otherwise only {@see $externalOrderId} is tried for extId shipment listing.
+     * @param array<string, mixed>|null $backendOrderEntity Octava order entity when already resolved (improves shipment discovery by backend order id / embedded delivery request).
      * @param int|null $wcOrderId WooCommerce order ID for structured logs (admin actions).
      * @return array{status:string,label_url?:string,label_file?:string,message?:string}
      */
@@ -45,13 +47,16 @@ class LabelService
         int $dimY = 100,
         int $dimZ = 100,
         ?int $wcOrderId = null,
+        ?array $backendOrderEntity = null,
+        array $extIdCandidates = [],
     ): array {
         PluginLog::log('info', 'labels', $this->labelContext($externalOrderId, $wcOrderId) + [
             'note' => 'preprocessing_task_start',
             'weight_grams' => $weightGrams,
         ]);
 
-        $shipments = $this->apiClient->findShipmentsByExtId($externalOrderId);
+        $candidates = $extIdCandidates !== [] ? $extIdCandidates : [$externalOrderId];
+        $shipments = $this->apiClient->findShipmentsForConnector($backendOrderEntity, $candidates);
         $shipment = $shipments[0] ?? null;
 
         if (! is_array($shipment) || ! isset($shipment['id'])) {
@@ -71,10 +76,40 @@ class LabelService
         $queueId = $tasksInfo['queue_id'];
 
         if ($queueId === null) {
+            $detail = $this->apiClient->getShipmentById($deliveryRequestId);
+            $senderId = BackendApiClient::extractSenderIdFromDeliveryRequestDetail($detail);
+            PluginLog::log('info', 'labels', $this->labelContext($externalOrderId, $wcOrderId) + [
+                'note' => 'processing_queue_missing_creating',
+                'delivery_request_id' => $deliveryRequestId,
+                'sender_id' => $senderId,
+            ]);
+            $created = $this->apiClient->createProcessingQueueForSender($deliveryRequestId, $senderId);
+            if (! $created['ok']) {
+                PluginLog::log('error', 'labels', array_merge($this->labelContext($externalOrderId, $wcOrderId), [
+                    'request' => null,
+                    'response' => null,
+                    'note' => 'create_processing_queue_failed',
+                    'delivery_request_id' => $deliveryRequestId,
+                    'sender_id' => $senderId,
+                    'message' => $created['message'],
+                ]));
+
+                return ['status' => 'error', 'message' => $created['message']];
+            }
+            if ($created['queue_id'] !== null) {
+                $queueId = $created['queue_id'];
+            } else {
+                $tasksInfo = $this->apiClient->findPreprocessingTasksForShipment($deliveryRequestId);
+                $existingTaskId = $tasksInfo['task_id'];
+                $queueId = $tasksInfo['queue_id'];
+            }
+        }
+
+        if ($queueId === null) {
             PluginLog::log('error', 'labels', array_merge($this->labelContext($externalOrderId, $wcOrderId), [
                 'request' => null,
                 'response' => null,
-                'note' => 'no_processing_queue',
+                'note' => 'no_processing_queue_after_create',
                 'delivery_request_id' => $deliveryRequestId,
             ]));
 

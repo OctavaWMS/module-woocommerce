@@ -62,6 +62,33 @@ final class PluginLogTest extends TestCase
         self::assertSame('Not Found', $m);
     }
 
+    public function testShipmentErrorMessageFromApiShipmentUsesDeliveryServiceStatus(): void
+    {
+        $m = PluginLog::shipmentErrorMessageFromApiShipment([
+            'state' => 'pending_error',
+            'errors' => null,
+            'deliveryServiceStatus' => 'Sender profile should be set',
+        ]);
+        self::assertSame('Sender profile should be set', $m);
+    }
+
+    public function testShipmentErrorMessageFromApiShipmentErrorsBeforeDeliveryServiceStatus(): void
+    {
+        $m = PluginLog::shipmentErrorMessageFromApiShipment([
+            'errors' => ['First problem'],
+            'deliveryServiceStatus' => 'Secondary',
+        ]);
+        self::assertSame("First problem\nSecondary", $m);
+    }
+
+    public function testShipmentErrorMessageFromApiShipmentParsesObjectErrors(): void
+    {
+        $m = PluginLog::shipmentErrorMessageFromApiShipment([
+            'errors' => [['message' => 'No service points found']],
+        ]);
+        self::assertSame('No service points found', $m);
+    }
+
     public function testRedactApiResponseDataForLogRedactsNestedSecrets(): void
     {
         $data = [

@@ -38,4 +38,48 @@ final class LabelAjaxTest extends TestCase
 
         $ajax->handleAjaxOrderStatus();
     }
+
+    public function testBuildShipmentDetailPayloadMapsDeliveryServiceStatusForPendingError(): void
+    {
+        $api = new BackendApiClient();
+        $labelService = $this->getMockBuilder(LabelService::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $m = new \ReflectionMethod(LabelAjax::class, 'buildShipmentDetailPayload');
+        $m->setAccessible(true);
+        /** @var array<string, mixed> $out */
+        $out = $m->invoke($ajax, [
+            'state' => 'pending_error',
+            'errors' => null,
+            'deliveryServiceStatus' => 'Sender profile should be set',
+            'eav' => [],
+            '_embedded' => [],
+        ]);
+
+        self::assertSame('pending_error', $out['shipment_state']);
+        self::assertSame('Sender profile should be set', $out['shipment_error_message']);
+    }
+
+    public function testBuildShipmentDetailPayloadOmitsErrorWhenNotPendingError(): void
+    {
+        $api = new BackendApiClient();
+        $labelService = $this->getMockBuilder(LabelService::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $m = new \ReflectionMethod(LabelAjax::class, 'buildShipmentDetailPayload');
+        $m->setAccessible(true);
+        /** @var array<string, mixed> $out */
+        $out = $m->invoke($ajax, [
+            'state' => 'measured',
+            'deliveryServiceStatus' => 'Would be ignored for non-error state in UI',
+            'eav' => [],
+            '_embedded' => [],
+        ]);
+
+        self::assertSame('', $out['shipment_error_message'] ?? '');
+    }
 }

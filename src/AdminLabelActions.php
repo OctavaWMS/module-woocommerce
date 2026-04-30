@@ -9,6 +9,7 @@ use OctavaWMS\WooCommerce\Admin\LabelMetaBox;
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
 use OctavaWMS\WooCommerce\Api\LabelService;
 use OctavaWMS\WooCommerce\WooOrderExtId;
+use OctavaWMS\WooCommerce\WooOrderWeights;
 use WC_Order;
 
 class AdminLabelActions
@@ -130,12 +131,29 @@ class AdminLabelActions
     private function executeLabelGeneration(WC_Order $order): bool
     {
         $externalOrderId = $this->resolveExtIdForLabelRequest($order);
+        $backendOrder = null;
+        foreach (WooOrderExtId::lookupCandidates($order) as $extId) {
+            $found = $this->apiClient->findOrderByExtId($extId);
+            if ($found !== null) {
+                $backendOrder = $found;
+                break;
+            }
+        }
 
-        $weightRaw = (float) $order->get_total_weight();
+        $weightRaw = WooOrderWeights::contentsWeightTotal($order);
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
-        $weightGrams = max(1, (int) round(self::convertOrderWeightToGrams($weightRaw, $weightUnit)));
+        $weightGrams = max(1, (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit)));
 
-        $result = $this->labelService->requestLabel($externalOrderId, $weightGrams, 100, 100, 100, (int) $order->get_id());
+        $result = $this->labelService->requestLabel(
+            $externalOrderId,
+            $weightGrams,
+            100,
+            100,
+            100,
+            (int) $order->get_id(),
+            $backendOrder,
+            WooOrderExtId::lookupCandidates($order)
+        );
 
         if ($result['status'] !== 'success') {
             $order->add_order_note(sprintf(
@@ -237,18 +255,6 @@ class AdminLabelActions
         ], admin_url('post.php'));
     }
 
-    /**
-     * Match LabelAjax: convert store weight unit to grams for preprocessing-task payload.
-     */
-    private static function convertOrderWeightToGrams(float $weight, string $unit): float
-    {
-        return match (strtolower($unit)) {
-            'kg' => $weight * 1000.0,
-            'lbs' => $weight * 453.592,
-            'oz' => $weight * 28.3495,
-            default => $weight,
-        };
-    }
 
     private static function fileExtension(string $filePath): string
     {
