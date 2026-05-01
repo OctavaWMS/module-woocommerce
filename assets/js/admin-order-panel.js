@@ -521,7 +521,7 @@
 
   /**
    * @param {{ has_label_locally?: boolean, download_url?: string }|null|undefined} data
-   * @param {{ tracking_number?: string }|null|undefined} shipment
+   * @param {{ tracking_number?: string, state?: string }|null|undefined} shipment
    * @returns {'draft'|'generated'|'locked'}
    */
   function panelLabelState(data, shipment) {
@@ -529,6 +529,10 @@
       shipment && shipment.tracking_number != null ? String(shipment.tracking_number).trim() : '';
     if (tn !== '') {
       return 'locked';
+    }
+    const stRaw = shipment && shipment.state ? String(shipment.state).trim().toLowerCase() : '';
+    if (stRaw === 'pending' || stRaw.indexOf('pending') === 0) {
+      return 'draft';
     }
     const hasLocal = !!(data && data.has_label_locally);
     const dl = data && data.download_url ? String(data.download_url).trim() : '';
@@ -1481,7 +1485,6 @@
     const regDis = locked ? ' disabled' : '';
     const regTitle = locked ? ' title="' + esc(cfg.strings.shipmentLocked || '') + '"' : '';
 
-    const zoomBar = labelViewerToolbarZoomHtml();
     const actionsRight =
       '<button type="button" class="button button-primary" data-octavawms-action="print-label" data-label-url="' +
       hrefAttr(dlNorm) +
@@ -1502,12 +1505,8 @@
       esc(cfg.strings.regenerateLabel || '') +
       '</button>';
 
-    const toolbarMerge =
-      '<div class="ow-label-toolbar-merge">' +
-      zoomBar +
-      '<div class="ow-label-toolbar-actions">' +
-      actionsRight +
-      '</div></div>';
+    const actionsBar =
+      '<div class="ow-label-toolbar-actions">' + actionsRight + '</div>';
 
     if (!downloadUrl) {
       return (
@@ -1526,13 +1525,14 @@
 
     return (
       labelViewerHeadRowHtml('') +
-      toolbarMerge +
+      actionsBar +
       '<div class="octavawms-label-viewer-frame-wrap">' +
       '<div id="octavawms-label-viewer-loading" class="octavawms-muted octavawms-label-viewer-loading">' +
       '<span class="octavawms-spinner"></span> ' +
       esc(cfg.strings.loading || '') +
       '</div>' +
       '<div class="ow-pdf-canvas-wrap">' +
+      labelViewerToolbarZoomHtml() +
       '<canvas id="octavawms-label-pdf-canvas" class="ow-pdf-canvas" aria-label="' +
       esc(cfg.strings.labelViewerTitle || '') +
       '"></canvas>' +
@@ -1757,15 +1757,11 @@
       shipment.tracking_number != null &&
       String(shipment.tracking_number).trim() !== '';
 
-    const gridModifier = lblState !== 'draft' ? ' octavawms-connect-grid--label-first' : '';
-
     html =
       '<div class="octavawms-connect-page">' +
       toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
       pendingErrorBannerWrapperHtml(panelShipment, null) +
-      '<div class="octavawms-connect-grid' +
-      gridModifier +
-      '">';
+      '<div class="octavawms-connect-grid">';
 
     html +=
       '<div class="octavawms-slot octavawms-slot--label">' +
@@ -1779,10 +1775,15 @@
       ) +
       '</div>';
 
+    const showLabelViewer = lblState !== 'draft';
     html +=
       '<div class="octavawms-slot octavawms-slot--sp octavawms-slot--stack">' +
-      labelViewerSectionHtml(dl, sid, lblState) +
-      (!hasTracking ? '<div class="octavawms-sp-below-label">' + servicePointSlotLoading(sid) + '</div>' : '') +
+      (showLabelViewer ? labelViewerSectionHtml(dl, sid, lblState) : '') +
+      (!hasTracking
+        ? (showLabelViewer ? '<div class="octavawms-sp-below-label">' : '') +
+          servicePointSlotLoading(sid) +
+          (showLabelViewer ? '</div>' : '')
+        : '') +
       '</div>';
 
     html += '</div></div>';

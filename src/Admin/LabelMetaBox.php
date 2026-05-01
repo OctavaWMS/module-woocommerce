@@ -58,23 +58,17 @@ class LabelMetaBox
 @media(min-width:783px){
 .octavawms-slot--sp{position:sticky;top:42px;}
 }
-.octavawms-connect-grid--label-first .octavawms-slot--label{grid-column:2;grid-row:1/span 2;}
-.octavawms-connect-grid--label-first .octavawms-slot--sp{grid-column:1;grid-row:1/span 2;}
-@media(max-width:782px){
-.octavawms-connect-grid--label-first .octavawms-slot--sp{order:1;}
-.octavawms-connect-grid--label-first .octavawms-slot--label{order:2;}
-}
 .octavawms-sp-below-label{margin-top:16px;width:100%;}
 .octavawms-slot--stack .octavawms-sp-below-label .octavawms-sp-card{margin-top:0;}
 .octavawms-boxes-details{margin:0 0 12px;padding:0;border:1px solid #c3c4c7;border-radius:4px;background:#fff;}
 .octavawms-boxes-details > summary{cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;list-style:none;}
 .octavawms-boxes-details > summary::-webkit-details-marker{display:none;}
-.ow-label-toolbar-merge{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;margin:0 0 12px;width:100%;box-sizing:border-box;}
-.ow-pdf-toolbar{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;}
-.ow-pdf-toolbar .button{min-width:2.25em;padding-left:8px;padding-right:8px;}
-.ow-label-toolbar-actions{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:flex-end;margin-left:auto;}
-.ow-pdf-canvas-wrap{max-width:500px;width:100%;min-height:200px;max-height:70vh;overflow:auto;border:1px solid #ddd;border-radius:6px;background:#f6f7f7;box-sizing:border-box;}
+.ow-label-toolbar-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:flex-end;margin:0 0 12px;width:100%;box-sizing:border-box;}
+.ow-pdf-canvas-wrap{position:relative;max-width:500px;width:100%;min-height:200px;max-height:70vh;overflow:auto;border:1px solid #ddd;border-radius:6px;background:#f6f7f7;box-sizing:border-box;}
 .ow-pdf-canvas{display:block;max-width:100%;height:auto;margin:0 auto;background:#fff;}
+.ow-pdf-toolbar{position:absolute;top:8px;right:8px;z-index:5;display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:4px;background:rgba(255,255,255,.92);box-shadow:0 1px 4px rgba(0,0,0,.18);backdrop-filter:saturate(140%) blur(2px);}
+.ow-pdf-toolbar .button{min-width:2.25em;padding-left:8px;padding-right:8px;background:#fff;}
+.ow-pdf-toolbar .button:hover{background:#f0f0f1;}
 .ow-tracking-card .ow-tracking-number-label{display:block;font-size:12px;text-transform:none;letter-spacing:0;color:#646970;margin:0 0 6px;font-weight:600;}
 .ow-tracking-number-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 10px;}
 .ow-tracking-number-lg{font-size:22px;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.02em;}
@@ -237,7 +231,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.10.0',
+            '1.10.1',
             true
         );
 
