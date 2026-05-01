@@ -313,7 +313,60 @@ final class PluginLog
     }
 
     /**
+     * Format API {@code errors} for display (same shapes as Shopify edit-shipment): list of strings,
+     * or objects with {@code message} or {@code code}; optionally {@code field} is ignored for text.
+     *
+     * @param mixed $errors Top-level or embedded {@code errors} value
+     */
+    public static function messagesFromApiErrorsField(mixed $errors): string
+    {
+        if ($errors === null) {
+            return '';
+        }
+        /** @var list<string> $lines */
+        $lines = [];
+        /** @var list<mixed> $list */
+        $list = is_array($errors)
+            ? (array_is_list($errors) ? $errors : [$errors])
+            : [$errors];
+        foreach ($list as $error) {
+            if (is_string($error)) {
+                $t = trim($error);
+                if ($t !== '') {
+                    $lines[] = $t;
+                }
+            } elseif (is_array($error)) {
+                if (isset($error['message']) && is_string($error['message'])) {
+                    $t = trim($error['message']);
+                    if ($t !== '') {
+                        $lines[] = $t;
+                    }
+                } elseif (isset($error['code']) && (is_string($error['code']) || is_numeric($error['code']))) {
+                    $t = trim((string) $error['code']);
+                    if ($t !== '') {
+                        $lines[] = $t;
+                    }
+                } else {
+                    $enc = json_encode($error, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    if (is_string($enc) && $enc !== '' && $enc !== '[]' && $enc !== '{}') {
+                        $lines[] = $enc;
+                    }
+                }
+            } elseif (is_scalar($error) && ! is_bool($error)) {
+                $t = trim((string) $error);
+                if ($t !== '') {
+                    $lines[] = $t;
+                }
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * Map API / problem+json style bodies into a short user-visible message.
+     * Structured {@code errors} (field/message objects) are included first, then {@code detail},
+     * then legacy single-string fields, then {@code title} — same priority idea as Shopify shipment errors.
      *
      * @param array<string, mixed>|null $data Top-level decoded JSON object
      */
@@ -323,30 +376,44 @@ final class PluginLog
             return $default;
         }
 
+        $errorsBlock = self::messagesFromApiErrorsField($data['errors'] ?? null);
+        $detailTrimmed = isset($data['detail']) && is_string($data['detail']) ? trim($data['detail']) : '';
+
+        /** @var list<string> $segments */
+        $segments = [];
+        if ($errorsBlock !== '') {
+            $segments[] = $errorsBlock;
+        }
+        if ($detailTrimmed !== '' && ($errorsBlock === '' || mb_stripos($errorsBlock, $detailTrimmed) === false)) {
+            $segments[] = $detailTrimmed;
+        }
+
         foreach (['errorMessage', 'error', 'message'] as $k) {
             if (! isset($data[$k])) {
                 continue;
             }
             $v = $data[$k];
+            $t = '';
             if (is_string($v)) {
                 $t = trim($v);
-                if ($t !== '') {
-                    return $t;
-                }
-            }
-            if ($v !== null && ! is_array($v) && ! is_object($v)) {
+            } elseif ($v !== null && ! is_array($v) && ! is_object($v)) {
                 $t = trim((string) $v);
-                if ($t !== '') {
-                    return $t;
-                }
             }
+            if ($t === '') {
+                continue;
+            }
+            if ($errorsBlock !== '' && mb_stripos($errorsBlock, $t) !== false) {
+                continue;
+            }
+            if ($detailTrimmed !== '' && $t === $detailTrimmed) {
+                continue;
+            }
+            $segments[] = $t;
+            break;
         }
 
-        if (isset($data['detail']) && is_string($data['detail'])) {
-            $detailTrimmed = trim($data['detail']);
-            if ($detailTrimmed !== '') {
-                return $detailTrimmed;
-            }
+        if ($segments !== []) {
+            return implode("\n", $segments);
         }
 
         if (isset($data['title']) && is_string($data['title'])) {
@@ -373,40 +440,9 @@ final class PluginLog
         $messages = [];
 
         if (array_key_exists('errors', $shipment) && $shipment['errors'] !== null) {
-            $errors = $shipment['errors'];
-            /** @var list<mixed> $list */
-            $list = is_array($errors)
-                ? (array_is_list($errors) ? $errors : [$errors])
-                : [$errors];
-            foreach ($list as $error) {
-                if (is_string($error)) {
-                    $t = trim($error);
-                    if ($t !== '') {
-                        $messages[] = $t;
-                    }
-                } elseif (is_array($error)) {
-                    if (isset($error['message']) && is_string($error['message'])) {
-                        $t = trim($error['message']);
-                        if ($t !== '') {
-                            $messages[] = $t;
-                        }
-                    } elseif (isset($error['code']) && (is_string($error['code']) || is_numeric($error['code']))) {
-                        $t = trim((string) $error['code']);
-                        if ($t !== '') {
-                            $messages[] = $t;
-                        }
-                    } else {
-                        $enc = json_encode($error, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-                        if (is_string($enc) && $enc !== '' && $enc !== '[]' && $enc !== '{}') {
-                            $messages[] = $enc;
-                        }
-                    }
-                } elseif (is_scalar($error) && ! is_bool($error)) {
-                    $t = trim((string) $error);
-                    if ($t !== '') {
-                        $messages[] = $t;
-                    }
-                }
+            $errStr = self::messagesFromApiErrorsField($shipment['errors']);
+            if ($errStr !== '') {
+                $messages[] = $errStr;
             }
         }
 

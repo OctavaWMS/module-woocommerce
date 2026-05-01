@@ -62,6 +62,31 @@ final class PluginLogTest extends TestCase
         self::assertSame('Not Found', $m);
     }
 
+    public function testUserMessageFromApiJsonCombinesStructuredErrorsAndDetail(): void
+    {
+        $m = PluginLog::userMessageFromApiJson([
+            'errors' => [
+                [
+                    'field' => '$.recipient',
+                    'message' => 'Получател: Изисква се Телефон 1 (EE20260501033657890LAQSJAAF)',
+                ],
+            ],
+            'detail' => 'Validation failed',
+            'title' => 'Bad Request',
+        ], 'fallback');
+        self::assertStringContainsString('Получател:', $m);
+        self::assertStringContainsString('Validation failed', $m);
+        self::assertStringContainsString("\n", $m);
+    }
+
+    public function testUserMessageFromApiJsonStructuredErrorsWithoutDetail(): void
+    {
+        $m = PluginLog::userMessageFromApiJson([
+            'errors' => [['message' => 'Line one'], ['message' => 'Line two']],
+        ], 'fallback');
+        self::assertSame("Line one\nLine two", $m);
+    }
+
     public function testShipmentErrorMessageFromApiShipmentUsesDeliveryServiceStatus(): void
     {
         $m = PluginLog::shipmentErrorMessageFromApiShipment([

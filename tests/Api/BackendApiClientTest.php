@@ -318,6 +318,43 @@ final class BackendApiClientTest extends TestCase
         self::assertSame('HTTP 400: Rate is missing for delivery request', $r['message']);
     }
 
+    public function testCreateOrUpdatePreprocessingTaskHttpErrorIncludesStructuredErrorsAndDetail(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+
+        $body = [
+            'errors' => [
+                ['field' => '$.recipient', 'message' => 'Recipient: phone required'],
+            ],
+            'detail' => 'Validation failed',
+            'title' => 'Bad Request',
+        ];
+        $problemJson = (string) json_encode($body, JSON_UNESCAPED_UNICODE);
+        Functions\when('wp_remote_request')->alias(static function (string $url) use ($problemJson) {
+            self::assertStringEndsWith('/api/delivery-services/preprocessing-task', $url);
+
+            return [
+                'response' => ['code' => 400],
+                'body' => $problemJson,
+                'headers' => ['content-type' => 'application/problem+json'],
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->createOrUpdatePreprocessingTask(null, ['state' => 'measured']);
+        self::assertFalse($r['ok']);
+        self::assertStringStartsWith('HTTP 400: ', $r['message']);
+        self::assertStringContainsString('Recipient: phone required', $r['message']);
+        self::assertStringContainsString('Validation failed', $r['message']);
+    }
+
     public function testDownloadPreprocessingTaskLabelReadyWhenPdfReturned(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
