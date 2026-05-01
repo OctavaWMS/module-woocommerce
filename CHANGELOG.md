@@ -20,15 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `LabelService` moved to `OctavaWMS\WooCommerce\Api\LabelService`; label HTTP is performed via `BackendApiClient` (default host from `Options::DEFAULT_API_BASE` + `LABEL_PATH` when the label endpoint field is empty).
 - `AdminLabelActions` is a thin orchestrator; meta box and AJAX live under `src/Admin/`.
 - Admin notice on WooCommerce settings (`Notices`): suggests Connect when no credentials are stored; treats a stored OAuth **refresh token** as configured so the notice does not flash between connect and token exchange.
+- Default **`Options::DEFAULT_API_BASE`** is **`https://pro.oawms.com`**. **`API base URL (override)`** integration field (`api_base`) forces that host for REST, OAuth, connect, and labels (above label-endpoint host inheritance). **`ConnectService`** default connect URL is derived from **`Options::getBaseUrl()`** (`octavawms_default_connect_url` filter still wraps the computed default).
 
 ### Removed
 - Temporary **REST API consumer key / secret** integration fields and `Options::getConnectAuthorizationHeader()` (replaced by `WooRestCredentials` auto-discovery).
 
 ### Fixed
 - Order edit panel showed “not in OctavaWMS” after a successful import when the list API used a different HAL `_embedded` key (`orders` / single `order` object) or when `_octavawms_external_order_id` did not match the backend’s canonical `extId`. The plugin now parses several collection shapes, tries multiple Woo identifiers (meta, order key, numeric id, order number), syncs `_octavawms_external_order_id` from the API when found, and reads `extId` from import responses when present.
-
-### Notes (release checklist)
-- `Options::DEFAULT_API_BASE` currently points at **`https://alpha.orderadmin.eu`** while the signed connect and OAuth paths are verified end-to-end; revert to **`https://pro.oawms.com`** before production release. The **Connect service URL** filter/setting accepts a bare base (e.g. `https://alpha.orderadmin.eu`) as well as the full `/apps/woocommerce/connect` URL.
 
 ## [1.0.0] — 2025
 

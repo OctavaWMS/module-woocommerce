@@ -259,7 +259,8 @@ class ConnectService
 
     private function getConnectUrlFromForm(): string
     {
-        $default = rtrim(Options::DEFAULT_API_BASE, '/') . self::CONNECT_PATH;
+        $base = rtrim(Options::getBaseUrl(), '/');
+        $default = $base . self::CONNECT_PATH;
 
         return (string) apply_filters('octavawms_default_connect_url', $default);
     }

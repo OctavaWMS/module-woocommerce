@@ -86,9 +86,28 @@ final class OptionsTest extends TestCase
         self::assertSame(42, Options::getSourceId());
     }
 
+    public function testGetBaseUrlUsesApiBaseOverrideBeforeLabelEndpoint(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'api_base' => 'https://custom.example.org',
+                    'label_endpoint' => 'https://legacy.example.com/apps/woocommerce/api/label',
+                ];
+            }
+            if ($name === Options::LEGACY_LABEL_ENDPOINT) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        self::assertSame('https://custom.example.org', Options::getBaseUrl());
+    }
+
     public function testDefaultApiBaseConstant(): void
     {
-        self::assertSame('https://alpha.orderadmin.eu', Options::DEFAULT_API_BASE);
+        self::assertSame('https://pro.oawms.com', Options::DEFAULT_API_BASE);
     }
 
     public function testGetRefreshTokenAndOAuthDomainReturnEmptyWhenMissing(): void

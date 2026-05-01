@@ -24,7 +24,7 @@ WordPress + WooCommerce plugin that **connects your store to OctavaWMS**. It inc
 ## One-click connect
 
 1. Go to **WooCommerce → Settings → Integrations → OctavaWMS Connector**.
-2. Click **Connect to OctavaWMS**. The plugin will POST to the connect URL. The **Connect service URL** setting accepts either a full URL (e.g. `https://alpha.orderadmin.eu/apps/woocommerce/connect`) or a bare base (e.g. `https://alpha.orderadmin.eu`) — the plugin appends `/apps/woocommerce/connect` automatically. The `octavawms_connect_url` filter can also override the final URL. **Temporary default:** `https://alpha.orderadmin.eu/apps/woocommerce/connect` (staging) while the HMAC connect flow is verified end-to-end; this will be reverted to `https://pro.oawms.com` before release.
+2. Click **Connect to OctavaWMS**. The plugin will POST to `https://pro.oawms.com/apps/woocommerce/connect` by default (`Options::DEFAULT_API_BASE` + `/apps/woocommerce/connect`), or — if **API base URL (override)** is set under Advanced — to `{that base}/apps/woocommerce/connect`. After connect, REST calls normally follow the **label endpoint’s host** saved by successful connect; an override wins over that host. Filters: `octavawms_default_connect_url` then `octavawms_connect_url` (same pattern as elsewhere).
 3. On success, the plugin stores the **label endpoint**, **source id**, and either a long-lived **API key** (`apiKey`) or, when the cloud returns OAuth fields, a **refresh token** and **domain** plus a follow-up exchange that writes the **Bearer access token** into the same integration option. Click **Save changes** on the form if the fields are open.
 
 **Auto-authentication via the existing OctavaWMS WooCommerce REST key (no input needed)**
@@ -56,8 +56,8 @@ If you are self-hosted or were given values by your operator:
 
 | Setting | Description |
 |--------|-------------|
-| **Connect service URL** | Optional. Overrides the default one-click `POST` target (e.g. `https://alpha.orderadmin.eu/apps/woocommerce/connect`). |
-| **Label endpoint URL** | Optional override. When set, its **host** is used as the API base for REST calls and label requests. When empty, the plugin uses `Options::DEFAULT_API_BASE` (currently **`https://alpha.orderadmin.eu`** while staging; reverts to `https://pro.oawms.com` before release) and posts labels to `/apps/woocommerce/api/label`. |
+| **API base URL (override)** | Optional (`WooCommerce → Settings → Integrations → OctavaWMS`). When set — e.g. `https://staging.example.com` — all API, OAuth, connect, and label traffic uses that scheme and host (**highest** priority). When empty: after connect the **host from Label endpoint** is used; otherwise the default **`https://pro.oawms.com`**. |
+| **Label endpoint URL** | Filled automatically by connect (or historically). Its **host** becomes the API base when no override is set (and when this field has a URL). Labels post to `{host}/apps/woocommerce/api/label` unless overridden by connect response paths. |
 | **API key** | Bearer access token sent as `Authorization: Bearer …` after Connect (or manual paste). When Connect returns OAuth bootstrap fields, the access token is obtained via `POST /oauth` and may be rotated with a new refresh token. |
 | **Auto-sync new orders** | When enabled (default), new orders trigger `POST /api/integrations/import` so OctavaWMS can create them without using **Upload order** in the admin. |
 | **Auto-sync order updates** | When enabled (default), order saves and status changes re-import the order. A short debounce (transient, 10 seconds) plus per-request deduplication reduces duplicate API calls when WooCommerce fires several hooks for one change. |
@@ -95,7 +95,7 @@ You can still use **Order actions → Generate shipping label → Update** as be
 | `POST` / `PATCH` | `/api/delivery-services/preprocessing-task` | Create or update preprocessing task (`state: measured`, dimensions, `queue`); may return PDF/HTML synchronously or a task id for polling. |
 | `PATCH` | `/api/delivery-services/requests/{id}` | Update shipment fields (e.g. service point, carrier, locality, EAV) from **Edit shipment**. |
 | `POST` | `/api/integrations/import` | Push the WooCommerce order into OctavaWMS (uses **source id** from Connect). |
-| `POST` | `/apps/woocommerce/api/label` | Request a label PDF/JSON for `externalOrderId` (host from label endpoint override or default). |
+| `POST` | `/apps/woocommerce/api/label` | Request a label PDF/JSON for `externalOrderId` (resolved host via **API base override**, label-endpoint host, or **`https://pro.oawms.com`** default). |
 | `POST` | `/oauth` | Exchange `refresh_token` + `domain` (+ `client_id`) for an `access_token` when Connect returns OAuth bootstrap instead of `apiKey`. |
 
 ## Order metadata
@@ -152,7 +152,7 @@ Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notab
 
 ## Developer filters
 
-- `octavawms_default_connect_url` — default one-click `POST` base URL.
+- `octavawms_default_connect_url` — default one-click **`POST`** connect URL (**full URL** ending in `/apps/woocommerce/connect`; default is `Options::getBaseUrl()` + that path unless you replace the filtered string entirely).
 - `octavawms_connect_url` — full connect URL, receives `( $url, $home_url )`.
 - `octavawms_require_https_for_connect` — `bool` (default `true` except localhost) to require HTTPS for connect.
 - `octavawms_oauth_url` — full URL for `POST /oauth` (default: API base + `/oauth`).
@@ -166,7 +166,7 @@ Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notab
 - All user-visible strings remain **canonical English** wrapped in **`__('…', 'octavawms')`** in PHP so standard WordPress translation files (`languages/octavawms-*.mo`) still apply.
 - For white-label installs, **`I18n\BrandedStrings`** hooks **`gettext`** for domain `octavawms` and replaces msgids listed in **`src/I18n/catalogs/{pack}-bg.php`** (e.g. `izprati-bg.php`). Add a sibling catalog and extend **`BrandedStrings::catalogPaths()`** for new tenants.
 
-Built-in defaults (no filter required): `Options::DEFAULT_API_BASE` and `BackendApiClient::LABEL_PATH` for the hosted label URL when the integration **label endpoint** field is empty.
+Built-in defaults (no filter required): `Options::DEFAULT_API_BASE` (**`https://pro.oawms.com`**) for API base when neither **API base override** nor label-endpoint host applies; optional WooCommerce integration field **`api_base`** overrides that host (`BackendApiClient::LABEL_PATH` is still used relative to that base when connect does not supply a full label URL).
 
 ## OctavaWMS (cloud) components
 

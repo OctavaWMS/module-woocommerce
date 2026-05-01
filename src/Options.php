@@ -12,7 +12,7 @@ class Options
     public const INTEGRATION_ID = 'octavawms';
 
     /** Default OctavaWMS API host (no trailing slash). */
-    public const DEFAULT_API_BASE = 'https://alpha.orderadmin.eu';
+    public const DEFAULT_API_BASE = 'https://pro.oawms.com';
 
     public static function getLabelEndpoint(): string
     {
@@ -56,12 +56,20 @@ class Options
      * Resolve the base URL for all API calls.
      *
      * Priority:
-     *   1. Stored `label_endpoint` (from connect response / legacy installs) — host extracted.
-     *   2. DEFAULT_API_BASE.
+     *   1. Integration setting **API base URL (override)** (`api_base`) — scheme://host only.
+     *   2. Host from stored `label_endpoint` (after connect / legacy).
+     *   3. {@see DEFAULT_API_BASE}.
      */
     public static function getBaseUrl(): string
     {
         $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+
+        $override = isset($settings['api_base']) && is_string($settings['api_base'])
+            ? self::normalizedApiBaseFromUserInput(trim($settings['api_base']))
+            : '';
+        if ($override !== '') {
+            return $override;
+        }
 
         $labelEndpoint = isset($settings['label_endpoint']) && is_string($settings['label_endpoint']) ? trim($settings['label_endpoint']) : '';
         if ($labelEndpoint === '') {
@@ -75,6 +83,16 @@ class Options
         }
 
         return rtrim(self::DEFAULT_API_BASE, '/');
+    }
+
+    /** Normalize **API base** field: scheme://host only, or '' if invalid / empty. */
+    private static function normalizedApiBaseFromUserInput(string $trimmed): string
+    {
+        if ($trimmed === '') {
+            return '';
+        }
+
+        return self::extractBaseFromUrl($trimmed, null);
     }
 
     /**

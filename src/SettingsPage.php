@@ -43,6 +43,17 @@ class SettingsPage extends \WC_Integration
                 'title' => __('Advanced (manual configuration)', 'octavawms'),
                 'type' => 'title',
             ],
+            'api_base' => [
+                'title' => __('API base URL (override)', 'octavawms'),
+                'type' => 'text',
+                'description' => __(
+                    'Optional. Scheme and hostname only (e.g. https://pro.oawms.com or https://alpha.orderadmin.eu). When set, all REST, OAuth, connect, and label requests use this host. Leave empty for the cloud default or to follow the hostname from Label endpoint after connect.',
+                    'octavawms'
+                ),
+                'desc_tip' => true,
+                'placeholder' => 'https://pro.oawms.com',
+                'default' => '',
+            ],
             'api_key' => [
                 'title' => __('API key (Bearer token)', 'octavawms'),
                 'type' => 'password',
