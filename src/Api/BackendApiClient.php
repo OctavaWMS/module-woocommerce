@@ -1285,7 +1285,15 @@ class BackendApiClient
                 PluginLog::httpExchange($method, $url, $headers, $payload, $response)
             );
 
-            return ['ok' => false, 'pdf' => null, 'content_type' => '', 'task_id' => $taskId, 'message' => sprintf('HTTP %d', $status)];
+            $errBody = (string) wp_remote_retrieve_body($response);
+
+            return [
+                'ok' => false,
+                'pdf' => null,
+                'content_type' => '',
+                'task_id' => $taskId,
+                'message' => self::httpStatusWithApiDetailMessage($status, $errBody),
+            ];
         }
 
         $contentType = strtolower((string) wp_remote_retrieve_response_header($response, 'content-type'));
@@ -1348,6 +1356,27 @@ class BackendApiClient
         }
 
         return ['ok' => $status >= 200 && $status < 300, 'ready' => false, 'pdf' => null, 'content_type' => $contentType, 'status' => $status];
+    }
+
+    /**
+     * User-visible text for failed HTTP responses: status plus problem+json {@code detail} / {@code title} / etc.
+     */
+    private static function httpStatusWithApiDetailMessage(int $httpStatus, string $rawBody): string
+    {
+        $decoded = $rawBody !== '' ? json_decode($rawBody, true) : null;
+        $data = is_array($decoded) ? $decoded : null;
+        if ($data !== null) {
+            $api = trim(PluginLog::userMessageFromApiJson($data, ''));
+            if ($api !== '') {
+                return sprintf('HTTP %d: %s', $httpStatus, $api);
+            }
+        }
+        $t = trim($rawBody);
+        if ($t !== '' && $data === null) {
+            return sprintf('HTTP %d: %s', $httpStatus, PluginLog::truncate($t, 500));
+        }
+
+        return sprintf('HTTP %d', $httpStatus);
     }
 
     private function buildListQuery(string $value, string $filterField, int $perPage, int $page): string

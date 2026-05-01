@@ -290,6 +290,34 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(77, $r['task_id']);
     }
 
+    public function testCreateOrUpdatePreprocessingTaskIncludesProblemDetailOnHttpError(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+
+        $problemJson = '{"errors":[],"title":"Bad Request","status":400,"detail":"Rate is missing for delivery request"}';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use ($problemJson) {
+            self::assertStringEndsWith('/api/delivery-services/preprocessing-task', $url);
+
+            return [
+                'response' => ['code' => 400],
+                'body' => $problemJson,
+                'headers' => ['content-type' => 'application/problem+json'],
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->createOrUpdatePreprocessingTask(null, ['state' => 'measured']);
+        self::assertFalse($r['ok']);
+        self::assertSame('HTTP 400: Rate is missing for delivery request', $r['message']);
+    }
+
     public function testDownloadPreprocessingTaskLabelReadyWhenPdfReturned(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {

@@ -466,6 +466,28 @@
     }
     return h;
   }
+
+  /** @param {{ cod?: Record<string, unknown> }|null|undefined} data @param {{ id?: unknown, state?: string }|null|undefined} shipment */
+  function shipmentMetaRowHtml(data, shipment) {
+    const sidStr = shipment && shipment.id ? String(shipment.id) : '';
+    const codInfo = data && data.cod && typeof data.cod === 'object' ? data.cod : {};
+    const state = (shipment && shipment.state) || '';
+    return (
+      '<div class="octavawms-create-label-shipment-meta">' +
+      '<p class="octavawms-create-label-shipment-ref">' +
+      '<strong>' +
+      esc(cfg.strings.shipmentLabel) +
+      '</strong>' +
+      ' ' +
+      esc(sidStr ? '#' + sidStr : '—') +
+      '</p>' +
+      '<div class="octavawms-label-shipment__badges">' +
+      statusPillHtml(state) +
+      codPillHtml(codInfo) +
+      '</div></div>'
+    );
+  }
+
   function hrefAttr(u) {
     return String(u || '')
       .replace(/&/g, '&amp;')
@@ -519,15 +541,22 @@
     return connectorPost('octavawms_patch_shipment', f);
   }
 
-  function toolbarHtml() {
+  function toolbarHtml(leftInnerHtml) {
+    if (leftInnerHtml == null) {
+      leftInnerHtml = '';
+    }
     return (
       '<div class="octavawms-connect-toolbar">' +
+      '<div class="octavawms-connect-toolbar__left">' +
+      String(leftInnerHtml) +
+      '</div>' +
+      '<div class="octavawms-connect-toolbar__actions">' +
       '<button type="button" class="button button-small" data-octavawms-action="panel-login">' +
       esc(cfg.strings.loginToPanel || 'Login to the panel') +
       '</button>' +
       '<button type="button" class="button button-small" data-octavawms-action="refresh-status">' +
       esc(cfg.strings.refreshStatus) +
-      '</button></div>'
+      '</button></div></div>'
     );
   }
 
@@ -591,24 +620,7 @@
   }
 
   function createLabelAndBoxesSection(data, shipment, hasLocal, dl, shipmentId, placesInitialInnerHtml) {
-    const sidStr = shipment && shipment.id ? String(shipment.id) : '';
-    const codInfo = data.cod && typeof data.cod === 'object' ? data.cod : {};
-    const state = (shipment && shipment.state) || '';
     const useRegen = hasLocal && !!dl;
-
-    const shipmentMetaUnderTitle =
-      '<div class="octavawms-create-label-shipment-meta">' +
-      '<p class="octavawms-create-label-shipment-ref">' +
-      '<strong>' +
-      esc(cfg.strings.shipmentLabel) +
-      '</strong>' +
-      ' ' +
-      esc(sidStr ? '#' + sidStr : '—') +
-      '</p>' +
-      '<div class="octavawms-label-shipment__badges">' +
-      statusPillHtml(state) +
-      codPillHtml(codInfo) +
-      '</div></div>';
 
     let notices = '';
     if (hasLocal && dl) {
@@ -648,15 +660,9 @@
       '</div></div>';
 
     return (
-      '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label" id="octavawms-panel-label">' +
-      '<header class="octavawms-section-head octavawms-section-head--create-label">' +
-      '<div class="octavawms-create-label-heading">' +
-      '<h3 class="screen-reader-text">' +
+      '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label" id="octavawms-panel-label" aria-label="' +
       esc(cfg.strings.labelPanelSrHeading) +
-      '</h3>' +
-      shipmentMetaUnderTitle +
-      '</div>' +
-      '</header>' +
+      '">' +
       '<div class="octavawms-connect-section-body">' +
       boxesWrap +
       notices +
@@ -740,7 +746,7 @@
     lastSpShipmentId = 0;
     html =
       '<div class="octavawms-connect-page">' +
-      toolbarHtml() +
+      toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
       pendingErrorBannerWrapperHtml(panelShipment, null) +
       '<div class="octavawms-connect-grid">';
 
@@ -1678,7 +1684,7 @@
   function fetchStatus() {
     root.innerHTML =
       '<div class="octavawms-connect-page">' +
-      '<div class="octavawms-connect-toolbar"></div>' +
+      toolbarHtml('') +
       '<div class="octavawms-connect-grid">' +
       '<div class="octavawms-connect-section-body">' +
       '<span class="octavawms-spinner"></span> ' +

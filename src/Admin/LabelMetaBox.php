@@ -38,7 +38,10 @@ class LabelMetaBox
         $css = <<<'CSS'
 .octavawms-label-box{padding:0 0 4px;}
 .octavawms-connect-page{max-width:none;}
-.octavawms-connect-toolbar{margin:0 0 24px;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;}
+.octavawms-connect-toolbar{margin:0 0 24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 16px;width:100%;box-sizing:border-box;}
+.octavawms-connect-toolbar__left{flex:1 1 200px;min-width:0;max-width:100%;}
+.octavawms-connect-toolbar__left:empty{display:none;}
+.octavawms-connect-toolbar__actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;flex:0 0 auto;margin-left:auto;}
 .octavawms-shipment-state-banner{margin:0 0 16px;padding:12px 14px;border:1px solid #f0a9ae;background:#fcf0f1;border-radius:4px;box-sizing:border-box;width:100%;}
 .octavawms-shipment-state-banner__status{margin:0 0 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;}
 .octavawms-shipment-state-banner__extra{font-size:13px;font-weight:400;color:#646970;}
@@ -186,7 +189,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.1',
+            '1.9.2',
             true
         );
 
