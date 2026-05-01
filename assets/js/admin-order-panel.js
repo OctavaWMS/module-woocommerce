@@ -2810,6 +2810,29 @@
     if (sec) {
       sec.classList.toggle('is-loading', !!on);
     }
+    const page = root.querySelector('.octavawms-connect-page');
+    if (page) {
+      page.classList.toggle('is-generating-label', !!on);
+    }
+    let overlay = document.getElementById('octavawms-generating-label-overlay');
+    if (on) {
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'octavawms-generating-label-overlay';
+        overlay.className = 'ow-generating-overlay';
+        overlay.setAttribute('role', 'status');
+        overlay.setAttribute('aria-live', 'polite');
+        overlay.innerHTML =
+          '<div class="ow-generating-overlay__inner">' +
+          '<span class="octavawms-spinner ow-generating-overlay__spinner"></span>' +
+          '<span class="ow-generating-overlay__text">' +
+          esc(cfg.strings.generatingLabel || '') +
+          '</span></div>';
+        (page || root).appendChild(overlay);
+      }
+    } else if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
     syncLabelPrimaryActions();
   }
 

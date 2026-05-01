@@ -83,6 +83,12 @@ class LabelMetaBox
 .octavawms-connect-section{margin:0;}
 .octavawms-connect-section-body{padding:14px 0 0;margin:0;position:relative;}
 .octavawms-panel-label.is-loading .octavawms-connect-section-body{opacity:.55;pointer-events:none;}
+.octavawms-connect-page.is-generating-label{position:relative;}
+.octavawms-connect-page.is-generating-label .octavawms-connect-grid{opacity:.5;pointer-events:none;filter:saturate(.6);}
+.ow-generating-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;background:rgba(255,255,255,.45);backdrop-filter:blur(1px);pointer-events:auto;cursor:progress;}
+.ow-generating-overlay__inner{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#1d2327;color:#fff;border-radius:4px;font-size:13px;line-height:1.45;box-shadow:0 4px 16px rgba(0,0,0,.18);}
+.ow-generating-overlay__spinner{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:octava-spin .8s linear infinite;}
+.ow-generating-overlay__text{font-weight:600;}
 .octavawms-section-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 16px;margin:0 0 14px;padding:0;border:0;background:transparent;}
 .octavawms-section-head--split{border-bottom:none;}
 .octavawms-section-head--create-label{align-items:flex-start;}
@@ -231,7 +237,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.10.1',
+            '1.10.2',
             true
         );
 
