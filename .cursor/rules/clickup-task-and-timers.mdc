@@ -1,0 +1,71 @@
+---
+description: Unified ClickUp workflow for OctavaWMS WooCommerce module (create, status, timing, review sync)
+alwaysApply: true
+---
+
+# ClickUp workflow (OctavaWMS WooCommerce module)
+
+## Related rule
+
+- **Pull task → implement → PR → merge on approval:** [clickup-pull-task-sequence.mdc](clickup-pull-task-sequence.mdc)
+
+Use this rule for all ClickUp operations in this repository.
+
+## Target list
+
+- Space: **OctavaWMS**
+- List: **Modules**
+- `list_id: "901217643164"`
+
+## Required tag
+
+- Always assign tag: `module-woocommerce`
+
+## Task creation
+
+When the user asks to create/add/sync a ClickUp task:
+
+1. If no linked task exists, create one in the **Modules** list (`901217643164`).
+2. Always include tag `module-woocommerce`.
+3. Set status to **in development** (`status: "in development"`) after creation (if available in that list).
+
+When the user explicitly asks to "sync with ClickUp" or "put in review + log time", do not block on asking for a task ID; create the task when missing and proceed.
+
+## Time tracking
+
+- When starting planning: start timer on the linked/new task.
+- When ending planning: stop the current running timer.
+- When starting build/implementation: start timer on the task.
+- When ending build (before review): stop timer.
+
+### Manual time entry (`clickup_add_time_entry`) — minimal payload
+
+Some workspaces hit plan errors (e.g. “Advanced Time Tracking” limits) when optional fields are sent. Prefer a **minimal** MCP body:
+
+- **Include:** `task_id`, `start`, and **`end_time`** — each as a string `YYYY-MM-DD HH:MM` (this MCP tool does **not** accept raw millisecond timestamps).
+- **Alternative:** `task_id`, `start`, and `duration` (e.g. `45m`) if `end_time` is awkward.
+- **Omit** unless the user explicitly requires them: `description`, `tags`, `billable`.
+
+**Example (45 minutes, no optional fields):**
+
+```json
+{
+  "task_id": "869d0zc9a",
+  "start": "2026-04-23 14:00",
+  "end_time": "2026-04-23 14:45"
+}
+```
+
+If the API still rejects time entry, **skip** logging time and note the intended duration in a **task comment** (`clickup_create_task_comment`) so it is not lost.
+
+If there is no linked task and the user did not request creation/sync, ask for task ID or create one first.
+
+## Post-implementation sync
+
+When implementation is done for a linked task:
+
+1. Stop timer if running.
+2. Move task to **in review** (`status: "in review"`), if available.
+3. Fill **Solution** custom field with a short 1-2 sentence summary:
+   `custom_fields: [{"id": "df3568d4-5a08-40fc-9ee3-f9676105e94f", "value": "<short solution summary>"}]`
+4. Add a manual time entry using the **minimal** `clickup_add_time_entry` format above (no `description` / `tags` / `billable`); put implementation detail in the task comment if needed.

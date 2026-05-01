@@ -1,0 +1,8 @@
+---
+description: Run composer check after changes
+alwaysApply: true
+---
+
+# Composer check after changes
+
+At the end of a plan execution where code was changed, run `composer check` and fix any issues it reports.

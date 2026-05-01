@@ -1,0 +1,16 @@
+---
+description: Commit message format - always prefix with ClickUp task ID
+alwaysApply: true
+---
+
+# Commit message format
+
+When creating a git commit, **always** prefix the commit message with `CU-[clickup task id]` followed by a space, then the rest of the message.
+
+If the user has mentioned a ClickUp task ID in the conversation (e.g. `869c9qwdy`), use that ID. If no task ID has been mentioned, ask the user for the ClickUp task ID before committing.
+
+Example:
+
+```
+CU-869c9qwdy Fix supplement calculation to compare per line item
+```

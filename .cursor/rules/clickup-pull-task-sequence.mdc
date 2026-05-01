@@ -1,0 +1,68 @@
+---
+description: Full agentic sequence when pulling a ClickUp task into code (fetch, implement, PR, merge on approval)
+alwaysApply: true
+---
+
+# ClickUp “pull task” sequence (agentic)
+
+Run this **end-to-end** when the user asks to pull / implement work from a **ClickUp task** (by ID or URL), e.g. “pull ClickUp task `869cta3uq` and implement”, “do this ClickUp task”, “execute the task from ClickUp”.
+
+Also apply [**clickup-task-and-timers.mdc**](clickup-task-and-timers.mdc) and [**commit-message-format.mdc**](commit-message-format.mdc) for timers, list/tag defaults, and `CU-<taskId>` commits.
+
+## 1. Fetch and understand
+
+- Use ClickUp MCP: `clickup_get_task` with `task_id` (numeric/custom ID from URL `app.clickup.com/t/<id>`).
+- Read name, description, comments, **tags** (ensure `module-woocommerce` where applicable), and **Solution** field id `df3568d4-5a08-40fc-9ee3-f9676105e94f` for later.
+- Search the repo; form a short plan (mental or `CreatePlan` if the session uses planning mode).
+
+## 2. Timers (aligned with existing rule)
+
+- Start timer when planning/build starts; stop when that phase ends, per [clickup-task-and-timers.mdc](clickup-task-and-timers.mdc).
+
+## 3. Implement
+
+- Implement the smallest change that satisfies the task; match local patterns.
+- Run **`composer check`** after code changes; fix what it reports.
+
+## 4. Git traceability
+
+- Branch: include the task id or `CU-<id>` (e.g. `CU-869cta3uq-short-slug`).
+- Every commit message: **`CU-<clickupTaskId> <imperative summary>`** (see [commit-message-format.mdc](commit-message-format.mdc)).
+- Push branch to `origin`.
+
+## 5. Pull request
+
+- Open a PR (e.g. `gh pr create` if available) with:
+  - Title prefixed with **`CU-<taskId>`**.
+  - Body: short summary, test notes, and **link to the ClickUp task** (`https://app.clickup.com/t/<id>`).
+- If CLI is missing, give the compare URL:  
+  `https://github.com/<org>/<repo>/compare/main...<branch>`.
+
+## 6. ClickUp sync after implementation
+
+- Stop timer if still running.
+- Set status to **`in review`** when the implementation is ready for review (if that status exists on the list).
+- Set **Solution** custom field:  
+  `custom_fields: [{"id": "df3568d4-5a08-40fc-9ee3-f9676105e94f", "value": "<1–2 sentences>"}]`
+- Add a **task comment** with: plan/summary, branch name, and PR link (or compare link).
+- Optionally **attach** the plan file (`clickup_attach_task_file` with base64 or URL).
+- Add a **manual time entry** if required by team practice — use **minimal** `clickup_add_time_entry` (`task_id` + `start` + `end_time` as `YYYY-MM-DD HH:MM`; omit `description`, `tags`, `billable`). See [clickup-task-and-timers.mdc](clickup-task-and-timers.mdc).
+- If a status like “deployment” is requested but the API rejects the name, note the exact error in the task comment and leave status as **in review** unless the user supplies the exact status string.
+
+## 7. Merge when the user approves
+
+When the user explicitly says **approved** (or clearly equivalent: “merge the PR”, “ship it”, “merge and close”) **for this task’s PR**:
+
+1. Merge the linked PR (prefer **`gh pr merge`** with squash/merge per team norms, or the GitHub UI).
+2. **Resolve conflicts** on the integration branch (`git fetch`, `git merge` / `git rebase` `origin/main`, fix files, run **`composer check`**, push).
+3. Confirm the PR shows merged and the branch is integrated.
+4. Optionally add a short **ClickUp comment** “Merged: `<merge commit or PR URL>`” for audit trail.
+
+## Traceability checklist
+
+| Artifact        | Expectation                                      |
+|----------------|---------------------------------------------------|
+| Task           | Linked in PR body; Solution field updated         |
+| Commits        | `CU-<id>` prefix                                  |
+| PR             | Title/body reference task; merge recorded        |
+| ClickUp        | Comment with PR + final merge note when closing   |
