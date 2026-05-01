@@ -189,7 +189,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.2',
+            '1.9.3',
             true
         );
 
@@ -209,6 +209,7 @@ CSS;
             'orderId' => $orderId,
             'orderEditUrl' => $orderEditUrl,
             'patchKindRetryPendingError' => LabelAjax::PATCH_KIND_RETRY_PENDING_ERROR,
+            'patchKindRequeueEndingQueued' => LabelAjax::PATCH_KIND_REQUEUE_ENDING_QUEUED,
             'panelLoginNonce' => wp_create_nonce(ConnectService::PANEL_LOGIN_NONCE_ACTION),
             'statusNonce' => wp_create_nonce('octavawms_order_status_' . (string) $orderId),
             'uploadNonce' => wp_create_nonce('octavawms_upload_order_' . (string) $orderId),
@@ -232,6 +233,8 @@ CSS;
                 'regenerateLabel' => __('Re-generate Label', 'octavawms'),
                 'generatingLabel' => __('Generating label…', 'octavawms'),
                 'tryAgain' => __('Try again', 'octavawms'),
+                'requeueEndingQueued' => __('Re-queue shipment', 'octavawms'),
+                'requeueingEndingQueued' => __('Re-queuing…', 'octavawms'),
                 'refreshStatus' => __('Refresh status', 'octavawms'),
                 'loginToPanel' => __('Login to the panel', 'octavawms'),
                 'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),

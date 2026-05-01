@@ -24,6 +24,9 @@ class LabelAjax
     /** PATCH body `{ "state": "pending_queued" }` when shipment is `pending_error` (edit-shipment Retry). */
     public const PATCH_KIND_RETRY_PENDING_ERROR = 'retry_pending_error';
 
+    /** PATCH body `{ "state": "ending_queued" }` so the backend can re-resolve rates/carrier assignment. */
+    public const PATCH_KIND_REQUEUE_ENDING_QUEUED = 'requeue_ending_queued';
+
     private const STRATEGY_JSON_OFFICE = '{"updateData":{"eav":{"delivery-request-service-point-select":{"mode":"closest","criteria":{"type":"service_point"}}}}}';
 
     private const STRATEGY_JSON_LOCKER = '{"updateData":{"eav":{"delivery-request-service-point-select":{"mode":"closest","criteria":{"type":"self_service_point"}}}}}';
@@ -453,6 +456,8 @@ class LabelAjax
                 wp_send_json_error(['message' => __('Only a failed shipment (pending_error) can be retried this way.', 'octavawms')], 400);
             }
             $payload['state'] = 'pending_queued';
+        } elseif ($kind === self::PATCH_KIND_REQUEUE_ENDING_QUEUED) {
+            $payload['state'] = 'ending_queued';
         } else {
             wp_send_json_error(['message' => __('Invalid request.', 'octavawms')], 400);
         }

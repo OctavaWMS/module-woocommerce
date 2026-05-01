@@ -500,7 +500,25 @@
     return parseInt(String(data.shipment_id || 0), 10) || 0;
   }
 
-  function renderError(msg) {
+  /**
+   * @param {string} msg
+   * @param {number} [optRequeueSid] Preferred shipment id for re-queue; falls back to {@link panelShipment}.
+   */
+  function renderError(msg, optRequeueSid) {
+    var sid =
+      typeof optRequeueSid === 'number' && optRequeueSid > 0
+        ? optRequeueSid
+        : panelShipment && panelShipment.id
+          ? parseInt(String(panelShipment.id), 10) || 0
+          : 0;
+    var requeueBtn =
+      sid > 0
+        ? '<button type="button" class="button" data-octavawms-action="requeue-ending-queued" data-shipment-id="' +
+          esc(String(sid)) +
+          '">' +
+          esc(cfg.strings.requeueEndingQueued || 'Re-queue shipment') +
+          '</button>'
+        : '';
     root.innerHTML =
       '<div class="octavawms-connect-page">' +
       '<div class="octavawms-connect-section">' +
@@ -511,7 +529,9 @@
       '<div class="octavawms-actions-row">' +
       '<button type="button" class="button button-primary" data-octavawms-action="retry">' +
       esc(cfg.strings.tryAgain) +
-      '</button></div></div></div></div>';
+      '</button>' +
+      requeueBtn +
+      '</div></div></div></div>';
   }
 
   function connectorPost(action, fields) {
@@ -1756,14 +1776,14 @@
       .then(function (j) {
         setLabelCardLoading(false);
         if (!j || !j.success) {
-          renderError((j && j.data && j.data.message) || cfg.strings.error);
+          renderError((j && j.data && j.data.message) || cfg.strings.error, sid);
           return;
         }
         fetchStatus();
       })
       .catch(function () {
         setLabelCardLoading(false);
-        renderError(cfg.strings.error);
+        renderError(cfg.strings.error, sid);
       });
   }
 
@@ -1868,6 +1888,33 @@
           .catch(function () {
             window.alert(cfg.strings.error);
             btn.textContent = prevLabel;
+            btn.disabled = false;
+          });
+        return;
+      }
+      if (act === 'requeue-ending-queued') {
+        e.preventDefault();
+        var sidEq = parseInt(btn.getAttribute('data-shipment-id') || '0', 10) || 0;
+        if (!(sidEq > 0) || btn.disabled) {
+          return;
+        }
+        var prevEq = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = String(cfg.strings.requeueingEndingQueued || '…');
+        var pkEq = cfg.patchKindRequeueEndingQueued || 'requeue_ending_queued';
+        patchShipmentContext(sidEq, pkEq, {})
+          .then(function (j) {
+            if (!j || !j.success) {
+              window.alert((j && j.data && j.data.message) || cfg.strings.error);
+              btn.textContent = prevEq;
+              btn.disabled = false;
+              return;
+            }
+            fetchStatus();
+          })
+          .catch(function () {
+            window.alert(cfg.strings.error);
+            btn.textContent = prevEq;
             btn.disabled = false;
           });
         return;

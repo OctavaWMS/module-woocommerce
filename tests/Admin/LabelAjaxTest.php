@@ -16,6 +16,7 @@ final class LabelAjaxTest extends TestCase
     public function testPatchKindRetryPendingErrorMatchesOrderPanelScript(): void
     {
         self::assertSame('retry_pending_error', LabelAjax::PATCH_KIND_RETRY_PENDING_ERROR);
+        self::assertSame('requeue_ending_queued', LabelAjax::PATCH_KIND_REQUEUE_ENDING_QUEUED);
     }
 
     public function testHandleAjaxOrderStatusSendsErrorWhenOrderIdMissing(): void
