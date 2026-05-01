@@ -791,25 +791,39 @@
     }
   }
 
-  /** @param {boolean} shipmentLocked */
-  function labelTopActionsRowHtml(shipmentId, shipmentLocked) {
+  /**
+   * @param {number} shipmentId
+   * @param {boolean} shipmentLocked
+   * @param {boolean} [includeGenerate] When true, render `[Generate Label]` next to `[Add box]`
+   *   (used when the right-column label viewer is hidden, e.g. while the shipment is `pending*`).
+   */
+  function labelTopActionsRowHtml(shipmentId, shipmentLocked, includeGenerate) {
     if (shipmentLocked) {
       return '';
     }
     const sidStr = esc(String(shipmentId));
     const dis = shipmentId <= 0 ? ' disabled' : '';
-    return (
+    let html =
       '<button type="button" class="button button-secondary"' +
       dis +
       ' data-octavawms-action="place-add" data-shipment-id="' +
       sidStr +
       '">' +
       esc(cfg.strings.addPlace) +
-      '</button>'
-    );
+      '</button>';
+    if (includeGenerate) {
+      html +=
+        '<button type="button" class="button button-primary" disabled' +
+        ' data-octavawms-action="generate-label" data-shipment-id="' +
+        sidStr +
+        '">' +
+        esc(cfg.strings.generateLabel) +
+        '</button>';
+    }
+    return html;
   }
 
-  function createLabelAndBoxesSection(data, shipment, hasLocal, dl, shipmentId, placesInitialInnerHtml) {
+  function createLabelAndBoxesSection(data, shipment, hasLocal, dl, shipmentId, placesInitialInnerHtml, includeGenerateInTopActions) {
     const labelState = panelLabelState(data, shipment);
     const tn =
       shipment && shipment.tracking_number != null && String(shipment.tracking_number).trim() !== ''
@@ -893,7 +907,7 @@
       '<div class="octavawms-label-top-actions" data-shipment-id="' +
       esc(String(shipmentId)) +
       '">' +
-      labelTopActionsRowHtml(shipmentId, shipmentLocked) +
+      labelTopActionsRowHtml(shipmentId, shipmentLocked, !!includeGenerateInTopActions) +
       '</div>' +
       placesWrapped +
       editOrderFooter +
@@ -1757,6 +1771,8 @@
       shipment.tracking_number != null &&
       String(shipment.tracking_number).trim() !== '';
 
+    const showLabelViewer = lblState !== 'draft';
+
     html =
       '<div class="octavawms-connect-page">' +
       toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
@@ -1771,11 +1787,11 @@
         hasLocal,
         dl,
         sid,
-        '<span class="octavawms-spinner"></span> <span>' + esc(cfg.strings.loading) + '</span>'
+        '<span class="octavawms-spinner"></span> <span>' + esc(cfg.strings.loading) + '</span>',
+        !showLabelViewer
       ) +
       '</div>';
 
-    const showLabelViewer = lblState !== 'draft';
     html +=
       '<div class="octavawms-slot octavawms-slot--sp octavawms-slot--stack">' +
       (showLabelViewer ? labelViewerSectionHtml(dl, sid, lblState) : '') +
