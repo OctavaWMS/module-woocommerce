@@ -16,8 +16,11 @@
   let pdfJsDoc = null;
   /** @type {unknown} */
   let pdfJsPage = null;
-  let pdfUserZoomScale = 1;
+  let pdfCurrentScale = 0.5;
+  const PDF_INITIAL_SCALE = 0.5;
   const PDF_ZOOM_FACTOR = 1.25;
+  const PDF_MIN_SCALE = 0.1;
+  const PDF_MAX_SCALE = 6;
 
   var carrierFirstPageGen = 0;
   /** @type {unknown} */
@@ -891,15 +894,7 @@
       placesInitialInnerHtml +
       '</div>';
 
-    const placesWrapped =
-      shipmentLocked
-        ? '<details class="octavawms-boxes-details"><summary>' +
-          esc(cfg.strings.labelPanelSrHeading) +
-          '</summary>' +
-          boxesNotice +
-          placesBody +
-          '</details>'
-        : boxesNotice + placesBody;
+    const placesWrapped = boxesNotice + placesBody;
 
     const boxesWrap =
       '<div class="octavawms-label-boxes-mount">' +
@@ -964,7 +959,7 @@
       pdfJsDoc = null;
       pdfJsPage = null;
     }
-    pdfUserZoomScale = 1;
+    pdfCurrentScale = PDF_INITIAL_SCALE;
   }
 
   function revokeLabelViewerPdfObjectUrl() {
@@ -1271,7 +1266,7 @@
   }
 
   /**
-   * @param {'fit'|'zoom-in'|'zoom-out'} mode
+   * @param {'fit'|'zoom-in'|'zoom-out'|'render'} mode
    */
   function renderPdfPageToCanvas(mode) {
     const canvas = document.getElementById('octavawms-label-pdf-canvas');
@@ -1280,21 +1275,21 @@
       return;
     }
     const page = pdfJsPage;
-    const baseVp = page.getViewport({ scale: 1 });
-    const cw = Math.max(wrap.clientWidth || 400, 200);
-    const fitScale = cw / baseVp.width;
     if (mode === 'fit') {
-      pdfUserZoomScale = 1;
+      const baseVp = page.getViewport({ scale: 1 });
+      const cw = Math.max(wrap.clientWidth || 400, 200);
+      pdfCurrentScale = cw / baseVp.width;
     } else if (mode === 'zoom-in') {
-      pdfUserZoomScale *= PDF_ZOOM_FACTOR;
+      pdfCurrentScale *= PDF_ZOOM_FACTOR;
     } else if (mode === 'zoom-out') {
-      pdfUserZoomScale /= PDF_ZOOM_FACTOR;
-      if (pdfUserZoomScale < 0.25) {
-        pdfUserZoomScale = 0.25;
-      }
+      pdfCurrentScale /= PDF_ZOOM_FACTOR;
     }
-    const scale = fitScale * pdfUserZoomScale;
-    const viewport = page.getViewport({ scale: scale });
+    if (pdfCurrentScale < PDF_MIN_SCALE) {
+      pdfCurrentScale = PDF_MIN_SCALE;
+    } else if (pdfCurrentScale > PDF_MAX_SCALE) {
+      pdfCurrentScale = PDF_MAX_SCALE;
+    }
+    const viewport = page.getViewport({ scale: pdfCurrentScale });
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d');
@@ -1386,12 +1381,12 @@
           })
           .then(function (page) {
             pdfJsPage = page;
-            pdfUserZoomScale = 1;
+            pdfCurrentScale = PDF_INITIAL_SCALE;
             if (loading) {
               loading.style.display = 'none';
             }
             canvas.style.display = '';
-            renderPdfPageToCanvas('fit');
+            renderPdfPageToCanvas('render');
             syncLabelViewerActionUrls(resolved.url, !!resolved.objectUrl);
           })
           .catch(function () {
