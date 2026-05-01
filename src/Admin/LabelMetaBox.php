@@ -58,6 +58,34 @@ class LabelMetaBox
 @media(min-width:783px){
 .octavawms-slot--sp{position:sticky;top:42px;}
 }
+.octavawms-connect-grid--label-first .octavawms-slot--label{grid-column:2;grid-row:1/span 2;}
+.octavawms-connect-grid--label-first .octavawms-slot--sp{grid-column:1;grid-row:1/span 2;}
+@media(max-width:782px){
+.octavawms-connect-grid--label-first .octavawms-slot--sp{order:1;}
+.octavawms-connect-grid--label-first .octavawms-slot--label{order:2;}
+}
+.octavawms-sp-below-label{margin-top:16px;width:100%;}
+.octavawms-slot--stack .octavawms-sp-below-label .octavawms-sp-card{margin-top:0;}
+.octavawms-boxes-details{margin:0 0 12px;padding:0;border:1px solid #c3c4c7;border-radius:4px;background:#fff;}
+.octavawms-boxes-details > summary{cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;list-style:none;}
+.octavawms-boxes-details > summary::-webkit-details-marker{display:none;}
+.ow-label-toolbar-merge{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;margin:0 0 12px;width:100%;box-sizing:border-box;}
+.ow-pdf-toolbar{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;}
+.ow-pdf-toolbar .button{min-width:2.25em;padding-left:8px;padding-right:8px;}
+.ow-label-toolbar-actions{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:flex-end;margin-left:auto;}
+.ow-pdf-canvas-wrap{max-width:500px;width:100%;min-height:200px;max-height:70vh;overflow:auto;border:1px solid #ddd;border-radius:6px;background:#f6f7f7;box-sizing:border-box;}
+.ow-pdf-canvas{display:block;max-width:100%;height:auto;margin:0 auto;background:#fff;}
+.ow-tracking-card .ow-tracking-number-label{display:block;font-size:12px;text-transform:none;letter-spacing:0;color:#646970;margin:0 0 6px;font-weight:600;}
+.ow-tracking-number-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 10px;}
+.ow-tracking-number-lg{font-size:22px;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.02em;}
+.ow-tracking-cancel-row{margin:8px 0 0;padding-top:8px;border-top:1px solid #dcdcde;}
+.ow-meta-rows{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;margin-top:4px;}
+.ow-meta-row{font-size:13px;line-height:1.45;color:#50575e;margin:0;}
+.ow-meta-key{font-weight:600;margin-right:6px;color:#1d2327;}
+.octavawms-notice--warning{border-left-color:#dba617;background:#fcf9e8;}
+.ow-toast{position:fixed;bottom:24px;right:24px;z-index:100050;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:4px;background:#1d2327;color:#fff;font-size:13px;line-height:1.45;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(10px);transition:opacity .25s ease,transform .25s ease;pointer-events:none;}
+.ow-toast.ow-toast--visible{opacity:1;transform:translateY(0);}
+.ow-toast__icon{flex:0 0 auto;width:18px;height:18px;}
 .octavawms-connect-section{margin:0;}
 .octavawms-connect-section-body{padding:14px 0 0;margin:0;position:relative;}
 .octavawms-panel-label.is-loading .octavawms-connect-section-body{opacity:.55;pointer-events:none;}
@@ -197,10 +225,19 @@ CSS;
         }
 
         wp_enqueue_script(
+            'octavawms-pdfjs',
+            plugins_url('assets/vendor/pdfjs/3.11.174/pdf.min.js', $pluginMain),
+            [],
+            '3.11.174',
+            true
+        );
+        $scriptDeps[] = 'octavawms-pdfjs';
+
+        wp_enqueue_script(
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.9',
+            '1.10.0',
             true
         );
 
@@ -219,6 +256,9 @@ CSS;
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'orderId' => $orderId,
             'orderEditUrl' => $orderEditUrl,
+            'pdfjs' => [
+                'workerSrc' => plugins_url('assets/vendor/pdfjs/3.11.174/pdf.worker.min.js', $pluginMain),
+            ],
             'patchKindRetryPendingError' => LabelAjax::PATCH_KIND_RETRY_PENDING_ERROR,
             'patchKindRequeueEndingQueued' => LabelAjax::PATCH_KIND_REQUEUE_ENDING_QUEUED,
             'panelLoginNonce' => wp_create_nonce(ConnectService::PANEL_LOGIN_NONCE_ACTION),
@@ -321,6 +361,29 @@ CSS;
                 'placeRemoveBlockedTitle' => __('This box holds items and cannot be removed.', 'octavawms'),
                 'placesSummaryGramsLine' => __('%1$s · %2$d g', 'octavawms'),
                 'generateLabelNeedBoxes' => __('Add at least one box before generating a label.', 'octavawms'),
+                'boxesEditNeedsRegenerate' => __('Changing boxes requires regenerating the label.', 'octavawms'),
+                'weightRecalcNote' => __('Carrier may recalculate weight.', 'octavawms'),
+                'statusLabel' => __('Status', 'octavawms'),
+                'paymentLabel' => __('Payment', 'octavawms'),
+                'shipmentStateNames' => [
+                    'pending_error' => __('Error — needs attention', 'octavawms'),
+                    'sent' => __('Sent to carrier', 'octavawms'),
+                    'pending_queued' => __('Queued', 'octavawms'),
+                    'draft' => __('Draft', 'octavawms'),
+                    'cancelled' => __('Cancelled', 'octavawms'),
+                    'parcelating' => __('Processing', 'octavawms'),
+                    'parcelation_success' => __('Label ready', 'octavawms'),
+                ],
+                'trackingNumberLabel' => __('Tracking number', 'octavawms'),
+                'copyTracking' => __('Copy', 'octavawms'),
+                'copiedTracking' => __('Copied', 'octavawms'),
+                'trackShipment' => __('Track shipment', 'octavawms'),
+                'labelGeneratedToast' => __('Label generated successfully', 'octavawms'),
+                'labelDraftHint' => __('Add boxes on the left, then generate a shipping label.', 'octavawms'),
+                'moreActions' => __('More actions', 'octavawms'),
+                'zoomOut' => __('Zoom out', 'octavawms'),
+                'zoomIn' => __('Zoom in', 'octavawms'),
+                'fitPage' => __('Fit', 'octavawms'),
             ],
         ]);
     }

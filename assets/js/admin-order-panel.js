@@ -9,6 +9,15 @@
   let lastSpShipmentId = 0;
   /** @type {{ id?: unknown, state?: string, error_message?: string, tracking_number?: string }|null} */
   let panelShipment = null;
+  /** @type {{ has_order?: boolean, shipment?: Record<string, unknown>, has_label_locally?: boolean, download_url?: string, cod?: Record<string, unknown> }|null} */
+  let lastOrderPanelPayload = null;
+  let pendingLabelSuccessToast = false;
+  /** @type {unknown} */
+  let pdfJsDoc = null;
+  /** @type {unknown} */
+  let pdfJsPage = null;
+  let pdfUserZoomScale = 1;
+  const PDF_ZOOM_FACTOR = 1.25;
 
   var carrierFirstPageGen = 0;
   /** @type {unknown} */
@@ -267,7 +276,7 @@
   /** @param {HTMLElement} tbody */
   function bindPlacesInputDelegation(tbody, shipmentId) {
     tbody.addEventListener('input', function (e) {
-      if (shipmentHasTracking()) {
+      if (currentPanelLabelState() === 'locked') {
         return;
       }
       var t = e.target;
@@ -285,7 +294,7 @@
       scheduleDebouncedPatchForPlaceRow(shipmentId, pid, trEl);
     });
     tbody.addEventListener('blur', function (e) {
-      if (shipmentHasTracking()) {
+      if (currentPanelLabelState() === 'locked') {
         return;
       }
       var t = e.target;
@@ -478,18 +487,22 @@
     const sidStr = shipment && shipment.id ? String(shipment.id) : '';
     const codInfo = data && data.cod && typeof data.cod === 'object' ? data.cod : {};
     const state = (shipment && shipment.state) || '';
+    const statusHuman = shipmentStateDisplayName(state);
     return (
       '<div class="octavawms-create-label-shipment-meta">' +
       '<p class="octavawms-create-label-shipment-ref">' +
       '<strong>' +
       esc(cfg.strings.shipmentLabel) +
-      '</strong>' +
-      ' ' +
+      '</strong> ' +
       esc(sidStr ? '#' + sidStr : '—') +
       '</p>' +
-      '<div class="octavawms-label-shipment__badges">' +
-      statusPillHtml(state) +
-      codPillHtml(codInfo) +
+      '<div class="ow-meta-rows">' +
+      '<div class="ow-meta-row"><span class="ow-meta-key">' +
+      esc(cfg.strings.statusLabel || '') +
+      ':</span> ' +
+      esc(statusHuman) +
+      '</div>' +
+      shipmentPaymentLineHtml(codInfo) +
       '</div></div>'
     );
   }
@@ -504,6 +517,149 @@
       return parseInt(String(data.shipment.id), 10) || 0;
     }
     return parseInt(String(data.shipment_id || 0), 10) || 0;
+  }
+
+  /**
+   * @param {{ has_label_locally?: boolean, download_url?: string }|null|undefined} data
+   * @param {{ tracking_number?: string }|null|undefined} shipment
+   * @returns {'draft'|'generated'|'locked'}
+   */
+  function panelLabelState(data, shipment) {
+    const tn =
+      shipment && shipment.tracking_number != null ? String(shipment.tracking_number).trim() : '';
+    if (tn !== '') {
+      return 'locked';
+    }
+    const hasLocal = !!(data && data.has_label_locally);
+    const dl = data && data.download_url ? String(data.download_url).trim() : '';
+    if (hasLocal && dl) {
+      return 'generated';
+    }
+    return 'draft';
+  }
+
+  /**
+   * @returns {'draft'|'generated'|'locked'}
+   */
+  function currentPanelLabelState() {
+    if (!lastOrderPanelPayload || !lastOrderPanelPayload.shipment) {
+      return 'draft';
+    }
+    return panelLabelState(lastOrderPanelPayload, lastOrderPanelPayload.shipment);
+  }
+
+  function carrierSlugFromName(name) {
+    const n = String(name || '').toLowerCase();
+    if (/speedy|спиди/.test(n)) {
+      return 'speedy';
+    }
+    if (/econt|еконт/.test(n)) {
+      return 'econt';
+    }
+    if (/post|пощи|bg.?post|български/.test(n)) {
+      return 'bgpost';
+    }
+    return '';
+  }
+
+  function buildCarrierTrackUrl(slug, trackingNumber) {
+    const raw = String(trackingNumber || '').trim();
+    const n = encodeURIComponent(raw);
+    if (!slug || !n) {
+      return '';
+    }
+    const map = {
+      speedy: 'https://www.speedy.bg/en/track-shipment?shipmentNumber=' + n,
+      econt: 'https://www.econt.com/services/track-shipment/' + n,
+      bgpost: 'https://www.bgpost.bg/bg/tracking?code=' + n,
+    };
+    return map[slug] || '';
+  }
+
+  function hydrateTrackingCarrierButtons(shipmentId, trackingNumber) {
+    const btn = document.querySelector('[data-octavawms-action="track-shipment"]');
+    if (!(btn instanceof HTMLButtonElement)) {
+      return;
+    }
+    if (btn.getAttribute('data-track-url')) {
+      btn.style.display = '';
+      return;
+    }
+    connectorPost('octavawms_shipment_detail', { shipment_id: String(shipmentId) })
+      .then(function (j) {
+        if (!j || !j.success || !j.data || !j.data.detail) {
+          return;
+        }
+        const d = j.data.detail;
+        const name = d.delivery_service_name ? String(d.delivery_service_name) : '';
+        const slug = carrierSlugFromName(name);
+        const url = buildCarrierTrackUrl(slug, trackingNumber);
+        if (url) {
+          btn.setAttribute('data-track-url', url);
+          btn.style.display = '';
+        }
+      })
+      .catch(function () {});
+  }
+
+  function showLabelToast(message) {
+    const msg = String(message || '').trim();
+    if (!msg) {
+      return;
+    }
+    let el = document.getElementById('octavawms-panel-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'octavawms-panel-toast';
+      el.className = 'ow-toast';
+      el.setAttribute('role', 'status');
+      root.appendChild(el);
+    }
+    el.innerHTML =
+      '<svg class="ow-toast__icon" viewBox="0 0 16 16" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#4ab866"/><path d="M4.5 8.2l2.3 2.3 5-5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '<span>' +
+      esc(msg) +
+      '</span>';
+    el.classList.remove('ow-toast--visible');
+    void el.offsetWidth;
+    el.classList.add('ow-toast--visible');
+    window.setTimeout(function () {
+      el.classList.remove('ow-toast--visible');
+    }, 2600);
+  }
+
+  function shipmentStateDisplayName(raw) {
+    const key = String(raw || '').trim();
+    const map = cfg.strings.shipmentStateNames || {};
+    if (map[key]) {
+      return String(map[key]);
+    }
+    return key || '—';
+  }
+
+  function shipmentPaymentLineHtml(codInfo) {
+    const ci = codInfo && typeof codInfo === 'object' ? codInfo : {};
+    const isCod =
+      ci.is_cod === true ||
+      (Boolean(ci.formatted_total) && ci.is_cod !== false && !Object.prototype.hasOwnProperty.call(ci, 'is_cod'));
+    let paymentText = '';
+    if (isCod) {
+      const baseLabel = String(ci.label || cfg.strings.codYes).trim();
+      paymentText = baseLabel;
+      const amt = ci.formatted_total ? String(ci.formatted_total).trim() : '';
+      if (amt !== '') {
+        paymentText += ' · ' + amt;
+      }
+    } else {
+      paymentText = String(cfg.strings.codNo || '');
+    }
+    return (
+      '<div class="ow-meta-row"><span class="ow-meta-key">' +
+      esc(cfg.strings.paymentLabel || '') +
+      ':</span> ' +
+      esc(paymentText) +
+      '</div>'
+    );
   }
 
   /**
@@ -607,20 +763,22 @@
     return !!(tbody && tbody.querySelector('tr[data-place-id]'));
   }
 
-  function shipmentHasTracking() {
-    const tn = panelShipment && panelShipment.tracking_number ? String(panelShipment.tracking_number).trim() : '';
-    return tn !== '';
-  }
-
   function syncLabelPrimaryActions() {
     const sec = document.getElementById('octavawms-panel-label');
     const loading = sec ? sec.classList.contains('is-loading') : false;
     const bodies = !!placesTableHasRenderableRows();
-    const locked = shipmentHasTracking();
-    const gen = root.querySelector('[data-octavawms-action="generate-label"]');
-    if (gen instanceof HTMLButtonElement) {
-      gen.disabled = locked || loading || !bodies;
-    }
+    const st = currentPanelLabelState();
+    const locked = st === 'locked';
+    root.querySelectorAll('[data-octavawms-action="generate-label"]').forEach(function (el) {
+      if (!(el instanceof HTMLButtonElement)) {
+        return;
+      }
+      if (el.classList.contains('button-link-delete')) {
+        el.disabled = locked || loading;
+      } else {
+        el.disabled = st !== 'draft' || loading || !bodies;
+      }
+    });
     const addBt = root.querySelector('[data-octavawms-action="place-add"]');
     if (addBt instanceof HTMLButtonElement) {
       var el = document.getElementById('octavawms-places-body');
@@ -629,14 +787,13 @@
     }
   }
 
-  /** @param {{ shipment?: Record<string,string>, shipment_id?: unknown, cod?: Record<string, unknown>, has_label_locally?: boolean }} data */
-  function labelTopActionsRowHtml(shipmentId, useRegenerateLabel, shipmentLocked) {
+  /** @param {boolean} shipmentLocked */
+  function labelTopActionsRowHtml(shipmentId, shipmentLocked) {
     if (shipmentLocked) {
       return '';
     }
     const sidStr = esc(String(shipmentId));
     const dis = shipmentId <= 0 ? ' disabled' : '';
-    const lbl = useRegenerateLabel ? cfg.strings.regenerateLabel : cfg.strings.generateLabel;
     return (
       '<button type="button" class="button button-secondary"' +
       dis +
@@ -644,39 +801,45 @@
       sidStr +
       '">' +
       esc(cfg.strings.addPlace) +
-      '</button>' +
-      '<button type="button" class="button button-primary"' +
-      dis +
-      ' disabled data-octavawms-action="generate-label" data-shipment-id="' +
-      sidStr +
-      '">' +
-      esc(lbl) +
       '</button>'
     );
   }
 
   function createLabelAndBoxesSection(data, shipment, hasLocal, dl, shipmentId, placesInitialInnerHtml) {
-    const useRegen = hasLocal && !!dl;
+    const labelState = panelLabelState(data, shipment);
     const tn =
       shipment && shipment.tracking_number != null && String(shipment.tracking_number).trim() !== ''
         ? String(shipment.tracking_number).trim()
         : '';
-    const shipmentLocked = tn !== '';
+    const shipmentLocked = labelState === 'locked';
 
     let banner = '';
     if (shipmentLocked) {
       banner +=
-        '<div class="octavawms-tracking-lock-banner">' +
-        '<p class="octavawms-tracking-line"><strong>' +
-        esc(cfg.strings.trackingNumber || 'Tracking') +
-        ':</strong> ' +
+        '<div class="octavawms-tracking-lock-banner ow-tracking-card">' +
+        '<span class="ow-tracking-number-label">' +
+        esc(cfg.strings.trackingNumberLabel || cfg.strings.trackingNumber || '') +
+        '</span>' +
+        '<div class="ow-tracking-number-row">' +
+        '<span class="ow-tracking-number-lg">' +
         esc(tn) +
-        '</p>' +
-        '<div class="octavawms-actions-row">' +
-        '<button type="button" class="button" data-octavawms-action="cancel-shipment" data-shipment-id="' +
+        '</span>' +
+        '<button type="button" class="button button-small" data-octavawms-action="copy-tracking" data-tracking-number="' +
+        hrefAttr(tn) +
+        '">' +
+        esc(cfg.strings.copyTracking || '') +
+        '</button>' +
+        '<button type="button" class="button button-primary" style="display:none" data-octavawms-action="track-shipment" data-tracking-number="' +
+        hrefAttr(tn) +
+        '">' +
+        esc(cfg.strings.trackShipment || '') +
+        '</button>' +
+        '</div>' +
+        '<div class="ow-tracking-cancel-row">' +
+        '<button type="button" class="button button-small" data-octavawms-action="cancel-shipment" data-shipment-id="' +
         esc(String(shipmentId)) +
         '">' +
-        esc(cfg.strings.cancelShipment || 'Cancel') +
+        esc(cfg.strings.cancelShipment || '') +
         '</button>' +
         '</div>' +
         '<p class="octavawms-muted octavawms-shipment-locked-msg">' +
@@ -684,35 +847,41 @@
         '</p></div>';
     }
 
-    let notices = '';
-    if (hasLocal && dl) {
-      notices +=
-        '<p class="octavawms-notice octavawms-notice--success">' + esc(cfg.strings.labelReady) + '</p>';
+    let boxesNotice = '';
+    if (labelState === 'generated') {
+      boxesNotice +=
+        '<p class="octavawms-notice octavawms-notice--warning">' +
+        esc(cfg.strings.boxesEditNeedsRegenerate || '') +
+        '</p>';
     }
 
-    let secondary = '';
-    if ((hasLocal && dl) || cfg.orderEditUrl) {
-      secondary = '<div class="octavawms-actions-row octavawms-actions-row--label-secondary">';
-      if (hasLocal && dl) {
-        secondary +=
-          '<button type="button" class="button button-secondary" data-octavawms-action="print-label" data-label-url="' +
-          hrefAttr(dl) +
-          '">' +
-          esc(cfg.strings.printLabel || 'Print') +
-          '</button>';
-        secondary +=
-          '<a class="button button-secondary" href="' +
-          hrefAttr(dl) +
-          '" target="_blank" rel="noopener noreferrer">' +
-          esc(cfg.strings.downloadLabel) +
-          '</a>';
-      }
-      if (cfg.orderEditUrl) {
-        secondary +=
-          '<a class="button" href="' + hrefAttr(cfg.orderEditUrl) + '">' + esc(cfg.strings.editOrder) + '</a>';
-      }
-      secondary += '</div>';
+    let editOrderFooter = '';
+    if (cfg.orderEditUrl) {
+      editOrderFooter =
+        '<p class="octavawms-muted octavawms-muted--tight">' +
+        '<a href="' +
+        hrefAttr(cfg.orderEditUrl) +
+        '">' +
+        esc(cfg.strings.editOrder) +
+        '</a></p>';
     }
+
+    const placesBody =
+      '<div id="octavawms-places-body" data-shipment-id="' +
+      esc(String(shipmentId)) +
+      '">' +
+      placesInitialInnerHtml +
+      '</div>';
+
+    const placesWrapped =
+      shipmentLocked
+        ? '<details class="octavawms-boxes-details"><summary>' +
+          esc(cfg.strings.labelPanelSrHeading) +
+          '</summary>' +
+          boxesNotice +
+          placesBody +
+          '</details>'
+        : boxesNotice + placesBody;
 
     const boxesWrap =
       '<div class="octavawms-label-boxes-mount">' +
@@ -720,13 +889,11 @@
       '<div class="octavawms-label-top-actions" data-shipment-id="' +
       esc(String(shipmentId)) +
       '">' +
-      labelTopActionsRowHtml(shipmentId, useRegen, shipmentLocked) +
+      labelTopActionsRowHtml(shipmentId, shipmentLocked) +
       '</div>' +
-      '<div id="octavawms-places-body" data-shipment-id="' +
-      esc(String(shipmentId)) +
-      '">' +
-      placesInitialInnerHtml +
-      '</div></div>';
+      placesWrapped +
+      editOrderFooter +
+      '</div>';
 
     return (
       '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label' +
@@ -736,8 +903,6 @@
       '">' +
       '<div class="octavawms-connect-section-body">' +
       boxesWrap +
-      notices +
-      secondary +
       '</div></section>'
     );
   }
@@ -773,7 +938,19 @@
   /** @type {string|null} */
   let labelViewerPdfObjectUrl = null;
 
+  function destroyPdfRender() {
+    if (pdfJsDoc) {
+      try {
+        pdfJsDoc.destroy();
+      } catch (e) {}
+      pdfJsDoc = null;
+      pdfJsPage = null;
+    }
+    pdfUserZoomScale = 1;
+  }
+
   function revokeLabelViewerPdfObjectUrl() {
+    destroyPdfRender();
     if (labelViewerPdfObjectUrl) {
       try {
         URL.revokeObjectURL(labelViewerPdfObjectUrl);
@@ -1076,26 +1253,61 @@
   }
 
   /**
-   * @param {string} downloadUrl
+   * @param {'fit'|'zoom-in'|'zoom-out'} mode
    */
+  function renderPdfPageToCanvas(mode) {
+    const canvas = document.getElementById('octavawms-label-pdf-canvas');
+    const wrap = canvas ? canvas.closest('.ow-pdf-canvas-wrap') : null;
+    if (!canvas || !wrap || !pdfJsPage) {
+      return;
+    }
+    const page = pdfJsPage;
+    const baseVp = page.getViewport({ scale: 1 });
+    const cw = Math.max(wrap.clientWidth || 400, 200);
+    const fitScale = cw / baseVp.width;
+    if (mode === 'fit') {
+      pdfUserZoomScale = 1;
+    } else if (mode === 'zoom-in') {
+      pdfUserZoomScale *= PDF_ZOOM_FACTOR;
+    } else if (mode === 'zoom-out') {
+      pdfUserZoomScale /= PDF_ZOOM_FACTOR;
+      if (pdfUserZoomScale < 0.25) {
+        pdfUserZoomScale = 0.25;
+      }
+    }
+    const scale = fitScale * pdfUserZoomScale;
+    const viewport = page.getViewport({ scale: scale });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function () {
+      ctx.restore();
+    });
+  }
+
   /**
    * @param {string} downloadUrl
    * @returns {Promise<void>}
    */
-  function attachLabelViewerPdfPreview(downloadUrl) {
+  function attachLabelPdfViewer(downloadUrl) {
     revokeLabelViewerPdfObjectUrl();
     const loading = document.getElementById('octavawms-label-viewer-loading');
-    const iframe = document.getElementById('octavawms-label-viewer-iframe');
+    const canvas = document.getElementById('octavawms-label-pdf-canvas');
     const errBox = document.getElementById('octavawms-label-viewer-error');
     const fallbackDl = document.getElementById('octavawms-label-viewer-fallback-dl');
-    if (!iframe || !downloadUrl) {
+    if (!canvas || !downloadUrl) {
       return Promise.resolve();
     }
     if (loading) {
       loading.style.display = '';
     }
-    iframe.style.display = 'none';
-    iframe.removeAttribute('src');
+    canvas.style.display = 'none';
     if (errBox) {
       errBox.style.display = 'none';
       errBox.innerHTML = '';
@@ -1104,39 +1316,84 @@
       fallbackDl.style.display = 'none';
     }
 
-    return resolvePdfPreviewForViewer(downloadUrl).then(function (resolved) {
-      if (!resolved.ok || !resolved.url) {
-        if (loading) {
-          loading.style.display = 'none';
-        }
-        if (errBox) {
-          errBox.style.display = '';
-          errBox.innerHTML =
-            '<p class="octavawms-notice octavawms-notice--error">' +
-            esc(cfg.strings.labelPreviewError || '') +
-            '</p>';
-        }
-        if (fallbackDl instanceof HTMLAnchorElement) {
-          fallbackDl.href = String(downloadUrl);
-          fallbackDl.style.display = '';
-        }
-        return;
-      }
-      if (resolved.objectUrl) {
-        labelViewerPdfObjectUrl = resolved.url;
-      }
+    if (typeof pdfjsLib === 'undefined') {
       if (loading) {
         loading.style.display = 'none';
       }
-      iframe.onload = function () {
-        iframe.style.display = '';
-      };
-      iframe.src = resolved.url;
-      if (!resolved.objectUrl) {
-        iframe.style.display = '';
+      if (errBox) {
+        errBox.style.display = '';
+        errBox.innerHTML =
+          '<p class="octavawms-notice octavawms-notice--error">' +
+          esc(cfg.strings.labelPreviewError || '') +
+          '</p>';
       }
-      syncLabelViewerActionUrls(resolved.url, !!resolved.objectUrl);
-    });
+      return Promise.resolve();
+    }
+    if (cfg.pdfjs && cfg.pdfjs.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = cfg.pdfjs.workerSrc;
+    }
+
+    return resolvePdfPreviewForViewer(downloadUrl)
+      .then(function (resolved) {
+        if (!resolved.ok || !resolved.url) {
+          if (loading) {
+            loading.style.display = 'none';
+          }
+          if (errBox) {
+            errBox.style.display = '';
+            errBox.innerHTML =
+              '<p class="octavawms-notice octavawms-notice--error">' +
+              esc(cfg.strings.labelPreviewError || '') +
+              '</p>';
+          }
+          if (fallbackDl instanceof HTMLAnchorElement) {
+            fallbackDl.href = String(downloadUrl);
+            fallbackDl.style.display = '';
+          }
+          return;
+        }
+        if (resolved.objectUrl) {
+          labelViewerPdfObjectUrl = resolved.url;
+        }
+        return fetch(resolved.url)
+          .then(function (r) {
+            return r.arrayBuffer();
+          })
+          .then(function (buf) {
+            return pdfjsLib.getDocument({ data: buf }).promise;
+          })
+          .then(function (pdf) {
+            pdfJsDoc = pdf;
+            return pdf.getPage(1);
+          })
+          .then(function (page) {
+            pdfJsPage = page;
+            pdfUserZoomScale = 1;
+            if (loading) {
+              loading.style.display = 'none';
+            }
+            canvas.style.display = '';
+            renderPdfPageToCanvas('fit');
+            syncLabelViewerActionUrls(resolved.url, !!resolved.objectUrl);
+          })
+          .catch(function () {
+            if (loading) {
+              loading.style.display = 'none';
+            }
+            if (errBox) {
+              errBox.style.display = '';
+              errBox.innerHTML =
+                '<p class="octavawms-notice octavawms-notice--error">' +
+                esc(cfg.strings.labelPreviewError || '') +
+                '</p>';
+            }
+          });
+      })
+      .catch(function () {
+        if (loading) {
+          loading.style.display = 'none';
+        }
+      });
   }
 
   function openLabelPrint(url) {
@@ -1179,55 +1436,121 @@
     );
   }
 
-  function labelViewerBodyInner(downloadUrl, shipmentId) {
-    const sidStr = esc(String(shipmentId));
-    if (downloadUrl) {
-      const dlNorm = labelUrlForIframeOrPrint(String(downloadUrl));
-      const actions =
-        '<button type="button" class="button button-primary" data-octavawms-action="print-label" data-label-url="' +
-        hrefAttr(dlNorm) +
-        '">' +
-        esc(cfg.strings.printLabel || 'Print') +
-        '</button>' +
-        '<a class="button button-secondary octavawms-label-viewer-download" href="' +
-        hrefAttr(dlNorm) +
-        '" target="_blank" rel="noopener noreferrer">' +
-        esc(cfg.strings.downloadLabel) +
-        '</a>';
-      return (
-        labelViewerHeadRowHtml(actions) +
-        '<div class="octavawms-label-viewer-frame-wrap">' +
-        '<div id="octavawms-label-viewer-loading" class="octavawms-muted octavawms-label-viewer-loading">' +
-        '<span class="octavawms-spinner"></span> ' +
-        esc(cfg.strings.loading || '') +
-        '</div>' +
-        '<iframe id="octavawms-label-viewer-iframe" class="octavawms-label-viewer-iframe" style="display:none" title="' +
-        esc(cfg.strings.labelViewerTitle || 'Label') +
-        '"></iframe>' +
-        '<div id="octavawms-label-viewer-error" class="octavawms-label-viewer-error" style="display:none"></div>' +
-        '<a id="octavawms-label-viewer-fallback-dl" class="button button-primary octavawms-label-viewer-fallback-dl" href="' +
-        hrefAttr(dlNorm) +
-        '" style="display:none" target="_blank" rel="noopener noreferrer">' +
-        esc(cfg.strings.downloadLabel) +
-        '</a>' +
-        '</div>'
-      );
-    }
-    const loadBtn =
-      '<button type="button" class="button button-primary" data-octavawms-action="fetch-label-pdf" data-shipment-id="' +
-      sidStr +
-      '">' +
-      esc(cfg.strings.fetchLabel || 'Load') +
-      '</button>';
+  function labelViewerToolbarZoomHtml() {
     return (
-      labelViewerHeadRowHtml(loadBtn) +
-      '<p class="octavawms-muted"><span class="octavawms-spinner"></span> ' +
-      esc(cfg.strings.fetchingLabel || '') +
-      '</p>'
+      '<div class="ow-pdf-toolbar">' +
+      '<button type="button" class="button button-small" data-octavawms-action="pdf-zoom-out" title="' +
+      esc(cfg.strings.zoomOut || '') +
+      '">−</button>' +
+      '<button type="button" class="button button-small" data-octavawms-action="pdf-zoom-in" title="' +
+      esc(cfg.strings.zoomIn || '') +
+      '">+</button>' +
+      '<button type="button" class="button button-small" data-octavawms-action="pdf-fit" title="' +
+      esc(cfg.strings.fitPage || '') +
+      '">' +
+      esc(cfg.strings.fitPage || 'Fit') +
+      '</button>' +
+      '</div>'
     );
   }
 
-  function labelViewerSectionHtml(downloadUrl, shipmentId) {
+  /**
+   * @param {string} downloadUrl
+   * @param {number} shipmentId
+   * @param {'draft'|'generated'|'locked'} labelState
+   */
+  function labelViewerBodyInner(downloadUrl, shipmentId, labelState) {
+    const sidStr = esc(String(shipmentId));
+    if (labelState === 'draft') {
+      const genBtn =
+        '<button type="button" class="button button-primary" disabled data-octavawms-action="generate-label" data-shipment-id="' +
+        sidStr +
+        '">' +
+        esc(cfg.strings.generateLabel) +
+        '</button>';
+      return (
+        labelViewerHeadRowHtml(genBtn) +
+        '<p class="octavawms-muted">' +
+        esc(cfg.strings.labelDraftHint || '') +
+        '</p>'
+      );
+    }
+
+    const dlNorm = downloadUrl ? labelUrlForIframeOrPrint(String(downloadUrl)) : '';
+    const locked = labelState === 'locked';
+    const regDis = locked ? ' disabled' : '';
+    const regTitle = locked ? ' title="' + esc(cfg.strings.shipmentLocked || '') + '"' : '';
+
+    const zoomBar = labelViewerToolbarZoomHtml();
+    const actionsRight =
+      '<button type="button" class="button button-primary" data-octavawms-action="print-label" data-label-url="' +
+      hrefAttr(dlNorm) +
+      '">' +
+      esc(cfg.strings.printLabel || '') +
+      '</button>' +
+      '<a class="button button-secondary octavawms-label-viewer-download" href="' +
+      hrefAttr(dlNorm) +
+      '" target="_blank" rel="noopener noreferrer">' +
+      esc(cfg.strings.downloadLabel) +
+      '</a>' +
+      '<button type="button" class="button button-link-delete"' +
+      regDis +
+      regTitle +
+      ' data-octavawms-action="generate-label" data-shipment-id="' +
+      sidStr +
+      '">' +
+      esc(cfg.strings.regenerateLabel || '') +
+      '</button>';
+
+    const toolbarMerge =
+      '<div class="ow-label-toolbar-merge">' +
+      zoomBar +
+      '<div class="ow-label-toolbar-actions">' +
+      actionsRight +
+      '</div></div>';
+
+    if (!downloadUrl) {
+      return (
+        labelViewerHeadRowHtml(
+          '<button type="button" class="button button-primary" data-octavawms-action="fetch-label-pdf" data-shipment-id="' +
+            sidStr +
+            '">' +
+            esc(cfg.strings.fetchLabel || '') +
+            '</button>'
+        ) +
+        '<p class="octavawms-muted"><span class="octavawms-spinner"></span> ' +
+        esc(cfg.strings.fetchingLabel || '') +
+        '</p>'
+      );
+    }
+
+    return (
+      labelViewerHeadRowHtml('') +
+      toolbarMerge +
+      '<div class="octavawms-label-viewer-frame-wrap">' +
+      '<div id="octavawms-label-viewer-loading" class="octavawms-muted octavawms-label-viewer-loading">' +
+      '<span class="octavawms-spinner"></span> ' +
+      esc(cfg.strings.loading || '') +
+      '</div>' +
+      '<div class="ow-pdf-canvas-wrap">' +
+      '<canvas id="octavawms-label-pdf-canvas" class="ow-pdf-canvas" aria-label="' +
+      esc(cfg.strings.labelViewerTitle || '') +
+      '"></canvas>' +
+      '</div>' +
+      '<div id="octavawms-label-viewer-error" class="octavawms-label-viewer-error" style="display:none"></div>' +
+      '<a id="octavawms-label-viewer-fallback-dl" class="button button-primary octavawms-label-viewer-fallback-dl" href="' +
+      hrefAttr(dlNorm) +
+      '" style="display:none" target="_blank" rel="noopener noreferrer">' +
+      esc(cfg.strings.downloadLabel) +
+      '</a>' +
+      '</div>'
+    );
+  }
+
+  /**
+   * @param {'draft'|'generated'|'locked'} labelState
+   */
+  function labelViewerSectionHtml(downloadUrl, shipmentId, labelState) {
     return (
       '<div class="octavawms-sp-card octavawms-label-viewer-card" id="octavawms-label-viewer-card" data-shipment-id="' +
       esc(String(shipmentId)) +
@@ -1235,7 +1558,7 @@
       '<div id="octavawms-label-viewer-body" data-shipment-id="' +
       esc(String(shipmentId)) +
       '">' +
-      labelViewerBodyInner(downloadUrl, shipmentId) +
+      labelViewerBodyInner(downloadUrl, shipmentId, labelState) +
       '</div></div>'
     );
   }
@@ -1299,8 +1622,8 @@
         }
         const url = String(j.data.download_url);
         if (viewerEl) {
-          viewerEl.innerHTML = labelViewerBodyInner(url, shipmentId);
-          attachLabelViewerPdfPreview(url);
+          viewerEl.innerHTML = labelViewerBodyInner(url, shipmentId, 'generated');
+          attachLabelPdfViewer(url);
         }
       })
       .catch(function () {
@@ -1377,6 +1700,7 @@
 
     if (!hasOrder) {
       revokeLabelViewerPdfObjectUrl();
+      lastOrderPanelPayload = null;
       panelShipment = null;
       spDetail = null;
       html =
@@ -1397,6 +1721,7 @@
 
     if (!shipment || !shipment.id) {
       revokeLabelViewerPdfObjectUrl();
+      lastOrderPanelPayload = null;
       panelShipment = null;
       spDetail = null;
       html = '<div class="octavawms-connect-page">' + toolbarHtml() + '<div class="octavawms-connect-grid">';
@@ -1421,14 +1746,26 @@
       return;
     }
 
+    lastOrderPanelPayload = data;
     panelShipment = shipment;
     spDetail = null;
     lastSpShipmentId = 0;
+
+    const lblState = panelLabelState(data, shipment);
+    const hasTracking =
+      shipment &&
+      shipment.tracking_number != null &&
+      String(shipment.tracking_number).trim() !== '';
+
+    const gridModifier = lblState !== 'draft' ? ' octavawms-connect-grid--label-first' : '';
+
     html =
       '<div class="octavawms-connect-page">' +
       toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
       pendingErrorBannerWrapperHtml(panelShipment, null) +
-      '<div class="octavawms-connect-grid">';
+      '<div class="octavawms-connect-grid' +
+      gridModifier +
+      '">';
 
     html +=
       '<div class="octavawms-slot octavawms-slot--label">' +
@@ -1442,30 +1779,45 @@
       ) +
       '</div>';
 
-    const hasTracking =
-      shipment &&
-      shipment.tracking_number != null &&
-      String(shipment.tracking_number).trim() !== '';
-
     html +=
-      '<div class="octavawms-slot octavawms-slot--sp">' +
-      (hasTracking ? labelViewerSectionHtml(dl, sid) : servicePointSlotLoading(sid)) +
+      '<div class="octavawms-slot octavawms-slot--sp octavawms-slot--stack">' +
+      labelViewerSectionHtml(dl, sid, lblState) +
+      (!hasTracking ? '<div class="octavawms-sp-below-label">' + servicePointSlotLoading(sid) + '</div>' : '') +
       '</div>';
 
     html += '</div></div>';
     revokeLabelViewerPdfObjectUrl();
     root.innerHTML = html;
 
-    if (hasTracking) {
+    if (lblState === 'generated' || lblState === 'locked') {
       if (dl) {
-        attachLabelViewerPdfPreview(String(dl));
-      } else {
+        attachLabelPdfViewer(String(dl));
+      } else if (hasTracking) {
         scheduleFetchLabelPdf(sid);
       }
-    } else {
+    }
+
+    if (!hasTracking) {
       loadServicePointSection(sid);
     }
     loadPlacesSection(sid);
+
+    if (pendingLabelSuccessToast) {
+      pendingLabelSuccessToast = false;
+      window.setTimeout(function () {
+        showLabelToast(cfg.strings.labelGeneratedToast || '');
+      }, 80);
+    }
+
+    if (hasTracking && lblState === 'locked') {
+      const tn =
+        shipment && shipment.tracking_number != null ? String(shipment.tracking_number).trim() : '';
+      if (tn) {
+        hydrateTrackingCarrierButtons(sid, tn);
+      }
+    }
+
+    syncLabelPrimaryActions();
   }
 
   function loadServicePointSection(shipmentId) {
@@ -2274,7 +2626,7 @@
   }
 
   function renderPlacesTable(body, shipmentId, places) {
-    const locked = shipmentHasTracking();
+    const locked = currentPanelLabelState() === 'locked';
     if (places.length === 0) {
       body.innerHTML = '<p class="octavawms-muted">' + esc(cfg.strings.noPlaces) + '</p>';
       syncLabelPrimaryActions();
@@ -2283,6 +2635,10 @@
 
     const nPlaces = places.length;
     let h = '<p class="octavawms-muted octavawms-places-summary">' + placesSummaryLineHtmlFromPlacesJson(places) + '</p>';
+    h +=
+      '<p class="octavawms-muted octavawms-muted--tight">' +
+      esc(cfg.strings.weightRecalcNote || '') +
+      '</p>';
     h += '<div class="octavawms-place-table-wrap"><table class="widefat striped octavawms-place-table octavawms-place-table--compact"><thead><tr>';
     h += '<th class="octavawms-place-th-box">' + esc(cfg.strings.boxColumn) + '</th>';
     h +=
@@ -2329,39 +2685,46 @@
 
       h += '<tr class="octavawms-place-row" data-place-id="' + pidStr + '" data-items-count="' + esc(String(ic)) + '">';
       h += '<td class="octavawms-place-td-num">' + esc(String(idx + 1)) + '</td>';
-      h +=
-        '<td><input type="number" class="octavawms-place-input" aria-label="' +
-        esc(cfg.strings.weightG) +
-        '" step="any" value="' +
-        esc(String(p.weight)) +
-        '"' +
-        disAttr +
-        '/></td>';
-      const dxLab = dimAbbrev(cfg.strings.widthMm);
-      h +=
-        '<td><input type="number" class="octavawms-place-input" aria-label="' +
-        dxLab +
-        '" step="any" value="' +
-        esc(String(p.dim_x)) +
-        '"' +
-        disAttr +
-        '/></td>';
-      h +=
-        '<td><input type="number" class="octavawms-place-input" aria-label="' +
-        dimAbbrev(cfg.strings.heightMm) +
-        '" step="any" value="' +
-        esc(String(p.dim_y)) +
-        '"' +
-        disAttr +
-        '/></td>';
-      h +=
-        '<td><input type="number" class="octavawms-place-input" aria-label="' +
-        dimAbbrev(cfg.strings.lengthMm) +
-        '" step="any" value="' +
-        esc(String(p.dim_z)) +
-        '"' +
-        disAttr +
-        '/></td>';
+      if (locked) {
+        h += '<td>' + esc(String(p.weight)) + '</td>';
+        h += '<td>' + esc(String(p.dim_x)) + '</td>';
+        h += '<td>' + esc(String(p.dim_y)) + '</td>';
+        h += '<td>' + esc(String(p.dim_z)) + '</td>';
+      } else {
+        h +=
+          '<td><input type="number" class="octavawms-place-input" aria-label="' +
+          esc(cfg.strings.weightG) +
+          '" step="any" value="' +
+          esc(String(p.weight)) +
+          '"' +
+          disAttr +
+          '/></td>';
+        const dxLab = dimAbbrev(cfg.strings.widthMm);
+        h +=
+          '<td><input type="number" class="octavawms-place-input" aria-label="' +
+          dxLab +
+          '" step="any" value="' +
+          esc(String(p.dim_x)) +
+          '"' +
+          disAttr +
+          '/></td>';
+        h +=
+          '<td><input type="number" class="octavawms-place-input" aria-label="' +
+          dimAbbrev(cfg.strings.heightMm) +
+          '" step="any" value="' +
+          esc(String(p.dim_y)) +
+          '"' +
+          disAttr +
+          '/></td>';
+        h +=
+          '<td><input type="number" class="octavawms-place-input" aria-label="' +
+          dimAbbrev(cfg.strings.lengthMm) +
+          '" step="any" value="' +
+          esc(String(p.dim_z)) +
+          '"' +
+          disAttr +
+          '/></td>';
+      }
       h += '<td class="octavawms-place-td-actions">' + actionsCell + '</td>';
       h += '</tr>';
     });
@@ -2434,7 +2797,7 @@
   }
 
   function generateLabel() {
-    if (shipmentHasTracking()) {
+    if (currentPanelLabelState() === 'locked') {
       return;
     }
     var sid = currentShipmentIdFromDom();
@@ -2472,6 +2835,7 @@
           renderError((j && j.data && j.data.message) || cfg.strings.error, sid);
           return;
         }
+        pendingLabelSuccessToast = true;
         fetchStatus();
       })
       .catch(function () {
@@ -2564,6 +2928,46 @@
         var pu = btn.getAttribute('data-label-url');
         if (pu) {
           openLabelPrint(pu);
+        }
+        return;
+      }
+      if (act === 'pdf-zoom-out') {
+        e.preventDefault();
+        renderPdfPageToCanvas('zoom-out');
+        return;
+      }
+      if (act === 'pdf-zoom-in') {
+        e.preventDefault();
+        renderPdfPageToCanvas('zoom-in');
+        return;
+      }
+      if (act === 'pdf-fit') {
+        e.preventDefault();
+        renderPdfPageToCanvas('fit');
+        return;
+      }
+      if (act === 'copy-tracking') {
+        e.preventDefault();
+        var trackNum = btn.getAttribute('data-tracking-number') || '';
+        if (trackNum && navigator.clipboard && navigator.clipboard.writeText) {
+          var prevCopy = btn.textContent;
+          navigator.clipboard
+            .writeText(trackNum)
+            .then(function () {
+              btn.textContent = String(cfg.strings.copiedTracking || 'Copied');
+              window.setTimeout(function () {
+                btn.textContent = prevCopy;
+              }, 1600);
+            })
+            .catch(function () {});
+        }
+        return;
+      }
+      if (act === 'track-shipment') {
+        e.preventDefault();
+        var trk = btn.getAttribute('data-track-url') || '';
+        if (trk) {
+          window.open(trk, '_blank', 'noopener,noreferrer');
         }
         return;
       }
@@ -2660,7 +3064,7 @@
       }
       if (act === 'place-add') {
         e.preventDefault();
-        if (shipmentHasTracking()) {
+        if (currentPanelLabelState() === 'locked') {
           return;
         }
         var sid = parseInt(btn.getAttribute('data-shipment-id') || '0', 10) || 0;
