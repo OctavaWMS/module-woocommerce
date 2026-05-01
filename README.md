@@ -2,6 +2,11 @@
 
 WordPress + WooCommerce plugin that **connects your store to OctavaWMS**. It includes **shipping label** generation and download, **one-click connect** to provision credentials on the OctavaWMS cloud, an **order edit panel** that syncs status with the backend, and is structured so we can add more features over time.
 
+## Documentation
+
+- **[Documentation index](docs/README.md)** — module overview, ClickUp workflow (**Modules** list, **`module-woocommerce`** tag), links to deeper topics.
+- **[Agent / ClickUp conventions](AGENTS.md)** — commits, `composer check`, task list and tag (for any coding agent).
+
 ## Requirements
 
 - WordPress 6.0+
