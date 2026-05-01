@@ -50,10 +50,10 @@ class BackendApiClient
             'headers' => $headers,
         ];
         if ($jsonBody !== null) {
-            $args['body'] = wp_json_encode($jsonBody);
+            $args['body'] = \wp_json_encode($jsonBody);
         }
 
-        $response = wp_remote_request($url, $args);
+        $response = \wp_remote_request($url, $args);
         if ($response instanceof WP_Error) {
             return [
                 'ok' => false,
@@ -64,16 +64,16 @@ class BackendApiClient
             ];
         }
 
-        $status = (int) wp_remote_retrieve_response_code($response);
+        $status = (int) \wp_remote_retrieve_response_code($response);
         if ($status === 401 && ! $retried && $this->refreshBearerToken()) {
             return $this->request($method, $path, $jsonBody, true);
         }
 
-        $raw = (string) wp_remote_retrieve_body($response);
+        $raw = (string) \wp_remote_retrieve_body($response);
         $data = json_decode($raw, true);
 
         /** @var array<string, string> $flatHdr */
-        $flatHdr = PluginLog::flattenWpResponseHeaders(wp_remote_retrieve_headers($response));
+        $flatHdr = PluginLog::flattenWpResponseHeaders(\wp_remote_retrieve_headers($response));
 
         return [
             'ok' => $status >= 200 && $status < 300,
@@ -100,7 +100,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __(
+                'message' => \__(
                     'Connect the plugin under WooCommerce → Settings → Integrations first.',
                     'octavawms'
                 ),
@@ -112,7 +112,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (user lookup failed).', 'octavawms'),
+                'message' => \__('Could not open panel login (user lookup failed).', 'octavawms'),
             ];
         }
 
@@ -121,7 +121,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (invalid user id).', 'octavawms'),
+                'message' => \__('Could not open panel login (invalid user id).', 'octavawms'),
             ];
         }
 
@@ -130,7 +130,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (authenticate request failed).', 'octavawms'),
+                'message' => \__('Could not open panel login (authenticate request failed).', 'octavawms'),
             ];
         }
 
@@ -139,7 +139,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (missing refresh token).', 'octavawms'),
+                'message' => \__('Could not open panel login (missing refresh token).', 'octavawms'),
             ];
         }
 
@@ -159,17 +159,17 @@ class BackendApiClient
             return false;
         }
 
-        $siteUrl = (string) home_url();
-        $adminEmail = (string) get_option('admin_email', '');
+        $siteUrl = (string) \home_url();
+        $adminEmail = (string) \get_option('admin_email', '');
         if ($siteUrl === '' || $adminEmail === '') {
             return false;
         }
 
         $connectUrl = rtrim($this->getBaseUrl(), '/') . '/apps/woocommerce/connect';
-        $bodyJson = (string) wp_json_encode([
+        $bodyJson = (string) \wp_json_encode([
             'siteUrl' => $siteUrl,
             'adminEmail' => $adminEmail,
-            'storeName' => (string) get_bloginfo('name', 'display'),
+            'storeName' => (string) \get_bloginfo('name', 'display'),
         ]);
         $headers = [
             'Content-Type' => 'application/json',
@@ -181,7 +181,7 @@ class BackendApiClient
             $headers['Authorization'] = $signed['header'];
         }
 
-        $response = wp_remote_post($connectUrl, [
+        $response = \wp_remote_post($connectUrl, [
             'timeout' => 30,
             'headers' => $headers,
             'body' => $bodyJson,
@@ -193,7 +193,7 @@ class BackendApiClient
             return false;
         }
 
-        $raw = (string) wp_remote_retrieve_body($response);
+        $raw = (string) \wp_remote_retrieve_body($response);
         $data = json_decode($raw, true);
         if (! is_array($data)) {
             PluginLog::log(
@@ -238,8 +238,8 @@ class BackendApiClient
             return false;
         }
 
-        $url = (string) apply_filters('octavawms_oauth_url', rtrim($this->getBaseUrl(), '/') . self::OAUTH_PATH);
-        $clientId = (string) apply_filters('octavawms_oauth_client_id', 'orderadmin');
+        $url = (string) \apply_filters('octavawms_oauth_url', rtrim($this->getBaseUrl(), '/') . self::OAUTH_PATH);
+        $clientId = (string) \apply_filters('octavawms_oauth_client_id', 'orderadmin');
         /** @var array<string, string> $payload */
         $payload = [
             'grant_type' => 'refresh_token',
@@ -252,10 +252,10 @@ class BackendApiClient
             'Accept' => 'application/json',
         ];
 
-        $response = wp_remote_post($url, [
+        $response = \wp_remote_post($url, [
             'timeout' => 30,
             'headers' => $headers,
-            'body' => (string) wp_json_encode($payload),
+            'body' => (string) \wp_json_encode($payload),
         ]);
 
         if ($response instanceof WP_Error) {
@@ -264,7 +264,7 @@ class BackendApiClient
             return false;
         }
 
-        $raw = (string) wp_remote_retrieve_body($response);
+        $raw = (string) \wp_remote_retrieve_body($response);
         $data = json_decode($raw, true);
         if (! is_array($data)) {
             PluginLog::log(
@@ -666,8 +666,8 @@ class BackendApiClient
         $page = max(1, $page);
         $trimSearch = trim($search);
         $perPage = ($trimSearch === '' && $page === 1)
-            ? (int) apply_filters('octavawms_delivery_services_initial_per_page', 10)
-            : (int) apply_filters('octavawms_delivery_services_per_page', 25);
+            ? (int) \apply_filters('octavawms_delivery_services_initial_per_page', 10)
+            : (int) \apply_filters('octavawms_delivery_services_per_page', 25);
         if ($perPage < 1) {
             $perPage = 1;
         }
@@ -917,7 +917,7 @@ class BackendApiClient
                 return '/' . ltrim((string) $rest, '/');
             }
 
-            $parts = wp_parse_url($href);
+            $parts = \wp_parse_url($href);
             if (is_array($parts) && isset($parts['path']) && is_string($parts['path'])) {
                 $path = $parts['path'];
                 $query = isset($parts['query']) && is_string($parts['query']) ? '?' . $parts['query'] : '';
@@ -1142,11 +1142,11 @@ class BackendApiClient
         if ($fromSender !== null && $fromSender !== '') {
             return $fromSender;
         }
-        $blog = trim((string) get_bloginfo('name'));
+        $blog = trim((string) \get_bloginfo('name'));
         if ($blog !== '') {
             return $blog;
         }
-        $host = wp_parse_url((string) home_url(), PHP_URL_HOST);
+        $host = \wp_parse_url((string) \home_url(), PHP_URL_HOST);
         if (is_string($host)) {
             $host = trim($host);
         }
@@ -1248,7 +1248,7 @@ class BackendApiClient
 
         $url = rtrim($this->getBaseUrl(), '/') . $path;
         $headers = [
-            'Accept' => 'application/pdf,text/html',
+            'Accept' => 'application/pdf,text/html,application/json,application/hal+json',
             'Content-Type' => 'application/json',
         ];
         $apiKey = Options::getApiKey();
@@ -1256,11 +1256,11 @@ class BackendApiClient
             $headers['Authorization'] = 'Bearer ' . $apiKey;
         }
 
-        $response = wp_remote_request($url, [
+        $response = \wp_remote_request($url, [
             'method' => $method,
             'timeout' => 45,
             'headers' => $headers,
-            'body' => (string) wp_json_encode($payload),
+            'body' => (string) \wp_json_encode($payload),
         ]);
 
         if ($response instanceof WP_Error) {
@@ -1273,7 +1273,7 @@ class BackendApiClient
             return ['ok' => false, 'pdf' => null, 'content_type' => '', 'task_id' => null, 'message' => $response->get_error_message()];
         }
 
-        $status = (int) wp_remote_retrieve_response_code($response);
+        $status = (int) \wp_remote_retrieve_response_code($response);
         if ($status === 401 && ! $retried && $this->refreshBearerToken()) {
             return $this->createOrUpdatePreprocessingTask($taskId, $payload, true);
         }
@@ -1285,7 +1285,7 @@ class BackendApiClient
                 PluginLog::httpExchange($method, $url, $headers, $payload, $response)
             );
 
-            $errBody = (string) wp_remote_retrieve_body($response);
+            $errBody = (string) \wp_remote_retrieve_body($response);
 
             return [
                 'ok' => false,
@@ -1296,17 +1296,200 @@ class BackendApiClient
             ];
         }
 
-        $contentType = strtolower((string) wp_remote_retrieve_response_header($response, 'content-type'));
-        $body = (string) wp_remote_retrieve_body($response);
+        $contentType = self::contentTypeFromWpHttpResponse($response);
+        $body = (string) \wp_remote_retrieve_body($response);
 
-        if (str_contains($contentType, 'application/pdf') || str_contains($contentType, 'text/html')) {
-            return ['ok' => true, 'pdf' => $body, 'content_type' => $contentType, 'task_id' => $taskId];
+        $norm = self::normalizePreprocessingTaskPdfPayload($body, $contentType);
+        if ($norm['pdf'] !== null) {
+            $data = json_decode($body, true);
+            $newTaskId = is_array($data) && isset($data['id']) && is_int($data['id']) ? $data['id'] : $taskId;
+
+            return ['ok' => true, 'pdf' => $norm['pdf'], 'content_type' => $norm['effective_type'], 'task_id' => $newTaskId];
         }
 
         $data = json_decode($body, true);
         $newTaskId = is_array($data) && isset($data['id']) && is_int($data['id']) ? $data['id'] : $taskId;
 
         return ['ok' => true, 'pdf' => null, 'content_type' => $contentType, 'task_id' => $newTaskId];
+    }
+
+    /**
+     * Turn preprocessing-task GET/POST bodies into raw PDF/HTML bytes when the API returns JSON or base64-wrapped PDF.
+     *
+     * @return array{pdf: string|null, effective_type: string}
+     */
+    private static function normalizePreprocessingTaskPdfPayload(string $body, string $contentType): array
+    {
+        $ctLower = strtolower($contentType);
+
+        if (str_contains($ctLower, 'text/html')) {
+            return ['pdf' => $body, 'effective_type' => $contentType];
+        }
+
+        $trimmed = trim($body);
+        if ($trimmed === '') {
+            return ['pdf' => null, 'effective_type' => $contentType];
+        }
+
+        if (str_contains($ctLower, 'json') || str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[')) {
+            $fromJson = self::extractPdfFromJsonString($trimmed);
+            if ($fromJson !== null) {
+                return ['pdf' => $fromJson, 'effective_type' => 'application/pdf'];
+            }
+
+            return ['pdf' => null, 'effective_type' => $contentType];
+        }
+
+        if (str_contains($ctLower, 'application/pdf') || str_contains($ctLower, 'application/octet-stream')) {
+            if (str_starts_with($trimmed, '%PDF')) {
+                return ['pdf' => $body, 'effective_type' => 'application/pdf'];
+            }
+            $decoded = self::tryBase64DecodeToPdf($trimmed);
+            if ($decoded !== null) {
+                return ['pdf' => $decoded, 'effective_type' => 'application/pdf'];
+            }
+            if (str_starts_with($trimmed, '{')) {
+                $fromJson = self::extractPdfFromJsonString($trimmed);
+                if ($fromJson !== null) {
+                    return ['pdf' => $fromJson, 'effective_type' => 'application/pdf'];
+                }
+            }
+
+            return ['pdf' => $body, 'effective_type' => $contentType];
+        }
+
+        if (str_starts_with($trimmed, '%PDF')) {
+            return ['pdf' => $body, 'effective_type' => 'application/pdf'];
+        }
+        $decoded = self::tryBase64DecodeToPdf($trimmed);
+        if ($decoded !== null) {
+            return ['pdf' => $decoded, 'effective_type' => 'application/pdf'];
+        }
+        if (str_starts_with($trimmed, '{')) {
+            $fromJson = self::extractPdfFromJsonString($trimmed);
+            if ($fromJson !== null) {
+                return ['pdf' => $fromJson, 'effective_type' => 'application/pdf'];
+            }
+        }
+
+        return ['pdf' => null, 'effective_type' => $contentType];
+    }
+
+    private static function extractPdfFromJsonString(string $json): ?string
+    {
+        $data = json_decode($json, true);
+        if (! is_array($data)) {
+            return null;
+        }
+
+        return self::findPdfBinaryInDecodedJson($data, 0);
+    }
+
+    /**
+     * @param array<mixed> $node
+     */
+    private static function findPdfBinaryInDecodedJson(array $node, int $depth): ?string
+    {
+        if ($depth > 10) {
+            return null;
+        }
+
+        $priorityKeys = ['pdfData', 'pdf', 'pdf_base64', 'pdfBase64', 'labelPdf', 'label_pdf', 'content'];
+        foreach ($priorityKeys as $k) {
+            if (! isset($node[$k]) || ! is_string($node[$k])) {
+                continue;
+            }
+            $got = self::pdfFromStringCandidate($node[$k]);
+            if ($got !== null) {
+                return $got;
+            }
+        }
+
+        foreach ($node as $v) {
+            if (is_array($v)) {
+                $nested = self::findPdfBinaryInDecodedJson($v, $depth + 1);
+                if ($nested !== null) {
+                    return $nested;
+                }
+            } elseif (is_string($v) && strlen($v) > 200) {
+                $got = self::pdfFromStringCandidate($v);
+                if ($got !== null) {
+                    return $got;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static function pdfFromStringCandidate(string $s): ?string
+    {
+        $t = trim($s);
+        if ($t === '') {
+            return null;
+        }
+        if (str_starts_with($t, '%PDF')) {
+            return $t;
+        }
+
+        return self::tryBase64DecodeToPdf($t);
+    }
+
+    private static function tryBase64DecodeToPdf(string $s): ?string
+    {
+        $compact = preg_replace('/\s+/', '', $s) ?? '';
+        if ($compact === '') {
+            return null;
+        }
+
+        $bin = base64_decode($compact, true);
+        if ($bin !== false && str_starts_with($bin, '%PDF')) {
+            return $bin;
+        }
+        $pad = (4 - strlen($compact) % 4) % 4;
+        if ($pad > 0) {
+            $bin = base64_decode($compact . str_repeat('=', $pad), true);
+        }
+        if ($bin === false || $bin === '' || ! str_starts_with($bin, '%PDF')) {
+            return null;
+        }
+
+        return $bin;
+    }
+
+    /**
+     * Content-Type from an HTTP API response.
+     *
+     * Falls back to {@see wp_remote_retrieve_headers()} when {@see wp_remote_retrieve_response_header()} is unavailable (WordPress before 4.6).
+     */
+    private static function contentTypeFromWpHttpResponse(mixed $response): string
+    {
+        if (\function_exists('wp_remote_retrieve_response_header')) {
+            return strtolower(trim((string) \wp_remote_retrieve_response_header($response, 'content-type')));
+        }
+
+        $headers = \wp_remote_retrieve_headers($response);
+        if (\is_wp_error($headers)) {
+            return '';
+        }
+        if (\is_array($headers)) {
+            foreach ($headers as $name => $value) {
+                if (\strcasecmp((string) $name, 'content-type') === 0) {
+                    return strtolower(trim((string) $value));
+                }
+            }
+
+            return '';
+        }
+        if (\is_object($headers)) {
+            foreach ($headers as $name => $value) {
+                if (\strcasecmp((string) $name, 'content-type') === 0) {
+                    return strtolower(trim((string) $value));
+                }
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -1318,12 +1501,12 @@ class BackendApiClient
     {
         $url = rtrim($this->getBaseUrl(), '/') . '/api/delivery-services/preprocessing-task/' . $taskId;
         $apiKey = Options::getApiKey();
-        $headers = ['Accept' => 'application/pdf,text/html'];
+        $headers = ['Accept' => 'application/pdf,text/html,application/json,application/hal+json'];
         if ($apiKey !== '') {
             $headers['Authorization'] = 'Bearer ' . $apiKey;
         }
 
-        $response = wp_remote_request($url, [
+        $response = \wp_remote_request($url, [
             'method' => 'GET',
             'timeout' => 30,
             'headers' => $headers,
@@ -1339,12 +1522,18 @@ class BackendApiClient
             return ['ok' => false, 'ready' => false, 'pdf' => null, 'content_type' => '', 'status' => 0];
         }
 
-        $status = (int) wp_remote_retrieve_response_code($response);
-        $contentType = strtolower((string) wp_remote_retrieve_response_header($response, 'content-type'));
-        $body = (string) wp_remote_retrieve_body($response);
+        $status = (int) \wp_remote_retrieve_response_code($response);
+        $contentType = self::contentTypeFromWpHttpResponse($response);
+        $body = (string) \wp_remote_retrieve_body($response);
 
-        if ($status >= 200 && $status < 300 && (str_contains($contentType, 'application/pdf') || str_contains($contentType, 'text/html'))) {
-            return ['ok' => true, 'ready' => true, 'pdf' => $body, 'content_type' => $contentType, 'status' => $status];
+        if ($status >= 200 && $status < 300) {
+            $norm = self::normalizePreprocessingTaskPdfPayload($body, $contentType);
+            if ($norm['pdf'] !== null) {
+                $eff = strtolower($norm['effective_type']);
+                $ready = str_contains($eff, 'application/pdf') || str_contains($eff, 'text/html');
+
+                return ['ok' => true, 'ready' => $ready, 'pdf' => $norm['pdf'], 'content_type' => $norm['effective_type'], 'status' => $status];
+            }
         }
 
         if ($status < 200 || $status >= 300) {

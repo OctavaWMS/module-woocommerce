@@ -61,6 +61,8 @@ class LabelAjax
         add_action('wp_ajax_octavawms_add_place', [$this, 'handleAjaxAddPlace']);
         add_action('wp_ajax_octavawms_update_place', [$this, 'handleAjaxUpdatePlace']);
         add_action('wp_ajax_octavawms_delete_place', [$this, 'handleAjaxDeletePlace']);
+        add_action('wp_ajax_octavawms_fetch_label', [$this, 'handleAjaxFetchLabel']);
+        add_action('wp_ajax_octavawms_cancel_label', [$this, 'handleAjaxCancelLabel']);
     }
 
     public function handleAjaxOrderStatus(): void
@@ -95,6 +97,11 @@ class LabelAjax
                 'id' => $first['id'],
                 'state' => $st,
             ];
+            $trackingRaw = $first['trackingNumber'] ?? null;
+            $trackingNumber = is_scalar($trackingRaw) ? trim((string) $trackingRaw) : '';
+            if ($trackingNumber !== '') {
+                $shipmentPayload['tracking_number'] = $trackingNumber;
+            }
             if ($st === 'pending_error') {
                 $em = PluginLog::shipmentErrorMessageFromApiShipment($first);
                 if ($em !== '') {
@@ -280,6 +287,94 @@ class LabelAjax
         }
 
         wp_send_json_success(['has_label' => true, 'download_url' => $downloadUrl]);
+    }
+
+    public function handleAjaxFetchLabel(): void
+    {
+        $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
+        if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
+            wp_send_json_error(['message' => __('Invalid order.', 'octavawms')], 403);
+        }
+
+        check_ajax_referer('octavawms_fetch_label_' . (string) $orderId, 'nonce');
+
+        $order = wc_get_order($orderId);
+        if (! $order instanceof WC_Order) {
+            wp_send_json_error(['message' => __('Order not found.', 'octavawms')], 404);
+        }
+
+        $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
+        if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
+            wp_send_json_error(['message' => __('Invalid shipment.', 'octavawms')], 400);
+        }
+
+        $extId = $this->resolveExtIdForLabelRequest($order);
+        $tasksInfo = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
+        $taskId = $tasksInfo['task_id'];
+        if ($taskId === null || $taskId <= 0) {
+            wp_send_json_error(['message' => __('No preprocessing task found for this shipment.', 'octavawms')], 404);
+        }
+
+        $result = $this->labelService->fetchExistingTaskLabel($taskId, $extId, $orderId);
+        if ($result['status'] !== 'success') {
+            wp_send_json_error(['message' => $result['message'] ?? __('Could not load label.', 'octavawms')], 502);
+        }
+
+        if (! empty($result['label_file'])) {
+            $order->update_meta_data(LabelService::ORDER_META_LABEL_FILE, $result['label_file']);
+            $order->delete_meta_data(LabelService::ORDER_META_LABEL_URL);
+        } else {
+            wp_send_json_error(['message' => __('Could not load label.', 'octavawms')], 502);
+        }
+
+        $order->save();
+
+        $labelUrl = (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true);
+        $labelFile = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
+        $markup = $this->metaBox->buildDownloadMarkup($orderId, $labelFile, $labelUrl);
+        $downloadUrl = '';
+        if (preg_match('/href="([^"]+)"/', $markup, $m)) {
+            $downloadUrl = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        wp_send_json_success(['download_url' => $downloadUrl]);
+    }
+
+    public function handleAjaxCancelLabel(): void
+    {
+        $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
+        if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
+            wp_send_json_error(['message' => __('Invalid order.', 'octavawms')], 403);
+        }
+
+        check_ajax_referer('octavawms_cancel_label_' . (string) $orderId, 'nonce');
+
+        $order = wc_get_order($orderId);
+        if (! $order instanceof WC_Order) {
+            wp_send_json_error(['message' => __('Order not found.', 'octavawms')], 404);
+        }
+
+        $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
+        if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
+            wp_send_json_error(['message' => __('Invalid shipment.', 'octavawms')], 400);
+        }
+
+        $tasksInfo = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
+        $taskId = $tasksInfo['task_id'];
+        if ($taskId === null || $taskId <= 0) {
+            wp_send_json_error(['message' => __('No preprocessing task found for this shipment.', 'octavawms')], 404);
+        }
+
+        $patch = $this->apiClient->createOrUpdatePreprocessingTask($taskId, ['state' => 'cancel']);
+        if (! $patch['ok']) {
+            wp_send_json_error(['message' => $patch['message'] ?? __('Could not cancel label.', 'octavawms')], 502);
+        }
+
+        $order->delete_meta_data(LabelService::ORDER_META_LABEL_URL);
+        $order->delete_meta_data(LabelService::ORDER_META_LABEL_FILE);
+        $order->save();
+
+        wp_send_json_success(['cancelled' => true]);
     }
 
     public function handleAjaxShipmentDetail(): void

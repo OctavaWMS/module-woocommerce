@@ -216,11 +216,21 @@ class LabelService
     }
 
     /**
+     * Download an existing preprocessing-task label and persist it to disk (same polling as {@see requestLabel}).
+     *
+     * @return array{status:string,label_file?:string,message?:string}
+     */
+    public function fetchExistingTaskLabel(int $taskId, string $externalOrderId, ?int $wcOrderId = null): array
+    {
+        return $this->pollForLabel($taskId, $externalOrderId, $wcOrderId);
+    }
+
+    /**
      * @return string|null Absolute file path on success, null on failure.
      */
     private function storeBinaryLabel(string $binary, string $externalOrderId, string $extension, ?int $wcOrderId = null): ?string
     {
-        $uploadDir = wp_upload_dir();
+        $uploadDir = \wp_upload_dir();
 
         if (! empty($uploadDir['error'])) {
             PluginLog::log('error', 'labels', array_merge($this->labelContext($externalOrderId, $wcOrderId), [
@@ -235,7 +245,7 @@ class LabelService
 
         $targetDirectory = trailingslashit((string) $uploadDir['basedir']) . Activation::LABEL_SUBDIR . '/';
 
-        if (! wp_mkdir_p($targetDirectory)) {
+        if (! \wp_mkdir_p($targetDirectory)) {
             PluginLog::log('error', 'labels', array_merge($this->labelContext($externalOrderId, $wcOrderId), [
                 'request' => null,
                 'response' => null,
@@ -248,8 +258,8 @@ class LabelService
 
         $safeExt = preg_replace('/[^a-z0-9]/', '', strtolower($extension));
         $safeExt = $safeExt !== '' ? $safeExt : 'pdf';
-        $secureToken = wp_generate_password(20, false, false);
-        $fileName = sanitize_file_name(sprintf('label-%s-%s.%s', preg_replace('/[^a-zA-Z0-9_-]/', '', $externalOrderId), $secureToken, $safeExt));
+        $secureToken = \wp_generate_password(20, false, false);
+        $fileName = \sanitize_file_name(sprintf('label-%s-%s.%s', preg_replace('/[^a-zA-Z0-9_-]/', '', $externalOrderId), $secureToken, $safeExt));
         $filePath = $targetDirectory . $fileName;
 
         $bytesWritten = file_put_contents($filePath, $binary);

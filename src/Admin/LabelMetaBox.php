@@ -156,6 +156,17 @@ abbr.octavawms-place-mult{margin:0;border:0;padding:0;font-size:11px;line-height
 .octavawms-place-input:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;}
 .octavawms-muted--tight{margin:0;}
 .octavawms-spinner{display:inline-block;width:16px;height:16px;border:2px solid #c3c4c7;border-top-color:#2271b1;border-radius:50%;animation:octava-spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+.octavawms-tracking-lock-banner{margin:0 0 14px;padding:12px;border:1px solid #c3c4c7;border-radius:4px;background:#f6f7f7;box-sizing:border-box;}
+.octavawms-tracking-line{margin:0 0 8px;font-size:13px;line-height:1.45;}
+.octavawms-shipment-locked-msg{margin:0 0 10px;}
+.octavawms-label-viewer-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 12px;width:100%;box-sizing:border-box;}
+.octavawms-label-viewer-title{flex:1 1 auto;min-width:0;margin:0;padding:0;border:0;background:transparent;font-size:14px;line-height:1.35;font-weight:600;}
+.octavawms-label-viewer-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;flex:0 0 auto;margin-left:auto;}
+.octavawms-label-viewer-frame-wrap{width:100%;max-width:500px;margin:0;}
+.octavawms-label-viewer-iframe{width:100%;height:500px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;background:#fff;}
+.octavawms-label-viewer-loading{margin:8px 0;}
+.octavawms-label-viewer-error{margin:8px 0;}
+.octavawms-label-viewer-fallback-dl{display:inline-block;margin-top:8px;}
 CSS;
 
         $handle = 'woocommerce_admin_styles';
@@ -189,7 +200,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.3',
+            '1.9.9',
             true
         );
 
@@ -214,6 +225,8 @@ CSS;
             'statusNonce' => wp_create_nonce('octavawms_order_status_' . (string) $orderId),
             'uploadNonce' => wp_create_nonce('octavawms_upload_order_' . (string) $orderId),
             'generateLabelNonce' => wp_create_nonce('octavawms_generate_label_' . (string) $orderId),
+            'fetchLabelNonce' => wp_create_nonce('octavawms_fetch_label_' . (string) $orderId),
+            'cancelLabelNonce' => wp_create_nonce('octavawms_cancel_label_' . (string) $orderId),
             'connectorNonce' => wp_create_nonce('octavawms_connector_' . (string) $orderId),
             'deliveryStrategyOptions' => LabelAjax::deliveryStrategyOptionsForScript(),
             'weightUnit' => $weightUnitSlug,
@@ -229,6 +242,16 @@ CSS;
                 'shipment' => UiBranding::shipmentHeadingWord(),
                 'labelReady' => __('Label Ready', 'octavawms'),
                 'downloadLabel' => __('Download Label', 'octavawms'),
+                'printLabel' => __('Print Label', 'octavawms'),
+                'labelViewerTitle' => __('Shipping Label', 'octavawms'),
+                'fetchLabel' => __('Load Label', 'octavawms'),
+                'fetchingLabel' => __('Loading label…', 'octavawms'),
+                'labelFetchError' => __('Could not load label. Try generating it first.', 'octavawms'),
+                'labelPreviewError' => __('Unable to render label preview.', 'octavawms'),
+                'trackingNumber' => __('Tracking', 'octavawms'),
+                'cancelShipment' => __('Cancel Shipment', 'octavawms'),
+                'cancellingShipment' => __('Cancelling…', 'octavawms'),
+                'shipmentLocked' => __('Shipment is locked (tracking number assigned).', 'octavawms'),
                 'generateLabel' => __('Generate Label', 'octavawms'),
                 'regenerateLabel' => __('Re-generate Label', 'octavawms'),
                 'generatingLabel' => __('Generating label…', 'octavawms'),

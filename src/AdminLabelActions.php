@@ -226,16 +226,25 @@ class AdminLabelActions
             wp_die(esc_html__('Label file unavailable.', 'octavawms'));
         }
 
-        $mime = self::mimeTypeForFilePath($filePath);
         $ext = self::fileExtension($filePath);
         $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
 
+        $inline = isset($_GET['inline']) && (string) wp_unslash($_GET['inline']) === '1';
+
+        $repaired = self::repairLabelFileIfBase64($filePath);
+        $effectivePath = $repaired ?? $filePath;
+        $mime = self::mimeTypeForFilePath($effectivePath);
+
         nocache_headers();
-        header('Content-Description: File Transfer');
         header('Content-Type: ' . $mime);
-        header('Content-Disposition: attachment; filename="' . $fileBase . '"');
-        header('Content-Length: ' . (string) filesize($filePath));
-        readfile($filePath);
+        if ($inline) {
+            header('Content-Disposition: inline; filename="' . $fileBase . '"');
+        } else {
+            header('Content-Description: File Transfer');
+            header('Content-Disposition: attachment; filename="' . $fileBase . '"');
+        }
+        header('Content-Length: ' . (string) filesize($effectivePath));
+        readfile($effectivePath);
         exit;
     }
 
@@ -262,6 +271,104 @@ class AdminLabelActions
         $base = preg_replace('/[^a-z0-9]/i', '', $base) ?? '';
 
         return $base !== '' ? strtolower($base) : 'pdf';
+    }
+
+    /**
+     * If a PDF label file was previously written as base64 text (older plugin versions),
+     * decode it in-place and rewrite the file as real PDF bytes.
+     *
+     * Returns the path to use (same path on success / no-op, or null if the file is fine and untouched).
+     */
+    private static function repairLabelFileIfBase64(string $filePath): ?string
+    {
+        if (! is_readable($filePath)) {
+            return null;
+        }
+        $head = (string) file_get_contents($filePath, false, null, 0, 8);
+        if ($head === '' || str_starts_with($head, '%PDF')) {
+            return null;
+        }
+        $raw = (string) file_get_contents($filePath);
+        if ($raw === '') {
+            return null;
+        }
+
+        $decoded = self::tryDecodeBase64Pdf($raw);
+        if ($decoded === null) {
+            $json = json_decode($raw, true);
+            if (is_array($json)) {
+                $decoded = self::findPdfBytesInDecodedJson($json, 0);
+            }
+        }
+        if ($decoded === null) {
+            return null;
+        }
+
+        if (@file_put_contents($filePath, $decoded) === false) {
+            $tmp = wp_tempnam('octavawms-label-repair');
+            if ($tmp && @file_put_contents($tmp, $decoded) !== false) {
+                return $tmp;
+            }
+
+            return null;
+        }
+
+        return $filePath;
+    }
+
+    private static function tryDecodeBase64Pdf(string $s): ?string
+    {
+        $compact = preg_replace('/\s+/', '', trim($s)) ?? '';
+        $compact = preg_replace('/[^A-Za-z0-9+\/=_\-]/', '', $compact) ?? '';
+        if ($compact === '') {
+            return null;
+        }
+        $compact = strtr($compact, '-_', '+/');
+        $compact = rtrim($compact, '=');
+        $pad = (4 - strlen($compact) % 4) % 4;
+        if ($pad === 1) {
+            return null;
+        }
+        $bin = base64_decode($compact . str_repeat('=', $pad), true);
+        if ($bin === false || $bin === '' || ! str_starts_with($bin, '%PDF')) {
+            return null;
+        }
+
+        return $bin;
+    }
+
+    /**
+     * @param array<mixed> $node
+     */
+    private static function findPdfBytesInDecodedJson(array $node, int $depth): ?string
+    {
+        if ($depth > 10) {
+            return null;
+        }
+        $priority = ['pdfData', 'pdf', 'pdf_base64', 'pdfBase64', 'labelPdf', 'label_pdf', 'content', 'data', 'file', 'body'];
+        foreach ($priority as $k) {
+            if (isset($node[$k]) && is_string($node[$k])) {
+                $cand = self::tryDecodeBase64Pdf($node[$k]);
+                if ($cand !== null) {
+                    return $cand;
+                }
+            }
+        }
+        foreach ($node as $v) {
+            if (is_array($v)) {
+                $nested = self::findPdfBytesInDecodedJson($v, $depth + 1);
+                if ($nested !== null) {
+                    return $nested;
+                }
+            } elseif (is_string($v) && strlen($v) > 200) {
+                $cand = self::tryDecodeBase64Pdf($v);
+                if ($cand !== null) {
+                    return $cand;
+                }
+            }
+        }
+
+        return null;
     }
 
     private static function mimeTypeForFilePath(string $filePath): string

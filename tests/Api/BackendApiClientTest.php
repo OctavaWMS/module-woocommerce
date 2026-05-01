@@ -382,6 +382,67 @@ final class BackendApiClientTest extends TestCase
         self::assertSame('%PDF-bytes', $r['pdf']);
     }
 
+    public function testDownloadPreprocessingTaskLabelDecodesJsonPdfData(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $pdfBytes = '%PDF-1.4 minimal';
+        $json = json_encode(['id' => 501, 'pdfData' => base64_encode($pdfBytes)], JSON_THROW_ON_ERROR);
+
+        Functions\when('wp_remote_request')->alias(static function (string $url) use ($json) {
+            self::assertStringContainsString('/api/delivery-services/preprocessing-task/501', $url);
+
+            return [
+                'response' => ['code' => 200],
+                'body' => $json,
+                'headers' => ['content-type' => 'application/json'],
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->downloadPreprocessingTaskLabel(501);
+        self::assertTrue($r['ok']);
+        self::assertTrue($r['ready']);
+        self::assertSame($pdfBytes, $r['pdf']);
+        self::assertStringContainsString('pdf', strtolower($r['content_type']));
+    }
+
+    public function testDownloadPreprocessingTaskLabelDecodesBase64WhenPdfHeaderMislabeled(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $pdfBytes = '%PDF-bytes-wrapper';
+        $b64 = base64_encode($pdfBytes);
+
+        Functions\when('wp_remote_request')->alias(static function (string $url) use ($b64) {
+            self::assertStringContainsString('/api/delivery-services/preprocessing-task/502', $url);
+
+            return [
+                'response' => ['code' => 200],
+                'body' => $b64,
+                'headers' => ['content-type' => 'application/pdf'],
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->downloadPreprocessingTaskLabel(502);
+        self::assertTrue($r['ok']);
+        self::assertTrue($r['ready']);
+        self::assertSame($pdfBytes, $r['pdf']);
+    }
+
     public function testFindOrderByExtIdReturnsNullOnEmptyEmbedded(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
