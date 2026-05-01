@@ -9,7 +9,7 @@ class SettingsPage extends \WC_Integration
     public function __construct()
     {
         $this->id = Options::INTEGRATION_ID;
-        $this->method_title = __('OctavaWMS Connector', 'octavawms');
+        $this->method_title = UiBranding::integrationTitle();
         $this->method_description = __(
             'Connect your store to OctavaWMS for shipping label generation and order management.',
             'octavawms'

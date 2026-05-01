@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OctavaWMS\WooCommerce\Admin;
 
 use OctavaWMS\WooCommerce\ConnectService;
+use OctavaWMS\WooCommerce\UiBranding;
 use WC_Order;
 use WP_Post;
 
@@ -20,7 +21,7 @@ class LabelMetaBox
     {
         add_meta_box(
             'octavawms-label',
-            __('OctavaWMS Connector', 'octavawms'),
+            UiBranding::integrationTitle(),
             [$this, 'renderLabelMetaBox'],
             ['shop_order', 'woocommerce_page_wc-orders'],
             'normal',
@@ -59,7 +60,12 @@ class LabelMetaBox
 .octavawms-panel-label.is-loading .octavawms-connect-section-body{opacity:.55;pointer-events:none;}
 .octavawms-section-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 16px;margin:0 0 14px;padding:0;border:0;background:transparent;}
 .octavawms-section-head--split{border-bottom:none;}
+.octavawms-section-head--create-label{align-items:flex-start;}
+.octavawms-create-label-heading{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;min-width:0;}
 .octavawms-connect-section-title{flex:0 1 auto;min-width:0;margin:0;padding:0;border:0;background:transparent;font-size:14px;line-height:1.35;font-weight:600;}
+.octavawms-create-label-shipment-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;width:100%;}
+.octavawms-create-label-shipment-ref{font-size:13px;line-height:1.45;color:#50575e;margin:0;}
+.octavawms-create-label-shipment-meta .octavawms-label-shipment__badges{justify-content:flex-start;margin-top:0;}
 .octavawms-numgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;margin:0 0 16px;padding:0;width:100%;box-sizing:border-box;}
 .octavawms-numgrid__cell{display:flex;flex-direction:column;margin:0;gap:6px;padding:0;min-width:0;}
 .octavawms-numgrid__cell label{font-size:13px;font-weight:600;margin:0;}
@@ -180,7 +186,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.8.8',
+            '1.9.1',
             true
         );
 
@@ -216,7 +222,7 @@ CSS;
                 'uploading' => __('Uploading…', 'octavawms'),
                 'orderSynced' => __('Order synced', 'octavawms'),
                 'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'octavawms'),
-                'shipment' => __('Shipment', 'octavawms'),
+                'shipment' => UiBranding::shipmentHeadingWord(),
                 'labelReady' => __('Label Ready', 'octavawms'),
                 'downloadLabel' => __('Download Label', 'octavawms'),
                 'generateLabel' => __('Generate Label', 'octavawms'),
@@ -272,12 +278,12 @@ CSS;
                 'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'octavawms'),
                 'localitySearchMin' => __('Type at least 2 characters to search.', 'octavawms'),
                 'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'octavawms'),
-                'createLabelTitle' => __('Create label', 'octavawms'),
+                'labelPanelSrHeading' => __('Shipping labels and parcel boxes', 'octavawms'),
                 'widthMm' => __('W', 'octavawms'),
                 'heightMm' => __('H', 'octavawms'),
                 'lengthMm' => __('L', 'octavawms'),
                 'editOrder' => __('Edit order', 'octavawms'),
-                'shipmentLabel' => __('Shipment', 'octavawms'),
+                'shipmentLabel' => UiBranding::shipmentHeadingWord(),
                 'shipmentStatus' => __('Status', 'octavawms'),
                 'codNo' => __('No COD', 'octavawms'),
                 'codYes' => __('Cash on delivery', 'octavawms'),

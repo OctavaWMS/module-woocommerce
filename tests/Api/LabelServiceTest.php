@@ -35,6 +35,9 @@ final class LabelServiceTest extends TestCase
         });
         Functions\when('wp_generate_password')->justReturn('testtok12345678901234');
         Functions\when('sanitize_file_name')->alias(static fn (string $f): string => $f);
+        Functions\when('get_bloginfo')->justReturn('PHPUnit Shop');
+        Functions\when('home_url')->justReturn('https://label-test.example');
+        Functions\when('wp_parse_url')->alias(static fn ($url, $component = -1) => parse_url((string) $url, $component));
     }
 
     public function testRequestLabelBootstrapsQueueWhenMissingThenStoresSyncPdf(): void
@@ -70,7 +73,7 @@ final class LabelServiceTest extends TestCase
             }
 
             /** @return array{ok: bool, message: string, queue_id: int|null} */
-            public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false): array
+            public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false, ?string $name = null): array
             {
                 return ['ok' => true, 'message' => '', 'queue_id' => null];
             }
@@ -120,7 +123,7 @@ final class LabelServiceTest extends TestCase
             }
 
             /** @return array{ok: bool, message: string, queue_id: int|null} */
-            public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false): array
+            public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false, ?string $name = null): array
             {
                 return ['ok' => true, 'message' => '', 'queue_id' => 888];
             }
@@ -165,7 +168,7 @@ final class LabelServiceTest extends TestCase
             }
 
             /** @return array{ok: bool, message: string, queue_id: int|null} */
-            public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false): array
+            public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false, ?string $name = null): array
             {
                 return ['ok' => false, 'message' => 'Sender profile should be set', 'queue_id' => null];
             }

@@ -73,7 +73,7 @@ On the order edit screen (classic `shop_order` or HPOS), a meta box **OctavaWMS 
 - If the order is **not** in OctavaWMS yet, you can **Upload order** (requires a stored **source id** from Connect).
 - When shipments exist, the panel shows **shipment id** and **state**, **places (boxes)** with weights and dimensions, and **Edit shipment** (carrier, recipient locality, service point, strategy for AI) using the same backend concepts as the Shopify app’s edit-shipment flow.
 - When the shipment state is **`pending_error`**, a full-width banner appears **above** the two columns (Create label | Edit shipment). The message is taken from the API in the same order as the Shopify UI: structured **`errors`** first (strings or objects with `message` / `code`), then **`deliveryServiceStatus`** (e.g. carrier-side text such as “Sender profile should be set”), then generic problem fields (`message`, `detail`, …) via `PluginLog::userMessageFromApiJson`.
-- **Generate / Re-generate label** (same flow as Order actions). If the backend has no preprocessing **queue** yet for that delivery request, the plugin calls **`createProcessingQueueForSender`** and retries resolving the queue before creating the preprocessing task (see API table below).
+- **Generate / Re-generate label** (same flow as Order actions). If the backend has no preprocessing **queue** yet for that delivery request, the plugin **POST**s **`/api/delivery-services/preprocessing-queue`** with `name` / `sender` only (`BackendApiClient::createProcessingQueueForSender`). **`deliveryRequest` is sent only on `preprocessing-task`**, not on queue create. Then the plugin resolves the queue (or uses the create response) before creating/updating the task (see API table below).
 - When a label is stored on the order, **Download label** is shown.
 
 You can still use **Order actions → Generate shipping label → Update** as before.
@@ -86,7 +86,7 @@ You can still use **Order actions → Generate shipping label → Update** as be
 | `GET` | `/api/delivery-services/requests` | List delivery requests / shipments for `extId` (and related filters). |
 | `GET` | `/api/delivery-services/requests/{id}` | Single delivery request (shipment) for the order panel and label pipeline. |
 | `GET` | `/api/delivery-services/delivery-request-service` | `action=tasks` — resolve existing preprocessing **task** and **queue** ids for a delivery request. |
-| `POST` | `/api/delivery-services/delivery-request-service` | `action=createProcessingQueueForSender` — create sender-scoped processing queue when label generation finds no queue (body: `deliveryRequest`, optional `sender`). |
+| `POST` | `/api/delivery-services/preprocessing-queue` | Create sender-scoped queue when none exists (`name`, optional `sender` id only — **not** `deliveryRequest`; ties to shipments only via **preprocessing-task**). |
 | `POST` / `PATCH` | `/api/delivery-services/preprocessing-task` | Create or update preprocessing task (`state: measured`, dimensions, `queue`); may return PDF/HTML synchronously or a task id for polling. |
 | `PATCH` | `/api/delivery-services/requests/{id}` | Update shipment fields (e.g. service point, carrier, locality, EAV) from **Edit shipment**. |
 | `POST` | `/api/integrations/import` | Push the WooCommerce order into OctavaWMS (uses **source id** from Connect). |
@@ -118,6 +118,8 @@ On activation, the plugin creates (if possible) a `.htaccess` in `wp-content/upl
 | Connect debug logging (`octavawms-connect` WC log source) | `src/PluginLog.php` |
 | Admin notices (missing integration hint on WC settings) | `src/Notices.php` |
 | Options | `src/Options.php` |
+| Tenant branding (domain hints) | `src/UiBranding.php` |
+| English msgids → tenant copy (`gettext`), catalogs | `src/I18n/BrandedStrings.php`, `src/I18n/catalogs/*.php` |
 | Auto-import on create/update | `src/OrderSyncService.php` |
 
 ## Running tests
@@ -151,6 +153,13 @@ Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notab
 - `octavawms_oauth_url` — full URL for `POST /oauth` (default: API base + `/oauth`).
 - `octavawms_oauth_client_id` — OAuth client id for the refresh grant (default: `orderadmin`).
 - `octavawms_panel_app_base` — origin for **Login to the panel** (default: `https://app.izprati.bg`, no trailing slash).
+- `octavawms_brand_pack` — filter the detected tenant id (`null` | `"izprati"` | …) after `{oauth_domain}` / API-host hints; receives `( $detected, $hints )`.
+
+## Tenant branding / translations
+
+- **`UiBranding`** infers an internal pack id (e.g. **izprati**) from **`oauth_domain`** and the **`label_endpoint`** host (`izprati.bg`, slug `izpratibg`, …).
+- All user-visible strings remain **canonical English** wrapped in **`__('…', 'octavawms')`** in PHP so standard WordPress translation files (`languages/octavawms-*.mo`) still apply.
+- For white-label installs, **`I18n\BrandedStrings`** hooks **`gettext`** for domain `octavawms` and replaces msgids listed in **`src/I18n/catalogs/{pack}-bg.php`** (e.g. `izprati-bg.php`). Add a sibling catalog and extend **`BrandedStrings::catalogPaths()`** for new tenants.
 
 Built-in defaults (no filter required): `Options::DEFAULT_API_BASE` and `BackendApiClient::LABEL_PATH` for the hosted label URL when the integration **label endpoint** field is empty.
 

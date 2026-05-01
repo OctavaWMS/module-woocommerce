@@ -106,7 +106,7 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(99, $out['queue_id']);
     }
 
-    public function testCreateProcessingQueueForSenderPostsToDeliveryRequestService(): void
+    public function testCreateProcessingQueueForSenderPostsToPreprocessingQueue(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
@@ -116,12 +116,18 @@ final class BackendApiClientTest extends TestCase
             return $default;
         });
         Functions\when('wp_json_encode')->alias('json_encode');
+        Functions\when('get_bloginfo')->justReturn('My Woo Shop');
+        Functions\when('home_url')->justReturn('https://ignored.example');
+        Functions\when('wp_parse_url')->alias(static function (?string $url, int $component = -1) {
+            return parse_url((string) $url, $component);
+        });
 
         Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) {
-            self::assertStringContainsString('/api/delivery-services/delivery-request-service', $url);
-            self::assertStringContainsString('action=createProcessingQueueForSender', $url);
+            self::assertStringEndsWith('/api/delivery-services/preprocessing-queue', rtrim(parse_url($url, PHP_URL_PATH) ?? '', '/'));
             self::assertSame('POST', $args['method']);
-            self::assertStringContainsString('"deliveryRequest":{"id":555}', (string) $args['body']);
+            $rawBody = (string) $args['body'];
+            self::assertStringNotContainsString('deliveryRequest', $rawBody);
+            self::assertStringContainsString('"name":"My Woo Shop"', $rawBody);
 
             return [
                 'response' => ['code' => 200],
@@ -145,9 +151,17 @@ final class BackendApiClientTest extends TestCase
             return $default;
         });
         Functions\when('wp_json_encode')->alias('json_encode');
+        Functions\when('get_bloginfo')->justReturn('');
+        Functions\when('home_url')->justReturn('https://sender.example');
+        Functions\when('wp_parse_url')->alias(static function (?string $url, int $component = -1) {
+            return parse_url((string) $url, $component);
+        });
 
         Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) {
-            self::assertStringContainsString('"sender":{"id":901}', (string) $args['body']);
+            $rawBody = (string) $args['body'];
+            self::assertStringNotContainsString('deliveryRequest', $rawBody);
+            self::assertStringContainsString('"sender":901', $rawBody);
+            self::assertStringContainsString('"name":"sender.example"', $rawBody);
 
             return [
                 'response' => ['code' => 200],
@@ -159,6 +173,47 @@ final class BackendApiClientTest extends TestCase
         $r = $client->createProcessingQueueForSender(555, 901);
         self::assertTrue($r['ok']);
         self::assertNull($r['queue_id']);
+    }
+
+    public function testExtractSenderNameFromDeliveryRequestDetail(): void
+    {
+        self::assertNull(BackendApiClient::extractSenderNameFromDeliveryRequestDetail(null));
+        self::assertSame(
+            'Acme Ltd',
+            BackendApiClient::extractSenderNameFromDeliveryRequestDetail([
+                '_embedded' => ['sender' => ['id' => 1, 'name' => 'Acme Ltd']],
+            ])
+        );
+        self::assertSame(
+            'Root Sender',
+            BackendApiClient::extractSenderNameFromDeliveryRequestDetail([
+                'sender' => ['name' => 'Root Sender'],
+            ])
+        );
+    }
+
+    public function testPreprocessingQueueDisplayNameUsesSenderThenBlogThenHost(): void
+    {
+        Functions\when('get_bloginfo')->justReturn('Blog Name');
+        Functions\when('home_url')->justReturn('https://host.example/path');
+        Functions\when('wp_parse_url')->alias(static fn (?string $url, int $component = -1) => parse_url((string) $url, $component));
+
+        self::assertSame(
+            'Sender Only',
+            BackendApiClient::preprocessingQueueDisplayName([
+                'sender' => ['name' => 'Sender Only'],
+            ])
+        );
+        self::assertSame(
+            'Blog Name',
+            BackendApiClient::preprocessingQueueDisplayName([])
+        );
+        Functions\when('get_bloginfo')->justReturn('');
+        Functions\when('wp_parse_url')->alias(static fn (?string $url, int $component = -1) => parse_url((string) $url, $component));
+        Functions\when('home_url')->justReturn('https://fallback.example/q');
+        self::assertSame('fallback.example', BackendApiClient::preprocessingQueueDisplayName([]));
+        Functions\when('home_url')->justReturn('');
+        self::assertSame('WooCommerce', BackendApiClient::preprocessingQueueDisplayName([]));
     }
 
     public function testExtractSenderIdFromDeliveryRequestDetail(): void
@@ -266,7 +321,7 @@ final class BackendApiClientTest extends TestCase
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return [];
+                return ['api_key' => 'unittest-bearer-token'];
             }
             if ($name === Options::LEGACY_LABEL_ENDPOINT) {
                 return '';
@@ -293,7 +348,7 @@ final class BackendApiClientTest extends TestCase
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return [];
+                return ['api_key' => 'unittest-bearer-token'];
             }
             if ($name === Options::LEGACY_LABEL_ENDPOINT) {
                 return '';
@@ -322,7 +377,7 @@ final class BackendApiClientTest extends TestCase
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return [];
+                return ['api_key' => 'unittest-bearer-token'];
             }
             if ($name === Options::LEGACY_LABEL_ENDPOINT) {
                 return '';
@@ -351,7 +406,7 @@ final class BackendApiClientTest extends TestCase
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return [];
+                return ['api_key' => 'unittest-bearer-token'];
             }
             if ($name === Options::LEGACY_LABEL_ENDPOINT) {
                 return '';
@@ -488,16 +543,25 @@ final class BackendApiClientTest extends TestCase
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return []; // simulate missing API key
+                return ['api_key' => 'configured-but-rejected-token'];
+            }
+            if ($name === 'admin_email') {
+                return 'owner@example.com';
             }
 
             return $default;
         });
 
+        Functions\when('home_url')->justReturn('https://wc-store.example');
+        Functions\when('get_bloginfo')->justReturn('WC Store');
         Functions\when('wc_get_logger')->justReturn(new class () {
             public function log(string $_level, string $_message, array $_ctx = []): void {}
         });
         Functions\when('wp_json_encode')->alias('json_encode');
+        Functions\when('wp_remote_post')->alias(static fn () => [
+            'response' => ['code' => 401],
+            'body' => '{}',
+        ]);
 
         Functions\when('wp_remote_request')->alias(static function () {
             return [

@@ -596,20 +596,19 @@
     const state = (shipment && shipment.state) || '';
     const useRegen = hasLocal && !!dl;
 
-    let shipBlock =
-      '<div class="octavawms-label-shipment">' +
-      '<div class="octavawms-label-shipment__meta">' +
-      '<span class="octavawms-label-shipment__str">' +
+    const shipmentMetaUnderTitle =
+      '<div class="octavawms-create-label-shipment-meta">' +
+      '<p class="octavawms-create-label-shipment-ref">' +
       '<strong>' +
       esc(cfg.strings.shipmentLabel) +
       '</strong>' +
       ' ' +
       esc(sidStr ? '#' + sidStr : '—') +
-      '</span>' +
+      '</p>' +
       '<div class="octavawms-label-shipment__badges">' +
       statusPillHtml(state) +
       codPillHtml(codInfo) +
-      '</div></div></div>';
+      '</div></div>';
 
     let notices = '';
     if (hasLocal && dl) {
@@ -650,11 +649,13 @@
 
     return (
       '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label" id="octavawms-panel-label">' +
-      '<header class="octavawms-section-head octavawms-section-head--split">' +
-      '<h3 class="octavawms-connect-section-title">' +
-      esc(cfg.strings.createLabelTitle) +
+      '<header class="octavawms-section-head octavawms-section-head--create-label">' +
+      '<div class="octavawms-create-label-heading">' +
+      '<h3 class="screen-reader-text">' +
+      esc(cfg.strings.labelPanelSrHeading) +
       '</h3>' +
-      shipBlock +
+      shipmentMetaUnderTitle +
+      '</div>' +
       '</header>' +
       '<div class="octavawms-connect-section-body">' +
       boxesWrap +

@@ -1101,28 +1101,89 @@ class BackendApiClient
     }
 
     /**
-     * Ensure a labels preprocessing queue exists for the delivery request (sender-scoped on the backend).
+     * Sender display name from GET /api/delivery-services/requests/{id} (HAL / composite shapes).
+     */
+    public static function extractSenderNameFromDeliveryRequestDetail(?array $detail): ?string
+    {
+        if (! is_array($detail)) {
+            return null;
+        }
+        $paths = [
+            ['_embedded', 'sender'],
+            ['sender'],
+            ['_embedded', 'order', 'sender'],
+        ];
+        foreach ($paths as $path) {
+            $v = $detail;
+            foreach ($path as $seg) {
+                if (! is_array($v) || ! array_key_exists($seg, $v)) {
+                    $v = null;
+                    break;
+                }
+                $v = $v[$seg];
+            }
+            if (! is_array($v) || ! isset($v['name']) || ! is_string($v['name'])) {
+                continue;
+            }
+            $n = trim($v['name']);
+
+            return $n !== '' ? $n : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Required `name` for POST /api/delivery-services/preprocessing-queue: sender name, else site title, else host.
+     */
+    public static function preprocessingQueueDisplayName(?array $deliveryRequestDetail): string
+    {
+        $fromSender = self::extractSenderNameFromDeliveryRequestDetail($deliveryRequestDetail);
+        if ($fromSender !== null && $fromSender !== '') {
+            return $fromSender;
+        }
+        $blog = trim((string) get_bloginfo('name'));
+        if ($blog !== '') {
+            return $blog;
+        }
+        $host = wp_parse_url((string) home_url(), PHP_URL_HOST);
+        if (is_string($host)) {
+            $host = trim($host);
+        }
+        if (is_string($host) && $host !== '') {
+            return $host;
+        }
+
+        return 'WooCommerce';
+    }
+
+    /**
+     * Ensure a preprocessing queue exists for label generation (sender-scoped on the backend).
      *
-     * POST /api/delivery-services/delivery-request-service?action=createProcessingQueueForSender
+     * POST /api/delivery-services/preprocessing-queue with **name** and optional **sender** only.
+     * Do not send deliveryRequest here — that relation belongs on {@see createOrUpdatePreprocessingTask()} only.
      *
+     * @param int $deliveryRequestId Valid shipment id from the caller (used only for guards/logging context; not POSTed).
+     * @param string|null $name Queue display name when known; omit to derive via {@see self::preprocessingQueueDisplayName()}.
      * @return array{ok: bool, message: string, queue_id: int|null}
      */
-    public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false): array
+    public function createProcessingQueueForSender(int $deliveryRequestId, ?int $senderId, bool $retried = false, ?string $name = null): array
     {
         if ($deliveryRequestId <= 0) {
             return ['ok' => false, 'message' => 'Invalid delivery request id.', 'queue_id' => null];
         }
 
+        $candidate = $name !== null ? trim((string) $name) : '';
+        $resolvedName = $candidate !== '' ? $candidate : self::preprocessingQueueDisplayName(null);
+
         $body = [
-            'deliveryRequest' => ['id' => $deliveryRequestId],
+            'name' => $resolvedName,
         ];
         if ($senderId !== null && $senderId > 0) {
-            $body['sender'] = ['id' => $senderId];
+            $body['sender'] = $senderId;
         }
 
-        $path = '/api/delivery-services/delivery-request-service?' . http_build_query([
-            'action' => 'createProcessingQueueForSender',
-        ], '', '&', PHP_QUERY_RFC3986);
+        $path = '/api/delivery-services/preprocessing-queue';
 
         $result = $this->request('POST', $path, $body, $retried);
         if (! $result['ok']) {
@@ -1144,7 +1205,7 @@ class BackendApiClient
      */
     private static function extractQueueIdFromCreateProcessingQueueResponse(array $data): ?int
     {
-        foreach ([['queue', 'id'], ['queue', 'queue', 'id']] as $path) {
+        foreach ([['id'], ['queue', 'id'], ['queue', 'queue', 'id']] as $path) {
             $v = $data;
             foreach ($path as $seg) {
                 if (! is_array($v) || ! array_key_exists($seg, $v)) {

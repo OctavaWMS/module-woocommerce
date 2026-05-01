@@ -7,11 +7,14 @@
  * Requires PHP: 8.1
  * WC requires at least: 7.1
  * Text Domain: octavawms
+ * Domain Path: /languages
  */
 
 if (! defined('ABSPATH')) {
     exit;
 }
+
+define('OCTAVAWMS_PLUGIN_FILE', __FILE__);
 
 // Always resolve plugin classes from /src via PSR-4 (prepend so this wins over an incomplete Composer autoload).
 spl_autoload_register(
@@ -35,6 +38,8 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
 
+\OctavaWMS\WooCommerce\I18n\TextDomainLoader::register();
+
 register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);
 
 add_action('plugins_loaded', static function () {
@@ -42,6 +47,9 @@ add_action('plugins_loaded', static function () {
         return;
     }
 
+    if (function_exists('add_filter')) {
+        \OctavaWMS\WooCommerce\I18n\BrandedStrings::register();
+    }
     if (is_readable(__DIR__ . '/src/SettingsPage.php') && class_exists(\WC_Integration::class, false)) {
         require_once __DIR__ . '/src/SettingsPage.php';
         if (class_exists(\OctavaWMS\WooCommerce\SettingsPage::class, false)) {

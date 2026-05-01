@@ -83,7 +83,8 @@ class LabelService
                 'delivery_request_id' => $deliveryRequestId,
                 'sender_id' => $senderId,
             ]);
-            $created = $this->apiClient->createProcessingQueueForSender($deliveryRequestId, $senderId);
+            $queueName = BackendApiClient::preprocessingQueueDisplayName(is_array($detail) ? $detail : null);
+            $created = $this->apiClient->createProcessingQueueForSender($deliveryRequestId, $senderId, false, $queueName);
             if (! $created['ok']) {
                 PluginLog::log('error', 'labels', array_merge($this->labelContext($externalOrderId, $wcOrderId), [
                     'request' => null,

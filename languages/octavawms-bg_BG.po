@@ -1,0 +1,431 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: OctavaWMS Connector\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-01 12:00+0000\n"
+"Language: bg_BG\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: php dev/build-lang.php\n"
+msgid "%1$s · %2$d g"
+msgstr "%1$s · %2$d г"
+
+msgid "%d boxes total"
+msgstr "Общо %d кашона"
+
+msgid "(W, H, L) mm"
+msgstr "(Ш, В, Д) мм"
+
+msgid "(g)"
+msgstr "(г)"
+
+msgid "1 box total"
+msgstr "Общо 1 кашон"
+
+msgid "API key (Bearer token)"
+msgstr "API ключ (Bearer токен)"
+
+msgid "Actions"
+msgstr "Действия"
+
+msgid "Add at least one box before generating a label."
+msgstr "Добавете поне един кашон преди генериране на етикет."
+
+msgid "Add box"
+msgstr "Добави кашон"
+
+msgid "Address"
+msgstr "Адрес"
+
+msgid "Address (to door)"
+msgstr "Адрес (до врата)"
+
+msgid "Advanced (manual configuration)"
+msgstr "Разширено (ръчна конфигурация)"
+
+msgid "Advanced: you can paste the API key manually below if needed."
+msgstr "Разширено: при нужда можете да поставите API ключа ръчно по-долу."
+
+msgid "Apply service point"
+msgstr "Приложи пункт за обслужване"
+
+msgid "Auto-sync new orders"
+msgstr "Автоматично изпращане на нови поръчки"
+
+msgid "Auto-sync order updates"
+msgstr "Автоматично при актуализиране на поръчки"
+
+msgid "Available after a shipment exists for this order."
+msgstr "Налично, след като има пратка за тази поръчка."
+
+msgid "Box"
+msgstr "Кашон"
+
+msgid "Box was created but default size could not be applied."
+msgstr "Кашонът е създаден, но задаването на стандартния размер не успя."
+
+msgid "Cannot remove a place that still has items."
+msgstr "Не може да се премахне място, което все още съдържа позиции."
+
+msgid "Cash on delivery"
+msgstr "Наложен платеж"
+
+msgid "Choose a delivery carrier."
+msgstr "Изберете куриер за доставка."
+
+msgid "Choose a pickup point from the list."
+msgstr "Изберете пункт за получаване от списъка."
+
+msgid "Connect request failed. Check your site can reach the OctavaWMS service."
+msgstr "Заявката за свързване не успя. Проверете дали сайтът достига услугата OctavaWMS."
+
+msgid "Connect service URL is not set."
+msgstr "URL на услугата за свързване не е зададен."
+
+msgid "Connect the plugin under WooCommerce → Settings → Integrations first."
+msgstr "Първо свържете добавката от WooCommerce → Настройки → Интеграции."
+
+msgid "Connect to OctavaWMS"
+msgstr "Свързване към OctavaWMS"
+
+msgid "Connect your store to OctavaWMS for shipping label generation and order management."
+msgstr "Свържете магазина с OctavaWMS за етикети и управление на поръчки."
+
+msgid "Connected to OctavaWMS"
+msgstr "Свързано с OctavaWMS"
+
+msgid "Connected. Your credentials are saved."
+msgstr "Свързани сте. Данните за достъп са записани."
+
+msgid "Connection failed."
+msgstr "Свързването не успя."
+
+msgid "Could not add place."
+msgstr "Добавянето на място не успя."
+
+msgid "Could not load OctavaWMS status."
+msgstr "Неуспешно зареждане на състояние от OctavaWMS."
+
+msgid "Could not load shipment."
+msgstr "Пратката не може да се зареди."
+
+msgid "Could not open Octava panel."
+msgstr "Панелът на Octava не може да се отвори."
+
+msgid "Could not open Octava panel. Try connecting again or check logs."
+msgstr "Панелът на Octava не може да се отвори. Опитайте отново да се свържете или проверете логовете."
+
+msgid "Could not open panel login (authenticate request failed)."
+msgstr "Неуспешен вход в панела (искането за удостоверяване не успя)."
+
+msgid "Could not open panel login (invalid user id)."
+msgstr "Неуспешен вход в панела (невалиден потребителски идентификатор)."
+
+msgid "Could not open panel login (missing refresh token)."
+msgstr "Неуспешен вход в панела (липсва маркер за опресняване)."
+
+msgid "Could not open panel login (user lookup failed)."
+msgstr "Неуспешен вход в панела (неуспешно откриване на потребителя)."
+
+msgid "Could not remove place."
+msgstr "Премахването на мястото не успя."
+
+msgid "Could not update place."
+msgstr "Актуализацията на мястото не успя."
+
+msgid "Could not update service point."
+msgstr "Актуализацията на пункта за обслужване не успя."
+
+msgid "Could not update shipment."
+msgstr "Актуализацията на пратката не успя."
+
+msgid "Current"
+msgstr "Текущо"
+
+msgid "Delivery carrier"
+msgstr "Куриер"
+
+msgid "Details"
+msgstr "Подробности"
+
+msgid "Distance: %s m"
+msgstr "Разстояние: %s м"
+
+msgid "Download Label"
+msgstr "Изтегли етикет"
+
+msgid "Edit order"
+msgstr "Редактиране на поръчка"
+
+msgid "Edit shipment"
+msgstr "Редактиране на пратка"
+
+msgid "Generate Label"
+msgstr "Генерирай етикет"
+
+msgid "Generate shipping label"
+msgstr "Генерирай транспортен етикет"
+
+msgid "Generating label…"
+msgstr "Генериране на етикет…"
+
+msgid "H"
+msgstr "В"
+
+msgid "ID"
+msgstr "Ид."
+
+msgid "Invalid delivery strategy."
+msgstr "Невалидна стратегия за доставка."
+
+msgid "Invalid order."
+msgstr "Невалидна поръчка."
+
+msgid "Invalid place."
+msgstr "Невалидно място."
+
+msgid "Invalid request."
+msgstr "Невалидна заявка."
+
+msgid "Invalid response from connect service (HTTP %1$d)."
+msgstr "Невалиден отговор от услугата за свързване (HTTP %1$d)."
+
+msgid "Invalid shipment or place."
+msgstr "Невалидна пратка или място."
+
+msgid "Invalid shipment or service point."
+msgstr "Невалидна пратка или пункт за обслужване."
+
+msgid "Invalid shipment."
+msgstr "Невалидна пратка."
+
+msgid "L"
+msgstr "Д"
+
+msgid "Label Ready"
+msgstr "Етикетът е готов"
+
+msgid "Label file unavailable."
+msgstr "Файлът на етикета не е достъпен."
+
+msgid "Label generated successfully."
+msgstr "Етикетът е генериран успешно."
+
+msgid "Label generation failed."
+msgstr "Генерирането на етикет не успя."
+
+msgid "Label generation failed. See order notes for details."
+msgstr "Генерирането на етикет не успя. Вижте бележките към поръчката за подробности."
+
+msgid "Loading…"
+msgstr "Зареждане…"
+
+msgid "Locker — AI picks closest locker"
+msgstr "Автомат — ИИ избира най-близък автомат"
+
+msgid "Login to the panel"
+msgstr "Вход в панела"
+
+msgid "Manual — choose service point yourself"
+msgstr "Ръчен избор — избирате пункта сами"
+
+msgid "No COD"
+msgstr "Без наложен платеж"
+
+msgid "No boxes/places yet."
+msgstr "Още няма кашони или места."
+
+msgid "No lockers"
+msgstr "Няма автомати"
+
+msgid "No pickup points found."
+msgstr "Няма намерени пунктове за получаване."
+
+msgid "Not connected"
+msgstr "Несвързано"
+
+msgid "OctavaWMS Connector"
+msgstr "OctavaWMS конектор"
+
+msgid "OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
+msgstr "OctavaWMS конектор: още няма записан API ключ. Той се поисква автоматично при първо действие с поръчка или можете да се свържете ръчно от раздел Интеграции."
+
+msgid "OctavaWMS could not generate a shipping label. See order notes."
+msgstr "OctavaWMS не можа да генерира транспортен етикет. Вижте бележките към поръчката."
+
+msgid "OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS."
+msgstr "OctavaWMS не успя да обработи тази пратка. Вижте съобщението по-долу или отворете заявката за доставка в OctavaWMS."
+
+msgid "OctavaWMS label generation failed: %s"
+msgstr "Неуспешно генериране на етикет в OctavaWMS: %s"
+
+msgid "Office + locker — AI picks closest"
+msgstr "Офис и автомат — ИИ избира най-близки"
+
+msgid "Office — AI picks closest office"
+msgstr "Офис — ИИ избира най-близък офис"
+
+msgid "Only a failed shipment (pending_error) can be retried this way."
+msgstr "Така могат да се повторят само неуспешни пратки (pending_error)."
+
+msgid "Open in Maps"
+msgstr "Отвори в карта"
+
+msgid "Order is in OctavaWMS; waiting for a shipment (delivery request) to appear."
+msgstr "Поръчката е в OctavaWMS; очаква се да се появи пратка (заявка за доставка)."
+
+msgid "Order not found."
+msgstr "Поръчката не е намерена."
+
+msgid "Order synced"
+msgstr "Поръчката е синхронизирана"
+
+msgid "Phone"
+msgstr "Телефон"
+
+msgid "Re-generate Label"
+msgstr "Генерирай етикет отново"
+
+msgid "Re-generate shipping label"
+msgstr "Генерирай етикет за доставка отново"
+
+msgid "Re-import orders when they are updated (debounced)"
+msgstr "Повторно импортиране на поръчки при промяна (забавено)"
+
+msgid "Recipient locality"
+msgstr "Населено място на получателя"
+
+msgid "Refresh status"
+msgstr "Обнови състояние"
+
+msgid "Remove box"
+msgstr "Премахни кашон"
+
+msgid "Retry"
+msgstr "Опитай отново"
+
+msgid "Retrying…"
+msgstr "Повтаряне…"
+
+msgid "Routing note"
+msgstr "Бележка по маршрутизация"
+
+msgid "Save"
+msgstr "Запази"
+
+msgid "Saving…"
+msgstr "Запазване…"
+
+msgid "Schedule"
+msgstr "График"
+
+msgid "Search and select carrier…"
+msgstr "Търсене и избор на куриер…"
+
+msgid "Search city (e.g. Varna)…"
+msgstr "Търсене на град (напр. Варна)…"
+
+msgid "Search pickup point…"
+msgstr "Търсене на пункт за получаване…"
+
+msgid "Select"
+msgstr "Избор"
+
+msgid "Select carrier and locality first."
+msgstr "Първо изберете куриер и населено място."
+
+msgid "Send new orders to OctavaWMS automatically"
+msgstr "Автоматично изпращане на нови поръчки към OctavaWMS"
+
+msgid "Service point"
+msgstr "Пункт за обслужване"
+
+msgid "Set automatically after you connect. You can also paste it manually."
+msgstr "Задава се автоматично след свързване. Можете да го въведете и ръчно."
+
+msgid "Shipment"
+msgstr "Пратка"
+
+msgid "Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active."
+msgstr "Полетата за пратка изискват административната част на WooCommerce (SelectWoo). Уверете се, че WooCommerce е активна."
+
+msgid "Shipping labels and parcel boxes"
+msgstr "Транспортни етикети и кашони за пратки"
+
+msgid "Site URL and admin email are required."
+msgstr "Нужни са URL на сайта и имейл на администратора."
+
+msgid "State"
+msgstr "Област"
+
+msgid "Status"
+msgstr "Статус"
+
+msgid "Store must use HTTPS (SSL) to connect, except on localhost. Enable SSL and try again."
+msgstr "Магазинът трябва да използва HTTPS (SSL) за свързване, освен на localhost. Активирайте SSL и опитайте отново."
+
+msgid "Strategy for AI"
+msgstr "Стратегия за ИИ"
+
+msgid "This box holds items and cannot be removed."
+msgstr "Този кашон съдържа позиции и не може да бъде премахнат."
+
+msgid "This order is not in OctavaWMS yet. Upload it to create shipments and labels."
+msgstr "Поръчката все още не е в OctavaWMS. Качете я за създаване на пратки и етикети."
+
+msgid "This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it."
+msgstr "Пратката чака автоматична обработка. Изчакайте приключването преди промяна на настройки или продължете, ако процесът ви го допуска."
+
+msgid "Try again"
+msgstr "Опитай отново"
+
+msgid "Type"
+msgstr "Тип"
+
+msgid "Type at least 2 characters to search."
+msgstr "Въведете поне 2 знака за търсене."
+
+msgid "Unauthorized label download request."
+msgstr "Неоторизирана заявка за изтегляне на етикет."
+
+msgid "Upload failed."
+msgstr "Качването не успя."
+
+msgid "Upload order"
+msgstr "Качи поръчка"
+
+msgid "Uploading…"
+msgstr "Качване…"
+
+msgid "W"
+msgstr "Ш"
+
+msgid "Weight (g)"
+msgstr "Тегло (г)"
+
+msgid "Width, height, length in millimetres"
+msgstr "Ширина, височина и дължина в милиметри"
+
+msgid "WordPress is not available."
+msgstr "WordPress не е наличен."
+
+msgid "Working hours"
+msgstr "Работно време"
+
+msgid "You are not allowed to generate labels."
+msgstr "Нямате право да генерирате етикети."
+
+msgid "You do not have permission to connect."
+msgstr "Нямате право да свързвате добавката."
+
+msgid "You do not have permission to open the panel."
+msgstr "Нямате право да отваряте панела."
+
+msgid "— Choose —"
+msgstr "— Избери —"
+
+msgid "…"
+msgstr "…"
+
