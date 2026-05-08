@@ -17,8 +17,8 @@ WordPress + WooCommerce plugin that **connects your store to OctavaWMS**. It inc
 
 ## Installation
 
-1. Copy this folder to `wp-content/plugins/octavawms-woocommerce` (or your chosen slug).
-2. From the plugin directory: `composer install` to generate `vendor/autoload.php`. Without Composer, the plugin loads a built-in `require` list of classes from `octavawms-woocommerce.php`.
+1. Copy this folder to `wp-content/plugins/octavawms` (or your chosen slug).
+2. From the plugin directory: `composer install` to generate `vendor/autoload.php`. Without Composer, the plugin loads a built-in `require` list of classes from `octavawms.php`.
 3. In WordPress, activate **OctavaWMS Connector** under *Plugins*.
 
 ## One-click connect
@@ -113,7 +113,7 @@ On activation, the plugin creates (if possible) a `.htaccess` in `wp-content/upl
 
 | Area | Namespace / path |
 |------|-------------------|
-| Bootstrap | `octavawms-woocommerce.php` |
+| Bootstrap | `octavawms.php` |
 | REST + label HTTP | `src/Api/BackendApiClient.php`, `src/Api/LabelService.php` |
 | Order UI | `src/Admin/LabelMetaBox.php`, `src/Admin/LabelAjax.php` |
 | Order actions / generation orchestration | `src/AdminLabelActions.php` |

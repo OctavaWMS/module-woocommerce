@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce\I18n;
 
+use OctavaWMS\WooCommerce\Partners\PartnerModuleRegistry;
 use OctavaWMS\WooCommerce\UiBranding;
 
 /**
@@ -66,7 +67,7 @@ final class BrandedStrings
         $dir = dirname(__DIR__) . '/I18n/catalogs';
 
         return match ($pack) {
-            UiBranding::PACK_IZPRATI => [$dir . '/izprati-bg.php'],
+            PartnerModuleRegistry::BRAND_PACK_IZPRATI => [$dir . '/izprati-bg.php'],
             default => [],
         };
     }

@@ -174,7 +174,7 @@ CSS;
             return;
         }
 
-        $pluginMain = dirname(__DIR__, 2) . '/octavawms-woocommerce.php';
+        $pluginMain = dirname(__DIR__, 2) . '/octavawms.php';
 
         $scriptDeps = ['jquery'];
         if (wp_script_is('selectWoo', 'registered')) {

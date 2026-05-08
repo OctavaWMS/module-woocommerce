@@ -22,7 +22,7 @@
   },
   "scripts": {
     "php-lint": [
-      "php -l octavawms-woocommerce.php",
+      "php -l octavawms.php",
       "php -l src/Activation.php",
       "php -l src/AdminLabelActions.php",
       "php -l src/Admin/LabelAjax.php",
@@ -30,13 +30,18 @@
       "php -l src/Api/BackendApiClient.php",
       "php -l src/Api/LabelService.php",
       "php -l src/ConnectService.php",
+      "php -l src/I18n/BrandedStrings.php",
       "php -l src/Notices.php",
+      "php -l src/Partners/PartnerModule.php",
+      "php -l src/Partners/PartnerModuleRegistry.php",
+      "php -l src/Partners/PartnerModuleResolver.php",
       "php -l src/OrderSyncService.php",
       "php -l src/Options.php",
       "php -l src/PluginLog.php",
       "php -l src/WooRestCredentials.php",
       "php -l src/WooOrderWeights.php",
       "php -l src/SettingsPage.php",
+      "php -l src/UiBranding.php",
       "php -l tests/TestCase.php",
       "php -l tests/bootstrap.php",
       "php -l tests/OptionsTest.php",
@@ -48,12 +53,17 @@
       "php -l tests/PluginBootstrapTest.php",
       "php -l tests/Admin/LabelAjaxTest.php",
       "php -l tests/Admin/LabelMetaBoxTest.php",
-      "php -l tests/Api/BackendApiClientTest.php"
+      "php -l tests/Api/BackendApiClientTest.php",
+      "php -l tests/I18n/BrandedStringsTest.php",
+      "php -l tests/Partners/PartnerModuleResolverTest.php",
+      "php -l tests/UiBrandingTest.php"
     ],
     "test": "./vendor/bin/phpunit --testdox",
     "check": [
       "composer run-script php-lint",
       "composer run-script test"
-    ]
+    ],
+    "package-release": "bash scripts/package-release.sh -m octava",
+    "package-release:izpratibg": "bash scripts/package-release.sh -m izpratibg"
   }
 }

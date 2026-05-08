@@ -6,6 +6,7 @@ namespace Tests\OctavaWMS\WooCommerce;
 
 use Brain\Monkey\Functions;
 use OctavaWMS\WooCommerce\Options;
+use OctavaWMS\WooCommerce\Partners\PartnerModuleRegistry;
 use OctavaWMS\WooCommerce\UiBranding;
 use OctavaWMS\WooCommerce\I18n\BrandedStrings;
 use Tests\OctavaWMS\WooCommerce\TestCase;
@@ -44,6 +45,7 @@ final class UiBrandingTest extends TestCase
         });
 
         self::assertNull(UiBranding::currentBrandPack());
+        self::assertSame(PartnerModuleRegistry::ID_OCTAVA, UiBranding::currentModule()->id);
         self::assertSame('OctavaWMS Connector', UiBranding::integrationTitle());
         self::assertSame('Shipment', UiBranding::shipmentHeadingWord());
     }

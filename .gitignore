@@ -1,4 +1,6 @@
 /vendor/
+/dist/
+partner-build.generated.php
 .DS_Store
 .vscode/
 .php*

@@ -60,6 +60,56 @@ final class ConnectServicePanelLoginTest extends TestCase
         self::assertArrayHasKey('loginUrl', $captured);
         $loginUrl = $captured['loginUrl'] ?? null;
         self::assertIsString($loginUrl);
-        self::assertSame('https://app.izprati.bg/#/login?refreshToken=a%2Bb', $loginUrl);
+        self::assertSame('https://app.octavawms.com/#/login?refreshToken=a%2Bb', $loginUrl);
+    }
+
+    public function testHandleAjaxPanelLoginUsesIzpratiPanelWhenPartnerResolved(): void
+    {
+        $_POST['security'] = 'dummy';
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(true);
+        Functions\when('apply_filters')->alias(static function (string $hook, $value, ...$args) {
+            return $value;
+        });
+
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'refresh_token' => 'tok',
+                    'api_key' => '',
+                    'oauth_domain' => 'izpratibg',
+                ];
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+
+            return $default;
+        });
+
+        Functions\when('wp_remote_request')->alias(static function (): void {
+            throw new \RuntimeException('wp_remote_request should not run when refresh_token is stored');
+        });
+
+        $captured = null;
+        Functions\expect('wp_send_json_success')
+            ->once()
+            ->andReturnUsing(static function ($data) use (&$captured): void {
+                $captured = $data;
+                throw new \RuntimeException('json_ok');
+            });
+
+        $svc = new ConnectService();
+
+        try {
+            $svc->handleAjaxPanelLoginUrl();
+        } catch (\RuntimeException $e) {
+            self::assertSame('json_ok', $e->getMessage());
+        }
+
+        self::assertIsArray($captured);
+        self::assertSame('https://app.izprati.bg/#/login?refreshToken=tok', $captured['loginUrl'] ?? null);
     }
 }

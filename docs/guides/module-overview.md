@@ -20,7 +20,7 @@ High-level connect and API behaviour are summarised in the root [README.md](../.
 
 | Area | Primary paths |
 |------|----------------|
-| Bootstrap | `octavawms-woocommerce.php` |
+| Bootstrap | `octavawms.php` |
 | REST + label HTTP | `src/Api/BackendApiClient.php`, `src/Api/LabelService.php` |
 | Order admin UI | `src/Admin/LabelMetaBox.php`, `src/Admin/LabelAjax.php`, `src/AdminLabelActions.php` |
 | Settings + connect | `src/SettingsPage.php`, `src/ConnectService.php` |

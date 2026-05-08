@@ -43,6 +43,20 @@ class Options
     }
 
     /**
+     * Optional override: partner module id ({@see PartnerModuleRegistry} keys), e.g. `izpratibg`.
+     */
+    public static function getPartnerModuleOverrideId(): string
+    {
+        $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+        $v = $settings['partner_module'] ?? '';
+        if (! is_string($v)) {
+            return '';
+        }
+
+        return trim($v);
+    }
+
+    /**
      * @return string[]
      */
     private static function integrationSettingsOptionNames(): array

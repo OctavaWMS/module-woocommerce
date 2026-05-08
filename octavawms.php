@@ -14,6 +14,11 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+$octavawmsPartnerBuild = __DIR__ . '/partner-build.generated.php';
+if (is_readable($octavawmsPartnerBuild)) {
+    require_once $octavawmsPartnerBuild;
+}
+
 define('OCTAVAWMS_PLUGIN_FILE', __FILE__);
 
 // Always resolve plugin classes from /src via PSR-4 (prepend so this wins over an incomplete Composer autoload).

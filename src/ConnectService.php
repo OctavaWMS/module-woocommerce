@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OctavaWMS\WooCommerce;
 
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
+use OctavaWMS\WooCommerce\Partners\PartnerModuleResolver;
 
 class ConnectService
 {
@@ -66,7 +67,7 @@ class ConnectService
         $plugin_root = dirname(__DIR__);
         $script_rel = 'assets/js/admin-connect.js';
         $script_path = $plugin_root . '/' . $script_rel;
-        $script_url = plugins_url($script_rel, $plugin_root . '/octavawms-woocommerce.php');
+        $script_url = plugins_url($script_rel, $plugin_root . '/octavawms.php');
         $version = is_readable($script_path) ? (string) filemtime($script_path) : '1.0.0';
 
         wp_register_script('octavawms-admin-connect', $script_url, ['jquery'], $version, true);
@@ -249,7 +250,8 @@ class ConnectService
             );
         }
 
-        $base = rtrim((string) apply_filters('octavawms_panel_app_base', 'https://app.izprati.bg'), '/');
+        $defaultPanel = PartnerModuleResolver::resolve()->panelAppBase;
+        $base = rtrim((string) apply_filters('octavawms_panel_app_base', $defaultPanel), '/');
         $loginUrl = $base . '/#/login?refreshToken=' . rawurlencode($resolved['refresh_token']);
 
         wp_send_json_success(['loginUrl' => $loginUrl]);

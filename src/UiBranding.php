@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce;
 
+use OctavaWMS\WooCommerce\Partners\PartnerModule;
+use OctavaWMS\WooCommerce\Partners\PartnerModuleRegistry;
+use OctavaWMS\WooCommerce\Partners\PartnerModuleResolver;
+
 /**
- * Resolves which brand “pack” applies from backend hints (oauth domain / API host).
+ * Tenant-facing labels and brand pack (delegates to {@see PartnerModuleResolver}).
  * Copy overrides live in catalog PHP files wired by {@see I18n\BrandedStrings}.
  */
 final class UiBranding
 {
-    public const PACK_IZPRATI = 'izprati';
+    /** @deprecated Use {@see PartnerModuleRegistry::BRAND_PACK_IZPRATI} */
+    public const PACK_IZPRATI = PartnerModuleRegistry::BRAND_PACK_IZPRATI;
 
     public static function integrationTitle(): string
     {
@@ -22,25 +27,18 @@ final class UiBranding
         return __('Shipment', 'octavawms');
     }
 
+    public static function currentModule(): PartnerModule
+    {
+        return PartnerModuleResolver::resolve();
+    }
+
     /** Current brand pack or null when default Octava copy (no tenant catalog). */
     public static function currentBrandPack(): ?string
     {
-        return self::resolvePack();
-    }
-
-    private static function resolvePack(): ?string
-    {
-        $hints = self::domainHints();
-        $detected = null;
-        foreach ($hints as $hint) {
-            if (self::hintMatchesIzprati($hint)) {
-                $detected = self::PACK_IZPRATI;
-                break;
-            }
-        }
-
+        $hints = self::domainHintsForFilters();
+        $base = self::currentModule()->brandPack;
         /** @var string|null $filtered */
-        $filtered = apply_filters('octavawms_brand_pack', $detected, $hints);
+        $filtered = apply_filters('octavawms_brand_pack', $base, $hints);
 
         return is_string($filtered) && $filtered !== '' ? $filtered : null;
     }
@@ -48,7 +46,7 @@ final class UiBranding
     /**
      * @return list<string>
      */
-    private static function domainHints(): array
+    public static function domainHintsForFilters(): array
     {
         $out = [];
         $oauth = trim(Options::getOAuthDomain());
@@ -63,21 +61,5 @@ final class UiBranding
         }
 
         return array_values(array_unique($out));
-    }
-
-    private static function hintMatchesIzprati(string $hint): bool
-    {
-        $raw = strtolower(trim($hint));
-        if ($raw === '') {
-            return false;
-        }
-        if ($raw === 'izpratibg') {
-            return true;
-        }
-        if (str_contains($raw, '.')) {
-            $raw = (string) (preg_replace('/^www\./', '', $raw) ?? $raw);
-        }
-
-        return str_contains($raw, 'izprati');
     }
 }
