@@ -78,8 +78,8 @@ msgstr "Изберете куриер за доставка."
 msgid "Choose a pickup point from the list."
 msgstr "Изберете пункт за получаване от списъка."
 
-msgid "Connect request failed. Check your site can reach the OctavaWMS service."
-msgstr "Заявката за свързване не успя. Проверете дали сайтът достига услугата OctavaWMS."
+msgid "Connect request failed. Check your site can reach the %s service."
+msgstr "Заявката за свързване не успя. Проверете дали сайтът достига услугата %s."
 
 msgid "Connect service URL is not set."
 msgstr "URL на услугата за свързване не е зададен."
@@ -87,14 +87,14 @@ msgstr "URL на услугата за свързване не е зададен
 msgid "Connect the plugin under WooCommerce → Settings → Integrations first."
 msgstr "Първо свържете добавката от WooCommerce → Настройки → Интеграции."
 
-msgid "Connect to OctavaWMS"
-msgstr "Свързване към OctavaWMS"
+msgid "Connect to %s"
+msgstr "Свързване към %s"
 
-msgid "Connect your store to OctavaWMS for shipping label generation and order management."
-msgstr "Свържете магазина с OctavaWMS за етикети и управление на поръчки."
+msgid "Connect your store to %s for shipping label generation and order management."
+msgstr "Свържете магазина с %s за етикети и управление на поръчки."
 
-msgid "Connected to OctavaWMS"
-msgstr "Свързано с OctavaWMS"
+msgid "Connected to %s"
+msgstr "Свързано с %s"
 
 msgid "Connected. Your credentials are saved."
 msgstr "Свързани сте. Данните за достъп са записани."
@@ -105,17 +105,17 @@ msgstr "Свързването не успя."
 msgid "Could not add place."
 msgstr "Добавянето на място не успя."
 
-msgid "Could not load OctavaWMS status."
-msgstr "Неуспешно зареждане на състояние от OctavaWMS."
+msgid "Could not load %s status."
+msgstr "Неуспешно зареждане на състояние от %s."
 
 msgid "Could not load shipment."
 msgstr "Пратката не може да се зареди."
 
-msgid "Could not open Octava panel."
-msgstr "Панелът на Octava не може да се отвори."
+msgid "Could not open the %s panel."
+msgstr "Панелът на %s не може да се отвори."
 
-msgid "Could not open Octava panel. Try connecting again or check logs."
-msgstr "Панелът на Octava не може да се отвори. Опитайте отново да се свържете или проверете логовете."
+msgid "Could not open the %s panel. Try connecting again or check logs."
+msgstr "Панелът на %s не може да се отвори. Опитайте отново да се свържете или проверете логовете."
 
 msgid "Could not open panel login (authenticate request failed)."
 msgstr "Неуспешен вход в панела (искането за удостоверяване не успя)."
@@ -219,6 +219,12 @@ msgstr "Генерирането на етикет не успя."
 msgid "Label generation failed. See order notes for details."
 msgstr "Генерирането на етикет не успя. Вижте бележките към поръчката за подробности."
 
+msgid "%s — label generated."
+msgstr "%s — етикетът е генериран."
+
+msgid "%s — label generated successfully."
+msgstr "%s — етикетът е генериран успешно."
+
 msgid "Loading…"
 msgstr "Зареждане…"
 
@@ -249,17 +255,17 @@ msgstr "Несвързано"
 msgid "OctavaWMS Connector"
 msgstr "OctavaWMS конектор"
 
-msgid "OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
-msgstr "OctavaWMS конектор: още няма записан API ключ. Той се поисква автоматично при първо действие с поръчка или можете да се свържете ръчно от раздел Интеграции."
+msgid "%s: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
+msgstr "%s: още няма записан API ключ. Той се поисква автоматично при първо действие с поръчка или можете да се свържете ръчно от раздел Интеграции."
 
-msgid "OctavaWMS could not generate a shipping label. See order notes."
-msgstr "OctavaWMS не можа да генерира транспортен етикет. Вижте бележките към поръчката."
+msgid "%s could not generate a shipping label. See order notes."
+msgstr "%s не можа да генерира транспортен етикет. Вижте бележките към поръчката."
 
-msgid "OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS."
-msgstr "OctavaWMS не успя да обработи тази пратка. Вижте съобщението по-долу или отворете заявката за доставка в OctavaWMS."
+msgid "%1$s could not process this shipment. See the message below or open the delivery request in %1$s."
+msgstr "%1$s не успя да обработи тази пратка. Вижте съобщението по-долу или отворете заявката за доставка в %1$s."
 
-msgid "OctavaWMS label generation failed: %s"
-msgstr "Неуспешно генериране на етикет в OctavaWMS: %s"
+msgid "%1$s label generation failed: %2$s"
+msgstr "Неуспешно генериране на етикет от %1$s: %2$s"
 
 msgid "Office + locker — AI picks closest"
 msgstr "Офис и автомат — ИИ избира най-близки"
@@ -273,8 +279,8 @@ msgstr "Така могат да се повторят само неуспешн
 msgid "Open in Maps"
 msgstr "Отвори в карта"
 
-msgid "Order is in OctavaWMS; waiting for a shipment (delivery request) to appear."
-msgstr "Поръчката е в OctavaWMS; очаква се да се появи пратка (заявка за доставка)."
+msgid "Order is in %s; waiting for a shipment (delivery request) to appear."
+msgstr "Поръчката е в %s; очаква се да се появи пратка (заявка за доставка)."
 
 msgid "Order not found."
 msgstr "Поръчката не е намерена."
@@ -336,8 +342,8 @@ msgstr "Избор"
 msgid "Select carrier and locality first."
 msgstr "Първо изберете куриер и населено място."
 
-msgid "Send new orders to OctavaWMS automatically"
-msgstr "Автоматично изпращане на нови поръчки към OctavaWMS"
+msgid "Send new orders to %s automatically"
+msgstr "Автоматично изпращане на нови поръчки към %s"
 
 msgid "Service point"
 msgstr "Пункт за обслужване"
@@ -372,8 +378,8 @@ msgstr "Стратегия за ИИ"
 msgid "This box holds items and cannot be removed."
 msgstr "Този кашон съдържа позиции и не може да бъде премахнат."
 
-msgid "This order is not in OctavaWMS yet. Upload it to create shipments and labels."
-msgstr "Поръчката все още не е в OctavaWMS. Качете я за създаване на пратки и етикети."
+msgid "This order is not in %s yet. Upload it to create shipments and labels."
+msgstr "Поръчката все още не е в %s. Качете я за създаване на пратки и етикети."
 
 msgid "This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it."
 msgstr "Пратката чака автоматична обработка. Изчакайте приключването преди промяна на настройки или продължете, ако процесът ви го допуска."

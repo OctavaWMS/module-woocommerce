@@ -22,6 +22,18 @@ final class UiBranding
         return __('OctavaWMS Connector', 'octavawms');
     }
 
+    /**
+     * Product name for in-sentence copy (e.g. “Connected to %s”). Uses {@see PartnerModule::$name}
+     * with a trailing “ (English hint)” segment removed when present.
+     */
+    public static function serviceName(): string
+    {
+        $name = self::currentModule()->name;
+        $short = trim((string) (preg_replace('/\s*\([^)]+\)\s*$/u', '', $name) ?? ''));
+
+        return $short !== '' ? $short : $name;
+    }
+
     public static function shipmentHeadingWord(): string
     {
         return __('Shipment', 'octavawms');

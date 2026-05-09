@@ -78,8 +78,8 @@ msgstr "Choose a delivery carrier."
 msgid "Choose a pickup point from the list."
 msgstr "Choose a pickup point from the list."
 
-msgid "Connect request failed. Check your site can reach the OctavaWMS service."
-msgstr "Connect request failed. Check your site can reach the OctavaWMS service."
+msgid "Connect request failed. Check your site can reach the %s service."
+msgstr "Connect request failed. Check your site can reach the %s service."
 
 msgid "Connect service URL is not set."
 msgstr "Connect service URL is not set."
@@ -87,14 +87,14 @@ msgstr "Connect service URL is not set."
 msgid "Connect the plugin under WooCommerce → Settings → Integrations first."
 msgstr "Connect the plugin under WooCommerce → Settings → Integrations first."
 
-msgid "Connect to OctavaWMS"
-msgstr "Connect to OctavaWMS"
+msgid "Connect to %s"
+msgstr "Connect to %s"
 
-msgid "Connect your store to OctavaWMS for shipping label generation and order management."
-msgstr "Connect your store to OctavaWMS for shipping label generation and order management."
+msgid "Connect your store to %s for shipping label generation and order management."
+msgstr "Connect your store to %s for shipping label generation and order management."
 
-msgid "Connected to OctavaWMS"
-msgstr "Connected to OctavaWMS"
+msgid "Connected to %s"
+msgstr "Connected to %s"
 
 msgid "Connected. Your credentials are saved."
 msgstr "Connected. Your credentials are saved."
@@ -105,17 +105,17 @@ msgstr "Connection failed."
 msgid "Could not add place."
 msgstr "Could not add place."
 
-msgid "Could not load OctavaWMS status."
-msgstr "Could not load OctavaWMS status."
+msgid "Could not load %s status."
+msgstr "Could not load %s status."
 
 msgid "Could not load shipment."
 msgstr "Could not load shipment."
 
-msgid "Could not open Octava panel."
-msgstr "Could not open Octava panel."
+msgid "Could not open the %s panel."
+msgstr "Could not open the %s panel."
 
-msgid "Could not open Octava panel. Try connecting again or check logs."
-msgstr "Could not open Octava panel. Try connecting again or check logs."
+msgid "Could not open the %s panel. Try connecting again or check logs."
+msgstr "Could not open the %s panel. Try connecting again or check logs."
 
 msgid "Could not open panel login (authenticate request failed)."
 msgstr "Could not open panel login (authenticate request failed)."
@@ -219,6 +219,12 @@ msgstr "Label generation failed."
 msgid "Label generation failed. See order notes for details."
 msgstr "Label generation failed. See order notes for details."
 
+msgid "%s — label generated."
+msgstr "%s — label generated."
+
+msgid "%s — label generated successfully."
+msgstr "%s — label generated successfully."
+
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -249,17 +255,17 @@ msgstr "Not connected"
 msgid "OctavaWMS Connector"
 msgstr "OctavaWMS Connector"
 
-msgid "OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
-msgstr "OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
+msgid "%s: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
+msgstr "%s: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab."
 
-msgid "OctavaWMS could not generate a shipping label. See order notes."
-msgstr "OctavaWMS could not generate a shipping label. See order notes."
+msgid "%s could not generate a shipping label. See order notes."
+msgstr "%s could not generate a shipping label. See order notes."
 
-msgid "OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS."
-msgstr "OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS."
+msgid "%1$s could not process this shipment. See the message below or open the delivery request in %1$s."
+msgstr "%1$s could not process this shipment. See the message below or open the delivery request in %1$s."
 
-msgid "OctavaWMS label generation failed: %s"
-msgstr "OctavaWMS label generation failed: %s"
+msgid "%1$s label generation failed: %2$s"
+msgstr "%1$s label generation failed: %2$s"
 
 msgid "Office + locker — AI picks closest"
 msgstr "Office + locker — AI picks closest"
@@ -273,8 +279,8 @@ msgstr "Only a failed shipment (pending_error) can be retried this way."
 msgid "Open in Maps"
 msgstr "Open in Maps"
 
-msgid "Order is in OctavaWMS; waiting for a shipment (delivery request) to appear."
-msgstr "Order is in OctavaWMS; waiting for a shipment (delivery request) to appear."
+msgid "Order is in %s; waiting for a shipment (delivery request) to appear."
+msgstr "Order is in %s; waiting for a shipment (delivery request) to appear."
 
 msgid "Order not found."
 msgstr "Order not found."
@@ -336,8 +342,8 @@ msgstr "Select"
 msgid "Select carrier and locality first."
 msgstr "Select carrier and locality first."
 
-msgid "Send new orders to OctavaWMS automatically"
-msgstr "Send new orders to OctavaWMS automatically"
+msgid "Send new orders to %s automatically"
+msgstr "Send new orders to %s automatically"
 
 msgid "Service point"
 msgstr "Service point"
@@ -372,8 +378,8 @@ msgstr "Strategy for AI"
 msgid "This box holds items and cannot be removed."
 msgstr "This box holds items and cannot be removed."
 
-msgid "This order is not in OctavaWMS yet. Upload it to create shipments and labels."
-msgstr "This order is not in OctavaWMS yet. Upload it to create shipments and labels."
+msgid "This order is not in %s yet. Upload it to create shipments and labels."
+msgstr "This order is not in %s yet. Upload it to create shipments and labels."
 
 msgid "This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it."
 msgstr "This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it."

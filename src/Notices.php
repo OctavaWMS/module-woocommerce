@@ -24,10 +24,11 @@ class Notices
         }
 
         echo '<div class="notice notice-info is-dismissible"><p>';
-        esc_html_e(
-            'OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab.',
-            'octavawms'
-        );
+        echo esc_html(sprintf(
+            /* translators: %s: integration title (may be white-label). */
+            __('%s: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab.', 'octavawms'),
+            UiBranding::integrationTitle()
+        ));
         echo '</p></div>';
     }
 }

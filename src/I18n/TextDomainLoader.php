@@ -11,7 +11,8 @@ final class TextDomainLoader
 {
     public static function register(): void
     {
-        add_action('plugins_loaded', [self::class, 'load'], 0);
+        // WordPress 6.7+: load after user/locale are set (init), not on plugins_loaded.
+        add_action('init', [self::class, 'load'], 10);
     }
 
     public static function load(): void

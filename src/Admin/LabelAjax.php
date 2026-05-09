@@ -8,6 +8,7 @@ use OctavaWMS\WooCommerce\Api\BackendApiClient;
 use OctavaWMS\WooCommerce\Api\LabelService;
 use OctavaWMS\WooCommerce\Options;
 use OctavaWMS\WooCommerce\PluginLog;
+use OctavaWMS\WooCommerce\UiBranding;
 use OctavaWMS\WooCommerce\WooOrderExtId;
 use OctavaWMS\WooCommerce\WooOrderWeights;
 use WC_Order;
@@ -248,8 +249,9 @@ class LabelAjax
 
         if ($result['status'] !== 'success') {
             $order->add_order_note(sprintf(
-                /* translators: %s: error message */
-                __('OctavaWMS label generation failed: %s', 'octavawms'),
+                /* translators: 1: service name, 2: error message. */
+                __('%1$s label generation failed: %2$s', 'octavawms'),
+                UiBranding::serviceName(),
                 $result['message'] ?? 'unknown error'
             ));
             $order->save();
@@ -271,7 +273,13 @@ class LabelAjax
             (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true),
             (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true)
         );
-        $order->add_order_note('OctavaWMS label generated. ' . wp_strip_all_tags($downloadLink));
+        $order->add_order_note(
+            sprintf(
+                /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                __('%s — label generated.', 'octavawms'),
+                UiBranding::serviceName()
+            ) . ' ' . wp_strip_all_tags($downloadLink)
+        );
         $order->save();
 
         $downloadUrl = '';

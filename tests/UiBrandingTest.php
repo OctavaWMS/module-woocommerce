@@ -47,6 +47,7 @@ final class UiBrandingTest extends TestCase
         self::assertNull(UiBranding::currentBrandPack());
         self::assertSame(PartnerModuleRegistry::ID_OCTAVA, UiBranding::currentModule()->id);
         self::assertSame('OctavaWMS Connector', UiBranding::integrationTitle());
+        self::assertSame('OctavaWMS', UiBranding::serviceName());
         self::assertSame('Shipment', UiBranding::shipmentHeadingWord());
     }
 
@@ -65,6 +66,7 @@ final class UiBrandingTest extends TestCase
 
         self::assertSame(UiBranding::PACK_IZPRATI, UiBranding::currentBrandPack());
         self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::integrationTitle());
+        self::assertSame('Изпрати.БГ', UiBranding::serviceName());
         self::assertSame('Пратка', UiBranding::shipmentHeadingWord());
     }
 
@@ -86,5 +88,6 @@ final class UiBrandingTest extends TestCase
 
         self::assertSame(UiBranding::PACK_IZPRATI, UiBranding::currentBrandPack());
         self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::integrationTitle());
+        self::assertSame('Изпрати.БГ', UiBranding::serviceName());
     }
 }

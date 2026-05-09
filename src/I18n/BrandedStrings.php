@@ -18,6 +18,7 @@ final class BrandedStrings
     public static function register(): void
     {
         add_filter('gettext', [self::class, 'filterGettext'], 10, 3);
+        add_filter('gettext_octavawms', [self::class, 'filterGettext'], 10, 3);
     }
 
     /**

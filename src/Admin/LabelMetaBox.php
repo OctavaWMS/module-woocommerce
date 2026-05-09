@@ -204,6 +204,8 @@ CSS;
             function_exists('get_option') ? (string) get_option('woocommerce_weight_unit', 'kg') : 'kg'
         );
 
+        $serviceName = UiBranding::serviceName();
+
         wp_localize_script('octavawms-order-panel', 'octavawmsOrderPanel', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'orderId' => $orderId,
@@ -220,12 +222,24 @@ CSS;
             'weightUnitLabel' => $this->weightUnitLabelTranslated($weightUnitSlug),
             'strings' => [
                 'loading' => __('Loading…', 'octavawms'),
-                'error' => __('Could not load OctavaWMS status.', 'octavawms'),
-                'noOrder' => __('This order is not in OctavaWMS yet. Upload it to create shipments and labels.', 'octavawms'),
+                'error' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Could not load %s status.', 'octavawms'),
+                    $serviceName
+                ),
+                'noOrder' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('This order is not in %s yet. Upload it to create shipments and labels.', 'octavawms'),
+                    $serviceName
+                ),
                 'uploadOrder' => __('Upload order', 'octavawms'),
                 'uploading' => __('Uploading…', 'octavawms'),
                 'orderSynced' => __('Order synced', 'octavawms'),
-                'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'octavawms'),
+                'awaitingShipment' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Order is in %s; waiting for a shipment (delivery request) to appear.', 'octavawms'),
+                    $serviceName
+                ),
                 'shipment' => UiBranding::shipmentHeadingWord(),
                 'labelReady' => __('Label Ready', 'octavawms'),
                 'downloadLabel' => __('Download Label', 'octavawms'),
@@ -237,7 +251,11 @@ CSS;
                 'requeueingEndingQueued' => __('Re-queuing…', 'octavawms'),
                 'refreshStatus' => __('Refresh status', 'octavawms'),
                 'loginToPanel' => __('Login to the panel', 'octavawms'),
-                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
+                'panelLoginError' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Could not open the %s panel. Try connecting again or check logs.', 'octavawms'),
+                    $serviceName
+                ),
                 'servicePointSection' => __('Edit shipment', 'octavawms'),
                 'noShipmentForSection' => __('Available after a shipment exists for this order.', 'octavawms'),
                 'searchPlaceholder' => __('Search pickup point…', 'octavawms'),
@@ -278,7 +296,11 @@ CSS;
                 'localityPlaceholder' => __('Search city (e.g. Varna)…', 'octavawms'),
                 'pickupPointPlaceholder' => __('Search pickup point…', 'octavawms'),
                 'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'octavawms'),
-                'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'octavawms'),
+                'shipmentPendingErrorGeneric' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ), used twice in the English sentence. */
+                    __('%1$s could not process this shipment. See the message below or open the delivery request in %1$s.', 'octavawms'),
+                    $serviceName
+                ),
                 'retryPendingError' => __('Retry', 'octavawms'),
                 'retryingPendingError' => __('Retrying…', 'octavawms'),
                 'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'octavawms'),

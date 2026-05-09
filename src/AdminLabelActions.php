@@ -8,6 +8,7 @@ use OctavaWMS\WooCommerce\Admin\LabelAjax;
 use OctavaWMS\WooCommerce\Admin\LabelMetaBox;
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
 use OctavaWMS\WooCommerce\Api\LabelService;
+use OctavaWMS\WooCommerce\UiBranding;
 use OctavaWMS\WooCommerce\WooOrderExtId;
 use OctavaWMS\WooCommerce\WooOrderWeights;
 use WC_Order;
@@ -100,7 +101,11 @@ class AdminLabelActions
 
         if (! $success && class_exists(\WC_Admin_Meta_Boxes::class, false)) {
             \WC_Admin_Meta_Boxes::add_error(
-                __('OctavaWMS could not generate a shipping label. See order notes.', 'octavawms')
+                sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('%s could not generate a shipping label. See order notes.', 'octavawms'),
+                    UiBranding::serviceName()
+                )
             );
         }
     }
@@ -157,7 +162,9 @@ class AdminLabelActions
 
         if ($result['status'] !== 'success') {
             $order->add_order_note(sprintf(
-                __('OctavaWMS label generation failed: %s', 'octavawms'),
+                /* translators: 1: service name, 2: error message. */
+                __('%1$s label generation failed: %2$s', 'octavawms'),
+                UiBranding::serviceName(),
                 $result['message'] ?? 'unknown error'
             ));
             $order->save();
@@ -185,7 +192,11 @@ class AdminLabelActions
             (string) $order->get_meta(LabelService::ORDER_META_LABEL_URL, true)
         );
         $order->add_order_note(
-            'OctavaWMS label generated successfully. ' . wp_strip_all_tags($downloadLink)
+            sprintf(
+                /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                __('%s — label generated successfully.', 'octavawms'),
+                UiBranding::serviceName()
+            ) . ' ' . wp_strip_all_tags($downloadLink)
         );
         $order->save();
 

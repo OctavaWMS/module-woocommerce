@@ -72,16 +72,29 @@ class ConnectService
 
         wp_register_script('octavawms-admin-connect', $script_url, ['jquery'], $version, true);
 
+        $service = UiBranding::serviceName();
         wp_localize_script('octavawms-admin-connect', 'octavawmsConnect', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(self::ACTION),
             'panelLoginNonce' => wp_create_nonce(self::PANEL_LOGIN_NONCE_ACTION),
             'strings' => [
-                'connected' => __('Connected to OctavaWMS', 'octavawms'),
+                'connected' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Connected to %s', 'octavawms'),
+                    $service
+                ),
                 'notConnected' => __('Not connected', 'octavawms'),
-                'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'octavawms'),
+                'error' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Connect request failed. Check your site can reach the %s service.', 'octavawms'),
+                    $service
+                ),
                 'panelLogin' => __('Login to the panel', 'octavawms'),
-                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
+                'panelLoginError' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Could not open the %s panel. Try connecting again or check logs.', 'octavawms'),
+                    $service
+                ),
             ],
         ]);
 
@@ -244,7 +257,11 @@ class ConnectService
                 [
                     'message' => $resolved['message'] !== ''
                         ? $resolved['message']
-                        : __('Could not open Octava panel.', 'octavawms'),
+                        : sprintf(
+                            /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                            __('Could not open the %s panel.', 'octavawms'),
+                            UiBranding::serviceName()
+                        ),
                 ],
                 400
             );

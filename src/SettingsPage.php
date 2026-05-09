@@ -10,9 +10,10 @@ class SettingsPage extends \WC_Integration
     {
         $this->id = Options::INTEGRATION_ID;
         $this->method_title = UiBranding::integrationTitle();
-        $this->method_description = __(
-            'Connect your store to OctavaWMS for shipping label generation and order management.',
-            'octavawms'
+        $this->method_description = sprintf(
+            /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+            __('Connect your store to %s for shipping label generation and order management.', 'octavawms'),
+            UiBranding::serviceName()
         );
 
         // WC_Settings_API / WC_Integration do not declare __construct(); calling parent::__construct() fatal-errors on PHP.
@@ -64,7 +65,11 @@ class SettingsPage extends \WC_Integration
             'sync_new_orders' => [
                 'title' => __('Auto-sync new orders', 'octavawms'),
                 'type' => 'checkbox',
-                'label' => __('Send new orders to OctavaWMS automatically', 'octavawms'),
+                'label' => sprintf(
+                    /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                    __('Send new orders to %s automatically', 'octavawms'),
+                    UiBranding::serviceName()
+                ),
                 'default' => 'yes',
             ],
             'sync_order_updates' => [
@@ -83,7 +88,11 @@ class SettingsPage extends \WC_Integration
         $connected = $ak !== '';
         $statusClass = $connected ? 'octavawms-badge--ok' : 'octavawms-badge--off';
         $statusText = $connected
-            ? esc_html__('Connected to OctavaWMS', 'octavawms')
+            ? esc_html(sprintf(
+                /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                __('Connected to %s', 'octavawms'),
+                UiBranding::serviceName()
+            ))
             : esc_html__('Not connected', 'octavawms');
 
         ob_start();
@@ -98,7 +107,13 @@ class SettingsPage extends \WC_Integration
             </p>
             <p>
                 <button type="button" class="button button-primary" id="octavawms-connect-btn">
-                    <?php esc_html_e('Connect to OctavaWMS', 'octavawms'); ?>
+                    <?php
+                    echo esc_html(sprintf(
+                        /* translators: %s: service name (e.g. OctavaWMS, Изпрати.БГ). */
+                        __('Connect to %s', 'octavawms'),
+                        UiBranding::serviceName()
+                    ));
+                    ?>
                 </button>
                 <button type="button" class="button button-secondary" id="octavawms-panel-login-btn">
                     <?php esc_html_e('Login to the panel', 'octavawms'); ?>
