@@ -5,3 +5,4 @@ partner-build.generated.php
 .vscode/
 .php*
 dev
+.git
