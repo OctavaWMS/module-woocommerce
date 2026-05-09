@@ -21,6 +21,26 @@ class ConnectService
         add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
         add_action('wp_ajax_' . self::PANEL_LOGIN_ACTION, [$this, 'handleAjaxPanelLoginUrl']);
         add_action('admin_enqueue_scripts', [$this, 'maybeEnqueueConnectScript']);
+        add_filter('heartbeat_received', [$this, 'heartbeatAddPanelLoginNonce'], 10, 2);
+    }
+
+    /**
+     * Push a fresh panel-login nonce on each admin heartbeat so long-lived order tabs stay valid.
+     *
+     * @param array<string, mixed> $response
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
+     */
+    public function heartbeatAddPanelLoginNonce(array $response, array $_data): array
+    {
+        if (! is_user_logged_in() || ! current_user_can('manage_woocommerce')) {
+            return $response;
+        }
+
+        $response['octavawms_panel_login_nonce'] = wp_create_nonce(self::PANEL_LOGIN_NONCE_ACTION);
+
+        return $response;
     }
 
     /**
@@ -248,7 +268,17 @@ class ConnectService
             wp_send_json_error(['message' => __('You do not have permission to open the panel.', 'octavawms')], 403);
         }
 
-        check_ajax_referer(self::PANEL_LOGIN_NONCE_ACTION, 'security');
+        if (! check_ajax_referer(self::PANEL_LOGIN_NONCE_ACTION, 'security', false)) {
+            wp_send_json_error(
+                [
+                    'message' => __(
+                        'Your session could not be verified (invalid or expired security token). Reload this page and try again.',
+                        'octavawms'
+                    ),
+                ],
+                403
+            );
+        }
 
         $client = new BackendApiClient();
         $resolved = $client->getPanelLoginRefreshToken();

@@ -167,4 +167,59 @@ final class ConnectServicePanelLoginTest extends TestCase
         self::assertIsArray($captured);
         self::assertSame('https://app.izprati.bg/#/login?refreshToken=tok', $captured['loginUrl'] ?? null);
     }
+
+    public function testHandleAjaxPanelLoginUrlSendsJsonErrorWhenNonceInvalid(): void
+    {
+        $_POST['security'] = 'bad';
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(false);
+
+        $captured = null;
+        Functions\expect('wp_send_json_error')
+            ->once()
+            ->andReturnUsing(static function ($data, $status = null) use (&$captured): void {
+                $captured = [$data, $status];
+                throw new \RuntimeException('json_err');
+            });
+
+        $svc = new ConnectService();
+
+        try {
+            $svc->handleAjaxPanelLoginUrl();
+        } catch (\RuntimeException $e) {
+            self::assertSame('json_err', $e->getMessage());
+        }
+
+        self::assertIsArray($captured);
+        self::assertSame(403, $captured[1]);
+        self::assertIsArray($captured[0]);
+        self::assertArrayHasKey('message', $captured[0]);
+        self::assertNotSame('', (string) ($captured[0]['message'] ?? ''));
+    }
+
+    public function testHeartbeatAddPanelLoginNonceAddsWhenUserAllowed(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(true);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('wp_create_nonce')->alias(static function (string $action): string {
+            return 'hb-' . $action;
+        });
+
+        $svc = new ConnectService();
+        $out = $svc->heartbeatAddPanelLoginNonce([], []);
+
+        self::assertSame('hb-octavawms_panel_login', $out['octavawms_panel_login_nonce'] ?? null);
+    }
+
+    public function testHeartbeatAddPanelLoginNonceSkipsWhenNotLoggedIn(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+
+        $svc = new ConnectService();
+        $out = $svc->heartbeatAddPanelLoginNonce(['keep' => 1], []);
+
+        self::assertSame(['keep' => 1], $out);
+    }
 }

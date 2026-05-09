@@ -46,3 +46,8 @@ Tests use **PHPUnit 11** and **Brain Monkey**. Details: root [README.md — Runn
 ## ClickUp & agents
 
 Project conventions for commits, ClickUp list/tag, and task lifecycle: [clickup-workflow.md](clickup-workflow.md) and root [AGENTS.md](../../AGENTS.md).
+
+## Troubleshooting (admin)
+
+- **“Login to panel” from the order edit screen fails with an invalid nonce / 403 JSON** (older setups may have shown raw `-1` from `admin-ajax.php`): reload the order page so `octavawmsOrderPanel.panelLoginNonce` matches the current session. The plugin also refreshes that nonce on the WordPress admin heartbeat for users who can `manage_woocommerce`.
+- **Full-page or HTML caching of wp-admin**: exclude order edit URLs (for example `post.php` with `shop_order`, and `admin.php?page=wc-orders&action=edit`) from cache. Cached HTML can embed a stale localized nonce while cookies still identify the user, which breaks AJAX until the page is uncached or bypassed.

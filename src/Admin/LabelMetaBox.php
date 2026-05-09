@@ -206,6 +206,10 @@ CSS;
 
         $serviceName = UiBranding::serviceName();
 
+        /**
+         * `octavawmsOrderPanel.panelLoginNonce` is checked against {@see ConnectService::PANEL_LOGIN_NONCE_ACTION} for `octavawms_panel_login_url`.
+         * If panel login fails after a long-open tab or cached HTML, reload the order screen; in DevTools console, confirm this property is a non-empty string.
+         */
         wp_localize_script('octavawms-order-panel', 'octavawmsOrderPanel', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'orderId' => $orderId,

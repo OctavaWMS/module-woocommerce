@@ -4,6 +4,13 @@
     return;
   }
   const cfg = octavawmsOrderPanel;
+  if (typeof jQuery !== 'undefined') {
+    jQuery(document).on('heartbeat-tick', function (event, data) {
+      if (data && data.octavawms_panel_login_nonce) {
+        cfg.panelLoginNonce = String(data.octavawms_panel_login_nonce);
+      }
+    });
+  }
   const box = root.closest('.octavawms-label-box');
   let spDetail = null;
   let lastSpShipmentId = 0;
