@@ -85,15 +85,16 @@ class BackendApiClient
     }
 
     /**
-     * Resolve refresh token for web panel auto-login (stored OAuth, or same flow as Shopify app).
+     * Resolve refresh token for web panel auto-login via backend (GET user + authenticate).
+     *
+     * Does not embed the stored OAuth refresh in the panel URL; mints a fresh value each call.
      *
      * @return array{ok: bool, refresh_token: string, message: string}
      */
     public function getPanelLoginRefreshToken(): array
     {
-        $stored = Options::getRefreshToken();
-        if ($stored !== '') {
-            return ['ok' => true, 'refresh_token' => $stored, 'message' => ''];
+        if (Options::getApiKey() === '' && Options::getRefreshToken() !== '' && Options::getOAuthDomain() !== '') {
+            $this->exchangeRefreshTokenForAccess();
         }
 
         if (Options::getApiKey() === '') {
@@ -142,6 +143,8 @@ class BackendApiClient
                 'message' => __('Could not open panel login (missing refresh token).', 'octavawms'),
             ];
         }
+
+        Options::mergeAccessTokenFromOAuth(Options::getApiKey(), $rt);
 
         return ['ok' => true, 'refresh_token' => $rt, 'message' => ''];
     }

@@ -1125,32 +1125,99 @@ final class BackendApiClientTest extends TestCase
         self::assertCount(1, $r['items']);
     }
 
-    public function testGetPanelLoginRefreshTokenUsesStoredRefreshWithoutHttp(): void
+    public function testGetPanelLoginRefreshTokenExchangesOAuthThenMintsFromAuthenticate(): void
     {
-        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+        $integrationSettings = [
+            'refresh_token' => 'rt-from-db',
+            'oauth_domain' => 'izpratibg',
+            'api_key' => '',
+            'label_endpoint' => 'https://api.example.com/apps/woocommerce/api/label',
+        ];
+
+        Functions\when('get_option')->alias(static function (string $name, $default = false) use (&$integrationSettings) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return [
-                    'refresh_token' => 'rt-from-db',
-                    'api_key' => '',
-                    'label_endpoint' => 'https://api.example.com/apps/woocommerce/api/label',
-                ];
+                return $integrationSettings;
             }
             if ($name === Options::LEGACY_API_KEY) {
-                return '';
+                return (string) ($integrationSettings['api_key'] ?? '');
+            }
+            if ($name === Options::LEGACY_LABEL_ENDPOINT) {
+                return (string) ($integrationSettings['label_endpoint'] ?? '');
             }
 
             return $default;
         });
 
-        Functions\when('wp_remote_request')->alias(static function (): void {
-            throw new \RuntimeException('wp_remote_request should not run when refresh_token is stored');
+        Functions\when('update_option')->alias(static function (string $name, $value) use (&$integrationSettings) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                $integrationSettings = array_merge($integrationSettings, (array) $value);
+
+                return true;
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                $integrationSettings['api_key'] = (string) $value;
+
+                return true;
+            }
+            if ($name === Options::LEGACY_LABEL_ENDPOINT) {
+                $integrationSettings['label_endpoint'] = (string) $value;
+
+                return true;
+            }
+
+            return true;
+        });
+
+        $postCalls = 0;
+        Functions\when('wp_remote_post')->alias(static function (string $url, array $args = []) use (&$postCalls): array {
+            ++$postCalls;
+            self::assertStringEndsWith('/oauth', $url);
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(
+                    [
+                        'access_token' => 'bearer-after-oauth',
+                        'refresh_token' => 'rt-rotated-from-oauth',
+                    ],
+                    JSON_THROW_ON_ERROR
+                ),
+            ];
+        });
+
+        $urls = [];
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) use (&$urls): array {
+            $urls[] = $url;
+            if (str_contains($url, '/api/users/users/0')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['id' => 42], JSON_THROW_ON_ERROR),
+                ];
+            }
+            if (str_contains($url, '/api/users/authenticate/42')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['refreshToken' => 'rt-panel-minted'], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            return [
+                'response' => ['code' => 500],
+                'body' => '{}',
+            ];
         });
 
         $client = new BackendApiClient();
         $out = $client->getPanelLoginRefreshToken();
         self::assertTrue($out['ok']);
-        self::assertSame('rt-from-db', $out['refresh_token']);
+        self::assertSame('rt-panel-minted', $out['refresh_token']);
         self::assertSame('', $out['message']);
+        self::assertSame(1, $postCalls);
+        self::assertCount(2, $urls);
+        self::assertStringContainsString('/api/users/users/0', $urls[0]);
+        self::assertStringContainsString('/api/users/authenticate/42', $urls[1]);
+        self::assertSame('bearer-after-oauth', $integrationSettings['api_key']);
+        self::assertSame('rt-panel-minted', $integrationSettings['refresh_token']);
     }
 
     public function testGetPanelLoginRefreshTokenFetchesFromUserEndpointsWhenNoStoredRefresh(): void
@@ -1190,6 +1257,8 @@ final class BackendApiClientTest extends TestCase
                 'body' => '{}',
             ];
         });
+
+        Functions\when('update_option')->justReturn(true);
 
         $client = new BackendApiClient();
         $out = $client->getPanelLoginRefreshToken();
