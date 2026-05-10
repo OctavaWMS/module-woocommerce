@@ -26,5 +26,5 @@ For the **WordPress + WooCommerce plugin** in this repository. Cursor-specific a
 |--------|------|
 | Docs index | [`docs/README.md`](docs/README.md) |
 | Module vs cloud integration, file map | [`docs/guides/module-overview.md`](docs/guides/module-overview.md) |
-| ClickUp list, tag, timers, Solution field | [`docs/guides/clickup-workflow.md`](docs/guides/clickup-workflow.md) |
+| ClickUp list, tag, timers, Solution field | [`docs/guides/clickup-workflow.md`](docs/guides/clickup-workflow.md) *(repo only — omitted from `scripts/build-plugin-zip.sh` output)* |
 | Install, API reference, UX | root [`README.md`](README.md) |

@@ -25,6 +25,7 @@ function help {
 	echo "  3. Run tests"
 	echo "  4. Merge to release/1.x branch"
 	echo "  5. Create and push release tag"
+	echo "  6. Build dist/octavawms-woocommerce-<version>.zip (merchant bundle; excludes tests, vendor, AI-only docs)"
 	echo ""
 	echo "If --remove-last is used, it will also:"
 	echo "  - Remove the last release tag (locally and remotely)"
@@ -266,6 +267,15 @@ fi
 echo "🏷️  Creating and pushing release tag from release/1.x branch..."
 cd "$DIR" && git tag -a "${VERSION}" -m "${VERSION}"
 cd "$DIR" && git push --tags
+
+if [[ -f "$DIR/scripts/build-plugin-zip.sh" ]]; then
+	echo "📦 Building distribution zip (excludes tests, vendor, AI-only docs)..."
+	if ! bash "$DIR/scripts/build-plugin-zip.sh" "$VERSION"; then
+		echo "⚠️  Distribution zip build failed (release tag was pushed)."
+	fi
+else
+	echo "⚠️  scripts/build-plugin-zip.sh missing; skipping zip."
+fi
 
 echo "🔄 Returning to main branch..."
 cd "$DIR" && git checkout main && git pull

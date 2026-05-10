@@ -24,11 +24,16 @@ High-level connect and API behaviour are summarised in the root [README.md](../.
 | REST + label HTTP | `src/Api/BackendApiClient.php`, `src/Api/LabelService.php` |
 | Order admin UI | `src/Admin/LabelMetaBox.php`, `src/Admin/LabelAjax.php`, `src/AdminLabelActions.php` |
 | Settings + connect | `src/SettingsPage.php`, `src/ConnectService.php` |
+| Integration settings AJAX (carrier matrix, rates, WC meta key suggestions) | `src/Admin/SettingsAjax.php` (`wp_ajax_octavawms_carrier_matrix`) |
 | Woo REST key discovery + HMAC | `src/WooRestCredentials.php` |
 | Options + defaults | `src/Options.php` |
 | Auto-import hooks | `src/OrderSyncService.php` |
 | Logging / user-facing errors | `src/PluginLog.php` |
 | Tenant copy (gettext catalogs) | `src/I18n/BrandedStrings.php`, `src/I18n/catalogs/*.php` |
+
+### Carrier meta mapping (admin)
+
+Under **WooCommerce → Settings → Integrations → OctavaWMS Connector**, the carrier matrix appears **after** the standard integration fields (API base, API key, sync toggles, **Save changes**). It loads and saves `carrierMapping` on the OctavaWMS integration source at `settings.DeliveryServices.options.carrierMapping` (same shape as Orderadmin). The **Carrier** column uses WooCommerce **SelectWoo** (registered by Woo) for searchable delivery-service integrations; **WC meta key** can suggest keys from existing orders (HPOS `wc_orders_meta` or classic `shop_order` postmeta). Front-end: `assets/js/admin-settings-matrix.js`, enqueued from `ConnectService::maybeEnqueueConnectScript` (priority 20 so `selectWoo` is registered first).
 
 ## Quality & tests
 
@@ -41,8 +46,8 @@ Tests use **PHPUnit 11** and **Brain Monkey**. Details: root [README.md — Runn
 
 ## Release
 
-`./release.sh` from the plugin root (semver, `composer check`, tag, push). See root README **Releasing** section.
+`./release.sh` from the plugin root (semver, `composer check`, tag, push). After tagging it runs **`scripts/build-plugin-zip.sh`** (kept in git only; not inside the zip), which writes **`dist/octavawms-woocommerce-<version>.zip`** for merchant installs. **Excluded on purpose** (among others): `vendor/`, `tests/`, `dev/`, `scripts/`, `release.sh`, `.cursor/`, `docs/guides/clickup-workflow.md`, root **`AGENTS.md`**. See root README **Releasing** section.
 
 ## ClickUp & agents
 
-Project conventions for commits, ClickUp list/tag, and task lifecycle: [clickup-workflow.md](clickup-workflow.md) and root [AGENTS.md](../../AGENTS.md).
+Commits, list/tag, and task flow: root **[AGENTS.md](../../AGENTS.md)** and **[`.cursor/rules/`](../../.cursor/rules/)**. Optional prose mirror: [clickup-workflow.md](clickup-workflow.md) (not shipped in the distribution zip above).

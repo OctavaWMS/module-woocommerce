@@ -132,5 +132,65 @@ class SettingsPage extends \WC_Integration
     {
         echo $this->getConnectDescriptionHtml();
         parent::admin_options();
+        echo $this->getCarrierMatrixSectionHtml();
+    }
+
+    private function getCarrierMatrixSectionHtml(): string
+    {
+        if (! current_user_can('manage_woocommerce')) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <datalist id="octavawms-wc-meta-keys"></datalist>
+        <div id="octavawms-carrier-matrix-root" class="octavawms-carrier-matrix" style="margin:1.25em 0 2em;max-width:1280px;">
+            <h2 style="font-size:1.1em;margin-bottom:0.5em;">
+                <?php esc_html_e('Carrier meta mapping (Woo → Octava)', 'octavawms'); ?>
+            </h2>
+            <p class="description" style="max-width:960px;">
+                <?php esc_html_e(
+                    'Map WooCommerce order meta (e.g. courierName, courierID) and optional delivery_type to a carrier service, rate, and pickup strategy. Saved to your OctavaWMS integration source (same as Orderadmin settings).',
+                    'octavawms'
+                ); ?>
+            </p>
+            <p>
+                <button type="button" class="button" id="octavawms-matrix-toggle-mode">
+                    <?php esc_html_e('Switch to JSON', 'octavawms'); ?>
+                </button>
+                <button type="button" class="button button-primary" id="octavawms-matrix-save" style="margin-left:8px;">
+                    <?php esc_html_e('Save mapping', 'octavawms'); ?>
+                </button>
+                <button type="button" class="button" id="octavawms-matrix-add-row" style="margin-left:8px;">
+                    <?php esc_html_e('Add row', 'octavawms'); ?>
+                </button>
+                <span class="spinner" id="octavawms-matrix-spinner" style="float:none;visibility:hidden;margin-left:8px;"></span>
+            </p>
+            <p id="octavawms-matrix-message" class="description" style="min-height:1.25em;color:#b32d2d;" aria-live="polite"></p>
+            <div id="octavawms-matrix-visual-wrap">
+                <table class="widefat striped" id="octavawms-matrix-table" style="margin-top:0.5em;">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('WC meta key', 'octavawms'); ?></th>
+                            <th><?php esc_html_e('WC meta value', 'octavawms'); ?></th>
+                            <th><?php esc_html_e('WC delivery_type (optional)', 'octavawms'); ?></th>
+                            <th><?php esc_html_e('Strategy for AI', 'octavawms'); ?></th>
+                            <th><?php esc_html_e('Carrier', 'octavawms'); ?></th>
+                            <th><?php esc_html_e('Rate', 'octavawms'); ?></th>
+                            <th style="width:48px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="octavawms-matrix-tbody"></tbody>
+                </table>
+            </div>
+            <div id="octavawms-matrix-json-wrap" style="display:none;">
+                <label for="octavawms-matrix-json" class="screen-reader-text"><?php esc_html_e('JSON', 'octavawms'); ?></label>
+                <textarea id="octavawms-matrix-json" rows="16" class="large-text code" style="width:100%;font-family:monospace;"></textarea>
+            </div>
+        </div>
+        <hr>
+        <?php
+
+        return (string) ob_get_clean();
     }
 }

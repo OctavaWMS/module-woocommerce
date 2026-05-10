@@ -1453,4 +1453,135 @@ class BackendApiClient
 
         return http_build_query($parts, '', '&', PHP_QUERY_RFC3986);
     }
+
+    /**
+     * GET /api/integrations/sources/{id}
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getIntegrationSource(int $sourceId): ?array
+    {
+        if ($sourceId <= 0) {
+            return null;
+        }
+        $result = $this->request('GET', 'api/integrations/sources/' . $sourceId, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return null;
+        }
+
+        return $result['data'];
+    }
+
+    /**
+     * PATCH /api/integrations/sources/{id}
+     *
+     * @param array<string, mixed> $body
+     *
+     * @return array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>}
+     */
+    public function patchIntegrationSource(int $sourceId, array $body): array
+    {
+        if ($sourceId <= 0) {
+            return [
+                'ok' => false,
+                'status' => 400,
+                'data' => null,
+                'raw' => 'invalid source id',
+                'response_headers' => [],
+            ];
+        }
+
+        return $this->request('PATCH', 'api/integrations/sources/' . $sourceId, $body);
+    }
+
+    /**
+     * GET /api/delivery-services/integrations (paginated, optional name search).
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchDeliveryServiceIntegrationsPage(string $search, int $page): array
+    {
+        $page = max(1, $page);
+        $perPage = 50;
+        $parts = [
+            'page=' . $page,
+            'per_page=' . $perPage,
+            'sort[id]=desc',
+        ];
+        $trimSearch = trim($search);
+        if ($trimSearch !== '') {
+            $parts[] = 'filter[0][type]=ilike';
+            $parts[] = 'filter[0][field]=name';
+            $parts[] = 'filter[0][value]=' . rawurlencode('%' . $trimSearch . '%');
+        }
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/delivery-services/integrations?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+        $data = $result['data'];
+        $embedded = $data['_embedded'] ?? null;
+        $items = [];
+        if (is_array($embedded)) {
+            $list = $embedded['integration'] ?? $embedded['integrations'] ?? [];
+            if (is_array($list)) {
+                foreach ($list as $row) {
+                    if (is_array($row)) {
+                        $items[] = $row;
+                    }
+                }
+            }
+        }
+        $totalPages = 1;
+        if (isset($data['page_count']) && is_numeric($data['page_count'])) {
+            $totalPages = max(1, (int) $data['page_count']);
+        }
+
+        return ['items' => $items, 'total_pages' => $totalPages];
+    }
+
+    /**
+     * Active rates for a delivery service (carrier).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function fetchRatesForDeliveryService(int $deliveryServiceId): array
+    {
+        if ($deliveryServiceId <= 0) {
+            return [];
+        }
+        $parts = [
+            'order-by[0][type]=field',
+            'order-by[0][field]=id',
+            'order-by[0][direction]=desc',
+            'filter[0][type]=eq',
+            'filter[0][field]=deliveryService',
+            'filter[0][value]=' . rawurlencode((string) $deliveryServiceId),
+            'filter[1][type]=eq',
+            'filter[1][field]=state',
+            'filter[1][value]=active',
+            'per_page=100',
+            'page=1',
+        ];
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/delivery-services/rates?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return [];
+        }
+        $data = $result['data'];
+        $embedded = $data['_embedded'] ?? null;
+        $out = [];
+        if (is_array($embedded)) {
+            $list = $embedded['rate'] ?? $embedded['rates'] ?? [];
+            if (is_array($list)) {
+                foreach ($list as $row) {
+                    if (is_array($row)) {
+                        $out[] = $row;
+                    }
+                }
+            }
+        }
+
+        return $out;
+    }
 }

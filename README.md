@@ -4,8 +4,8 @@ WordPress + WooCommerce plugin that **connects your store to OctavaWMS**. It inc
 
 ## Documentation
 
-- **[Documentation index](docs/README.md)** — module overview, ClickUp workflow (**Modules** list, **`module-woocommerce`** tag), links to deeper topics.
-- **[Agent / ClickUp conventions](AGENTS.md)** — commits, `composer check`, task list and tag (for any coding agent).
+- **[Documentation index](docs/README.md)** — module overview, merchant-facing guides, links to deeper topics.
+- **[Agent / ClickUp conventions](AGENTS.md)** — commits, `composer check`, task list and tag (for contributors and coding agents; not included in the distribution zip).
 
 ## Requirements
 
@@ -62,6 +62,80 @@ If you are self-hosted or were given values by your operator:
 | **Auto-sync new orders** | When enabled (default), new orders trigger `POST /api/integrations/import` so OctavaWMS can create them without using **Upload order** in the admin. |
 | **Auto-sync order updates** | When enabled (default), order saves and status changes re-import the order. A short debounce (transient, 10 seconds) plus per-request deduplication reduces duplicate API calls when WooCommerce fires several hooks for one change. |
 
+## Carrier meta mapping (WooCommerce → OctavaWMS)
+
+When a WooCommerce checkout plugin writes courier information into order meta (e.g. `courierName`, `courierID`, `delivery_type`), the **Carrier meta mapping** table lets you translate those values into the OctavaWMS **delivery service integration**, **pickup type**, and optional **rate** that should be used when the order is imported.
+
+### Where to configure it
+
+**WooCommerce → Settings → Integrations → OctavaWMS Connector → Carrier meta mapping (Woo → OctavaWMS)**
+
+Each row defines one rule:
+
+| Column | Description |
+|--------|-------------|
+| **WC meta key** | Order meta key to match (e.g. `courierName`). |
+| **WC meta value** | Exact string the meta must equal (e.g. `Speedy`). |
+| **WC delivery_type** *(optional)* | If your checkout also writes a `delivery_type` meta key, add its expected value here (e.g. `office`). Leave blank to match any delivery type. |
+| **Strategy for AI** | OctavaWMS pickup strategy passed to the AI router: `address` / `office` / `locker` / `office_locker`. |
+| **Carrier** | OctavaWMS delivery service integration (search by name). |
+| **Rate** | Specific rate within that integration (optional). |
+
+Rules are evaluated in order; the first match wins.
+
+### Example — Speedy "до офис" from a real order
+
+In a typical WooCommerce order (example: checkout writes courier meta on order `#49250`) you might see:
+
+```
+meta_data:
+  delivery_type = "office"
+  courierID     = "18"
+  courierName   = "Speedy"
+```
+
+To route all such orders to **Speedy delivery service integration #23** (office pickup), add this row (or paste the JSON in *Switch to JSON* mode):
+
+```json
+[
+  {
+    "courierMetaKey": "courierName",
+    "courierMetaValue": "Speedy",
+    "wooDeliveryType": "office",
+    "type": "office",
+    "deliveryService": 23,
+    "rate": null
+  }
+]
+```
+
+**How it works at runtime:** when the order is imported (`POST /api/integrations/import`), OctavaWMS reads the mapping from the integration source settings and resolves carrier + type for each order before creating the delivery request. No extra action is needed after saving the mapping.
+
+**Alternative key — `courierID`:** if the store uses numeric courier IDs you can match on those instead (or add a second row as a fallback):
+
+```json
+[
+  {
+    "courierMetaKey": "courierName",
+    "courierMetaValue": "Speedy",
+    "wooDeliveryType": "office",
+    "type": "office",
+    "deliveryService": 23,
+    "rate": null
+  },
+  {
+    "courierMetaKey": "courierID",
+    "courierMetaValue": "18",
+    "wooDeliveryType": "office",
+    "type": "office",
+    "deliveryService": 23,
+    "rate": null
+  }
+]
+```
+
+> **Tip:** to find your delivery service integration IDs, open the **Carrier** dropdown in the visual editor and search by courier name — the ID appears in brackets next to the name.
+
 ## Automatic order sync (WooCommerce → OctavaWMS)
 
 After Connect (so **source id** and **Bearer** are present), the plugin can push orders automatically:
@@ -95,6 +169,8 @@ You can still use **Order actions → Generate shipping label → Update** as be
 | `POST` / `PATCH` | `/api/delivery-services/preprocessing-task` | Create or update preprocessing task (`state: measured`, dimensions, `queue`); may return PDF/HTML synchronously or a task id for polling. |
 | `PATCH` | `/api/delivery-services/requests/{id}` | Update shipment fields (e.g. service point, carrier, locality, EAV) from **Edit shipment**. |
 | `POST` | `/api/integrations/import` | Push the WooCommerce order into OctavaWMS (uses **source id** from Connect). |
+| `GET` | `/api/integrations/sources/{id}` | Load integration source `settings` (including `DeliveryServices.options.carrierMapping` for the carrier matrix). |
+| `PATCH` | `/api/integrations/sources/{id}` | Persist `settings` after **Save mapping** in the integration screen. |
 | `POST` | `/apps/woocommerce/api/label` | Request a label PDF/JSON for `externalOrderId` (resolved host via **API base override**, label-endpoint host, or **`https://pro.oawms.com`** default). |
 | `POST` | `/oauth` | Exchange `refresh_token` + `domain` (+ `client_id`) for an `access_token` when Connect returns OAuth bootstrap instead of `apiKey`. |
 
@@ -118,7 +194,8 @@ On activation, the plugin creates (if possible) a `.htaccess` in `wp-content/upl
 | Order UI | `src/Admin/LabelMetaBox.php`, `src/Admin/LabelAjax.php` |
 | Order actions / generation orchestration | `src/AdminLabelActions.php` |
 | Woo order → OctavaWMS extId candidates | `src/WooOrderExtId.php` |
-| Settings / connect | `src/SettingsPage.php`, `src/ConnectService.php` |
+| Settings / connect + carrier matrix assets | `src/SettingsPage.php`, `src/ConnectService.php`, `assets/js/admin-settings-matrix.js` |
+| Integration settings AJAX | `src/Admin/SettingsAjax.php` |
 | WooCommerce REST key auto-discovery + HMAC signer | `src/WooRestCredentials.php` |
 | Connect debug logging (`octavawms-connect` WC log source) | `src/PluginLog.php` |
 | Admin notices (missing integration hint on WC settings) | `src/Notices.php` |
@@ -139,6 +216,8 @@ composer check   # php-lint + phpunit
 ## Releasing
 
 From the plugin root, run `./release.sh` (same flow as `integration-shopify/release.sh`: semver tag choice, `composer check`, `composer validate --strict`, tests, merge `main` into `release/1.x`, annotated tag, push). Use `./release.sh --help` for options (`--yes`, `--remove-last`, explicit version).
+
+After the tag is pushed, the script runs **`scripts/build-plugin-zip.sh`**, which produces **`dist/octavawms-woocommerce-<version>.zip`**: a folder **`octavawms-woocommerce/`** suitable for upload to WordPress. Omitted from the archive: **`vendor/`**, **`tests/`**, **`dev/`**, **`scripts/`**, **`release.sh`**, **`.cursor/`**, **`phpunit.xml.dist`**, internal-only **`docs/guides/clickup-workflow.md`** and **`AGENTS.md`**, and similar dev noise (e.g. `.phpunit.cache/`). To build a zip without a full release, run `./scripts/build-plugin-zip.sh <version-or-tag>` from a git checkout that still contains `scripts/`.
 
 Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notable suites: `tests/Api/BackendApiClientTest.php` (HTTP clients), `tests/Api/LabelServiceTest.php` (label + queue bootstrap), `tests/Admin/LabelAjaxTest.php` (shipment detail payload / admin AJAX), `tests/OrderSyncServiceTest.php` (auto-sync hooks, debouncing, extId persistence), `tests/PluginLogTest.php` (error message shaping, including `deliveryServiceStatus`). `tests/bootstrap.php` defines a minimal `WC_Order` stub and `wc_get_order()` for tests where WooCommerce is not loaded. See `phpunit.xml.dist`.
 
