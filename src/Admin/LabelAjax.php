@@ -566,6 +566,7 @@ class LabelAjax
     private function collectUiPlaceRowsForShipment(int $shipmentId): array
     {
         $places = $this->apiClient->fetchPlacesForDeliveryRequest($shipmentId);
+        $seen = [];
         $out = [];
         foreach ($places as $p) {
             if (! is_array($p)) {
@@ -573,6 +574,12 @@ class LabelAjax
             }
             $row = $this->simplifyPlaceRow($p);
             $pid = isset($row['id']) ? (int) $row['id'] : 0;
+            if ($pid > 0) {
+                if (isset($seen[$pid])) {
+                    continue;
+                }
+                $seen[$pid] = true;
+            }
             if ($pid > 0 && $this->placeMeasuresNeedUiDefaults($row)) {
                 $ur = $this->apiClient->updatePlace($pid, [
                     'weight' => self::UI_DEFAULT_PLACE_WEIGHT,

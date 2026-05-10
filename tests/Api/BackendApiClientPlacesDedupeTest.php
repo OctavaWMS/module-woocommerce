@@ -38,4 +38,18 @@ final class BackendApiClientPlacesDedupeTest extends TestCase
         ]);
         self::assertCount(2, $out);
     }
+
+    public function testDedupePlacesByIdUnifiesStringAndIntId(): void
+    {
+        $client = new BackendApiClient();
+        $m = new \ReflectionMethod(BackendApiClient::class, 'dedupePlacesByIdPreserveOrder');
+        $m->setAccessible(true);
+        /** @var list<array<string, mixed>> $out */
+        $out = $m->invoke($client, [
+            ['id' => '10', 'weight' => 1],
+            ['id' => 10, 'weight' => 99],
+        ]);
+        self::assertCount(1, $out);
+        self::assertSame(1, $out[0]['weight']);
+    }
 }

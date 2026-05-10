@@ -1596,7 +1596,41 @@
     loadPlacesSection(shipmentId, { silentReload: true });
   }
 
+  /**
+   * @param {unknown[]} places
+   * @returns {unknown[]}
+   */
+  function dedupePlacesJsonForTable(places) {
+    if (!Array.isArray(places) || places.length < 2) {
+      return Array.isArray(places) ? places : [];
+    }
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < places.length; i++) {
+      var p = places[i];
+      if (!p || typeof p !== 'object') {
+        continue;
+      }
+      var pid =
+        typeof p.id === 'number'
+          ? p.id
+          : typeof p.id === 'string' && /^\d+$/.test(String(p.id).trim())
+            ? parseInt(String(p.id).trim(), 10) || 0
+            : 0;
+      if (pid > 0) {
+        var k = String(pid);
+        if (seen[k]) {
+          continue;
+        }
+        seen[k] = true;
+      }
+      out.push(p);
+    }
+    return out;
+  }
+
   function renderPlacesTable(body, shipmentId, places) {
+    places = dedupePlacesJsonForTable(Array.isArray(places) ? places : []);
     if (places.length === 0) {
       body.innerHTML = '<p class="octavawms-muted">' + esc(cfg.strings.noPlaces) + '</p>';
       syncLabelPrimaryActions();

@@ -805,20 +805,49 @@ class BackendApiClient
             if (! is_array($p)) {
                 continue;
             }
-            if (! isset($p['id']) || ! is_numeric($p['id'])) {
+            $key = self::placeHalIdentityKey($p);
+            if ($key === null) {
                 $out[] = $p;
 
                 continue;
             }
-            $id = (int) $p['id'];
-            if ($id <= 0 || isset($seen[$id])) {
+            if (isset($seen[$key])) {
                 continue;
             }
-            $seen[$id] = true;
+            $seen[$key] = true;
             $out[] = $p;
         }
 
         return $out;
+    }
+
+    /**
+     * Stable string key for HAL place identity, or null when the payload has no usable id (pass through to caller list).
+     */
+    private static function placeHalIdentityKey(array $p): ?string
+    {
+        if (! array_key_exists('id', $p)) {
+            return null;
+        }
+        $raw = $p['id'];
+        if (is_int($raw) || is_float($raw)) {
+            $n = (int) $raw;
+
+            return $n > 0 ? (string) $n : null;
+        }
+        if (is_string($raw)) {
+            $t = trim($raw);
+            if ($t === '' || $t === '0') {
+                return null;
+            }
+            if (ctype_digit($t)) {
+                return (string) (int) $t;
+            }
+
+            return $t;
+        }
+
+        return null;
     }
 
     /**
