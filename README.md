@@ -102,7 +102,7 @@ You can still use **Order actions → Generate shipping label → Update** as be
 
 | Meta key | Purpose |
 |----------|---------|
-| `_octavawms_external_order_id` | If set, preferred for import filters and tried first for GET lookups. If empty or wrong, the plugin also tries the **order key**, numeric **order id**, and **order number** until the order list API returns a match; it may update this meta from the backend’s `extId` after a successful lookup or import response. |
+| `_octavawms_external_order_id` | Tried first for GET lookups. **POST import** uses the numeric **WooCommerce order id** (same as `post.php?post=…`) unless this meta holds a non–order-key value (e.g. canonical `extId` from the API). If empty or wrong, the plugin also tries the **order key**, numeric **order id**, and **order number** until the order list API returns a match; it may update this meta from the backend’s `extId` after a successful lookup or import response. |
 | `_octavawms_label_url` / `_octavawms_label_file` | Written when a label is generated: remote URL and/or a local file path in `uploads/octavawms-labels/`. Do not set these manually. |
 
 ## Label files on disk

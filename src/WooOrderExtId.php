@@ -42,15 +42,29 @@ final class WooOrderExtId
     }
 
     /**
-     * extId used in POST /api/integrations/import sourceData.filters (legacy contract).
+     * extId used in POST /api/integrations/import sourceData.filters.
+     * Uses the WooCommerce order id (shop order / HPOS id, e.g. the same numeric id as in `post.php?post=…`) so imports align with admin URLs.
+     * Stored `_octavawms_external_order_id` is used only when it is not the WooCommerce secret order key (e.g. canonical id from the API).
      */
     public static function importFilterExtId(WC_Order $order): string
     {
         $meta = trim((string) $order->get_meta('_octavawms_external_order_id', true));
-        if ($meta !== '') {
+        if ($meta !== '' && ! self::metaIsWooCommerceOrderKey($meta, $order)) {
             return $meta;
         }
 
-        return (string) $order->get_order_key();
+        return (string) $order->get_id();
+    }
+
+    /**
+     * True when meta matches the internal Woo order key (often {@code wc_order_…}) and must not drive import extId.
+     */
+    private static function metaIsWooCommerceOrderKey(string $meta, WC_Order $order): bool
+    {
+        if ($meta === (string) $order->get_order_key()) {
+            return true;
+        }
+
+        return str_starts_with($meta, 'wc_order_');
     }
 }
