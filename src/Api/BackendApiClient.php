@@ -1000,7 +1000,7 @@ class BackendApiClient
         $payload = [
             'extId' => '',
             'sourceData' => [
-                'async' => false,
+                'async' => Options::isImportAsyncEnabled(),
                 'asyncMode' => ['Orderadmin\\Products\\Entity\\AbstractOrder' => true],
                 'filters' => ['extId' => $extId],
             ],

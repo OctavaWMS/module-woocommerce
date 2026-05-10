@@ -155,6 +155,14 @@ class Options
         return ! (is_string($v) && $v === 'no');
     }
 
+    public static function isImportAsyncEnabled(): bool
+    {
+        $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+        $v = $settings['import_async'] ?? null;
+
+        return ! (is_string($v) && $v === 'no');
+    }
+
     public static function saveCredentials(string $apiKey, string $labelEndpoint, int $sourceId): void
     {
         update_option(self::LEGACY_LABEL_ENDPOINT, $labelEndpoint);

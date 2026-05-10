@@ -13,7 +13,7 @@ final class WooOrderExtId
 {
     /**
      * Values to try with GET /api/products/order (and shipments) until one matches.
-     * Order matters: custom meta first (when set), then stable Woo keys commonly stored as extId.
+     * Order matters: custom meta first (when set), then order number, post ID, then order key (legacy).
      *
      * @return list<string>
      */
@@ -31,12 +31,9 @@ final class WooOrderExtId
         if ($meta !== '') {
             $push($meta);
         }
-        $push((string) $order->get_order_key());
+        $push(trim((string) $order->get_order_number()));
         $push((string) $order->get_id());
-        $num = trim((string) $order->get_order_number());
-        if ($num !== '' && $num !== (string) $order->get_id()) {
-            $push($num);
-        }
+        $push((string) $order->get_order_key());
 
         return $out;
     }
@@ -49,6 +46,15 @@ final class WooOrderExtId
         $meta = trim((string) $order->get_meta('_octavawms_external_order_id', true));
         if ($meta !== '') {
             return $meta;
+        }
+
+        $num = trim((string) $order->get_order_number());
+        if ($num !== '') {
+            return $num;
+        }
+
+        if ($order->get_id() > 0) {
+            return (string) $order->get_id();
         }
 
         return (string) $order->get_order_key();

@@ -541,6 +541,36 @@ final class BackendApiClientTest extends TestCase
         self::assertIsArray($data);
         self::assertSame(7, $data['source']);
         self::assertSame('order-key-1', $data['sourceData']['filters']['extId']);
+        self::assertTrue($data['sourceData']['async']);
+    }
+
+    public function testImportOrderPayloadAsyncFalseWhenSettingDisabled(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'secret', 'import_async' => 'no'];
+            }
+
+            return $default;
+        });
+
+        $captured = null;
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) use (&$captured) {
+            $captured = ['url' => $url, 'args' => $args];
+
+            return [
+                'response' => ['code' => 200],
+                'body' => '{"ok":true}',
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $result = $client->importOrder('x', 3);
+        self::assertTrue($result['ok']);
+        self::assertIsArray($captured);
+        $data = json_decode((string) ($captured['args']['body'] ?? ''), true);
+        self::assertIsArray($data);
+        self::assertFalse($data['sourceData']['async']);
     }
 
     public function testImportOrderFailureLogsAndReturnsStatusAndExcerpt(): void

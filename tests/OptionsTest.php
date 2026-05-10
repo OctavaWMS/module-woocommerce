@@ -208,6 +208,20 @@ final class OptionsTest extends TestCase
 
         self::assertTrue(Options::isNewOrderSyncEnabled());
         self::assertTrue(Options::isOrderUpdateSyncEnabled());
+        self::assertTrue(Options::isImportAsyncEnabled());
+    }
+
+    public function testImportAsyncDisabledWhenNo(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['import_async' => 'no'];
+            }
+
+            return $default;
+        });
+
+        self::assertFalse(Options::isImportAsyncEnabled());
     }
 
     public function testOrderSyncFlagsRespectNo(): void

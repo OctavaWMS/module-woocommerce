@@ -73,6 +73,15 @@ class SettingsPage extends \WC_Integration
                 'label' => __('Re-import orders when they are updated (debounced)', 'octavawms'),
                 'default' => 'yes',
             ],
+            'import_async' => [
+                'title' => __('Async import', 'octavawms'),
+                'type' => 'checkbox',
+                'label' => __(
+                    'Run OctavaWMS import asynchronously (recommended; avoids long HTTP waits and timeouts)',
+                    'octavawms'
+                ),
+                'default' => 'yes',
+            ],
         ];
     }
 

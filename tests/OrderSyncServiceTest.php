@@ -132,7 +132,7 @@ final class OrderSyncServiceTest extends TestCase
         $api = $this->createMock(BackendApiClient::class);
         $api->expects(self::once())
             ->method('importOrder')
-            ->with('wc_order_extfilter_1', 7)
+            ->with('100', 7)
             ->willReturn(['ok' => true, 'data' => null]);
         $api->expects(self::never())->method('extractFirstOrderFromCollectionJson');
 
@@ -218,7 +218,7 @@ final class OrderSyncServiceTest extends TestCase
         $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (int $id) => $id === 88 ? $order : false;
 
         $api = $this->createMock(BackendApiClient::class);
-        $api->expects(self::once())->method('importOrder')->with('wc_88', 1)->willReturn(['ok' => true, 'data' => null]);
+        $api->expects(self::once())->method('importOrder')->with('88', 1)->willReturn(['ok' => true, 'data' => null]);
 
         (new OrderSyncService($api))->onNewOrder($order);
     }

@@ -17,7 +17,8 @@ if (! class_exists('WC_Order', false)) {
         public function __construct(
             private int $id = 42,
             private string $orderKey = 'wc_order_testkey99',
-            private string $octavaMetaValue = ''
+            private string $octavaMetaValue = '',
+            private string $orderNumber = ''
         ) {
         }
 
@@ -39,6 +40,15 @@ if (! class_exists('WC_Order', false)) {
         public function get_order_key(): string
         {
             return $this->orderKey;
+        }
+
+        public function get_order_number(): string
+        {
+            if ($this->orderNumber !== '') {
+                return $this->orderNumber;
+            }
+
+            return $this->id > 0 ? (string) $this->id : '';
         }
 
         /** @var array<string, mixed> */
