@@ -300,6 +300,9 @@ msgstr "Населено място на получателя"
 msgid "Refresh status"
 msgstr "Обнови състояние"
 
+msgid "Reload shipment"
+msgstr "презареди пратка"
+
 msgid "Remove box"
 msgstr "Премахни кашон"
 

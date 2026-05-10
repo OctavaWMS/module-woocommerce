@@ -46,7 +46,7 @@ class LabelMetaBox
 .octavawms-shipment-state-banner__status{margin:0 0 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;}
 .octavawms-shipment-state-banner__extra{font-size:13px;font-weight:400;color:#646970;}
 .octavawms-shipment-state-banner__message{margin:0;font-size:13px;line-height:1.5;color:#50575e;}
-.octavawms-shipment-state-banner__actions{margin:12px 0 0;padding:0;}
+.octavawms-shipment-state-banner__actions{margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .octavawms-connect-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;row-gap:24px;align-items:start;}
 .octavawms-slot--label{grid-column:1;grid-row:1/span 2;}
 .octavawms-slot--sp{grid-column:2;grid-row:1/span 2;align-self:start;}
@@ -280,6 +280,7 @@ CSS;
                 'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'octavawms'),
                 'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'octavawms'),
                 'retryPendingError' => __('Retry', 'octavawms'),
+                'reloadShipment' => __('Reload shipment', 'octavawms'),
                 'retryingPendingError' => __('Retrying…', 'octavawms'),
                 'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'octavawms'),
                 'localitySearchMin' => __('Type at least 2 characters to search.', 'octavawms'),

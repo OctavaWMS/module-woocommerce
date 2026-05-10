@@ -300,6 +300,9 @@ msgstr "Recipient locality"
 msgid "Refresh status"
 msgstr "Refresh status"
 
+msgid "Reload shipment"
+msgstr "Reload shipment"
+
 msgid "Remove box"
 msgstr "Remove box"
 

@@ -100,6 +100,7 @@ return array (
   'Re-import orders when they are updated (debounced)' => 'Повторно импортиране на поръчки при промяна (забавено)',
   'Recipient locality' => 'Населено място на получателя',
   'Refresh status' => 'Обнови състояние',
+  'Reload shipment' => 'презареди пратка',
   'Remove box' => 'Премахни кашон',
   'Retry' => 'Опитай отново',
   'Retrying…' => 'Повтаряне…',

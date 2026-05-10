@@ -390,7 +390,10 @@
         '<button type="button" class="button button-primary" data-octavawms-action="retry-pending-error" data-shipment-id="' +
         esc(String(sid)) +
         '">' +
-        esc(cfg.strings.retryPendingError || 'Retry') +
+        esc(cfg.strings.tryAgain || 'Try again') +
+        '</button>' +
+        '<button type="button" class="button button-secondary" data-octavawms-action="upload-order" data-octavawms-upload-preserve="1">' +
+        esc(cfg.strings.reloadShipment || 'Reload shipment') +
         '</button></p>';
     }
     return (
@@ -1787,6 +1790,23 @@
       });
   }
 
+  /** @returns {Promise<unknown>} Parsed JSON from {@code octavawms_upload_order}. */
+  function postUploadOrderFetch() {
+    const body = new URLSearchParams();
+    body.set('action', 'octavawms_upload_order');
+    body.set('nonce', cfg.uploadNonce);
+    body.set('order_id', String(cfg.orderId));
+    return fetch(cfg.ajaxUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      credentials: 'same-origin',
+    }).then(function (r) {
+      return r.json();
+    });
+  }
+
+  /** Full-panel loading state (e.g. first **Upload order** from empty panel). */
   function uploadOrder() {
     root.innerHTML =
       '<div class="octavawms-connect-page">' +
@@ -1794,19 +1814,7 @@
       '<span class="octavawms-spinner"></span> ' +
       esc(cfg.strings.uploading) +
       '</div></div>';
-    const body = new URLSearchParams();
-    body.set('action', 'octavawms_upload_order');
-    body.set('nonce', cfg.uploadNonce);
-    body.set('order_id', String(cfg.orderId));
-    fetch(cfg.ajaxUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body,
-      credentials: 'same-origin',
-    })
-      .then(function (r) {
-        return r.json();
-      })
+    postUploadOrderFetch()
       .then(function (j) {
         if (!j || !j.success) {
           renderError((j && j.data && j.data.message) || cfg.strings.error);
@@ -1816,6 +1824,34 @@
       })
       .catch(function () {
         renderError(cfg.strings.error);
+      });
+  }
+
+  /**
+   * Same import as {@link uploadOrder} without replacing the panel (e.g. **Reload shipment** on `pending_error`).
+   * @param {HTMLButtonElement} btn
+   */
+  function uploadOrderPreservePanel(btn) {
+    if (btn.disabled) {
+      return;
+    }
+    const prevLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = String(cfg.strings.uploading || '…');
+    postUploadOrderFetch()
+      .then(function (j) {
+        btn.textContent = prevLabel;
+        btn.disabled = false;
+        if (!j || !j.success) {
+          window.alert((j && j.data && j.data.message) || cfg.strings.error);
+          return;
+        }
+        fetchStatus();
+      })
+      .catch(function () {
+        btn.textContent = prevLabel;
+        btn.disabled = false;
+        window.alert(cfg.strings.error);
       });
   }
 
@@ -1921,7 +1957,11 @@
       }
       if (act === 'upload-order') {
         e.preventDefault();
-        uploadOrder();
+        if (btn.getAttribute('data-octavawms-upload-preserve') === '1' && btn instanceof HTMLButtonElement) {
+          uploadOrderPreservePanel(btn);
+        } else {
+          uploadOrder();
+        }
         return;
       }
       if (act === 'generate-label') {
