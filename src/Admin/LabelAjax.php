@@ -547,33 +547,52 @@ class LabelAjax
             wp_send_json_error(['message' => __('Invalid shipment.', 'octavawms')], 400);
         }
 
-        $places = $this->apiClient->fetchPlacesForDeliveryRequest($shipmentId);
-        $out = [];
-        foreach ($places as $p) {
-            if (is_array($p)) {
-                $row = $this->simplifyPlaceRow($p);
-                $pid = isset($row['id']) ? (int) $row['id'] : 0;
-                if ($pid > 0 && $this->placeMeasuresNeedUiDefaults($row)) {
-                    $ur = $this->apiClient->updatePlace($pid, [
-                        'weight' => self::UI_DEFAULT_PLACE_WEIGHT,
-                        'dimensions' => [
-                            'x' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
-                            'y' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
-                            'z' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
-                        ],
-                    ]);
-                    if ($ur['ok']) {
-                        $row['weight'] = self::UI_DEFAULT_PLACE_WEIGHT;
-                        $row['dim_x'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
-                        $row['dim_y'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
-                        $row['dim_z'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
-                    }
-                }
-                $out[] = $row;
+        $out = $this->collectUiPlaceRowsForShipment($shipmentId);
+        if ($out === []) {
+            $bootstrap = $this->apiClient->addPlace($shipmentId);
+            if ($bootstrap['ok']) {
+                $out = $this->collectUiPlaceRowsForShipment($shipmentId);
             }
         }
 
         wp_send_json_success(['places' => $out]);
+    }
+
+    /**
+     * Places for the admin panel: HAL list (deduped in {@see BackendApiClient::fetchPlacesForDeliveryRequest}) plus UI default dimensions when needed.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function collectUiPlaceRowsForShipment(int $shipmentId): array
+    {
+        $places = $this->apiClient->fetchPlacesForDeliveryRequest($shipmentId);
+        $out = [];
+        foreach ($places as $p) {
+            if (! is_array($p)) {
+                continue;
+            }
+            $row = $this->simplifyPlaceRow($p);
+            $pid = isset($row['id']) ? (int) $row['id'] : 0;
+            if ($pid > 0 && $this->placeMeasuresNeedUiDefaults($row)) {
+                $ur = $this->apiClient->updatePlace($pid, [
+                    'weight' => self::UI_DEFAULT_PLACE_WEIGHT,
+                    'dimensions' => [
+                        'x' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
+                        'y' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
+                        'z' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
+                    ],
+                ]);
+                if ($ur['ok']) {
+                    $row['weight'] = self::UI_DEFAULT_PLACE_WEIGHT;
+                    $row['dim_x'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
+                    $row['dim_y'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
+                    $row['dim_z'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
+                }
+            }
+            $out[] = $row;
+        }
+
+        return $out;
     }
 
     public function handleAjaxAddPlace(): void

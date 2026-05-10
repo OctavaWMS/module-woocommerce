@@ -48,7 +48,8 @@
       "php -l tests/PluginBootstrapTest.php",
       "php -l tests/Admin/LabelAjaxTest.php",
       "php -l tests/Admin/LabelMetaBoxTest.php",
-      "php -l tests/Api/BackendApiClientTest.php"
+      "php -l tests/Api/BackendApiClientTest.php",
+      "php -l tests/Api/BackendApiClientPlacesDedupeTest.php"
     ],
     "test": "./vendor/bin/phpunit --testdox",
     "check": [

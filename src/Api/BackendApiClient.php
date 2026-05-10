@@ -788,6 +788,36 @@ class BackendApiClient
             }
         }
 
+        return $this->dedupePlacesByIdPreserveOrder($out);
+    }
+
+    /**
+     * HAL collections may list the same place more than once; keep the first occurrence (API order, e.g. priority sort).
+     *
+     * @param list<array<string, mixed>> $places
+     * @return list<array<string, mixed>>
+     */
+    private function dedupePlacesByIdPreserveOrder(array $places): array
+    {
+        $seen = [];
+        $out = [];
+        foreach ($places as $p) {
+            if (! is_array($p)) {
+                continue;
+            }
+            if (! isset($p['id']) || ! is_numeric($p['id'])) {
+                $out[] = $p;
+
+                continue;
+            }
+            $id = (int) $p['id'];
+            if ($id <= 0 || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $out[] = $p;
+        }
+
         return $out;
     }
 
