@@ -1491,7 +1491,27 @@ class BackendApiClient
             ];
         }
 
-        return $this->request('PATCH', 'api/integrations/sources/' . $sourceId, $body);
+        $result = $this->request('PATCH', 'api/integrations/sources/' . $sourceId, $body);
+        if (! $result['ok']) {
+            PluginLog::log(
+                'warning',
+                'integration_source',
+                array_merge(
+                    [
+                        'note' => 'patch_integration_source_failed',
+                        'source_id' => $sourceId,
+                    ],
+                    PluginLog::responseFromFetched(
+                        $result['status'],
+                        $result['response_headers'],
+                        (string) $result['raw'],
+                        is_array($result['data']) ? $result['data'] : null
+                    )
+                )
+            );
+        }
+
+        return $result;
     }
 
     /**

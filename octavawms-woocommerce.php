@@ -43,7 +43,7 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
 register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);
 
 add_action('plugins_loaded', static function () {
-    if (! function_exists('wc_get_logger') || ! class_exists(\WooCommerce::class, false)) {
+    if (! class_exists(\WooCommerce::class, false)) {
         return;
     }
 
@@ -74,7 +74,7 @@ add_action('plugins_loaded', static function () {
     $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
     $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax, $apiClient);
     $adminActions->register();
-}, 5);
+}, 11);
 
 if (is_admin() && is_readable(__DIR__ . '/src/Notices.php')) {
     require_once __DIR__ . '/src/Notices.php';
