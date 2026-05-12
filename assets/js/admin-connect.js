@@ -2,6 +2,52 @@
   'use strict';
 
   $(function () {
+    const diagBtn = $('#octavawms-connectivity-run');
+    const diagOut = $('#octavawms-connectivity-output');
+    const diagCfg = window.octavawmsConnect;
+    if (
+      diagBtn.length &&
+      diagOut.length &&
+      diagCfg &&
+      diagCfg.ajaxUrl &&
+      diagCfg.connectivityProbeAction &&
+      diagCfg.connectivityProbeNonce
+    ) {
+      const spDiag = $('#octavawms-connectivity-spinner');
+      const strings = diagCfg.strings || {};
+      diagBtn.on('click', function () {
+        diagBtn.prop('disabled', true);
+        spDiag.css('visibility', 'visible');
+        diagOut.text(strings.connectivityRunning || 'Running diagnostics…');
+        $.post(
+          diagCfg.ajaxUrl,
+          {
+            action: diagCfg.connectivityProbeAction,
+            security: diagCfg.connectivityProbeNonce,
+          },
+          function (res) {
+            if (res && res.success && res.data && typeof res.data.report === 'string') {
+              diagOut.text(res.data.report);
+              return;
+            }
+            diagOut.text(
+              (res && res.data && res.data.message) ||
+                strings.connectivityFailed ||
+                'Diagnostics failed.'
+            );
+          },
+          'json'
+        )
+          .fail(function () {
+            diagOut.text(strings.connectivityFailed || 'Diagnostics failed.');
+          })
+          .always(function () {
+            spDiag.css('visibility', 'hidden');
+            diagBtn.prop('disabled', false);
+          });
+      });
+    }
+
     const btn = $('#octavawms-connect-btn');
     const panelBtn = $('#octavawms-panel-login-btn');
     if (!btn.length && !panelBtn.length) {

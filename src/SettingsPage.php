@@ -168,6 +168,7 @@ class SettingsPage extends \WC_Integration
         echo $this->getConnectDescriptionHtml();
         parent::admin_options();
         echo $this->getCarrierMatrixSectionHtml();
+        echo $this->getConnectivityDiagnosticsSectionHtml();
     }
 
     private function getCarrierMatrixSectionHtml(): string
@@ -224,6 +225,40 @@ class SettingsPage extends \WC_Integration
             </div>
         </div>
         <hr>
+        <?php
+
+        return (string) ob_get_clean();
+    }
+
+    private function getConnectivityDiagnosticsSectionHtml(): string
+    {
+        if (! current_user_can('manage_woocommerce')) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div id="octavawms-connectivity-diagnostics" class="octavawms-connectivity-diagnostics" style="margin:1.25em 0 2em;max-width:960px;">
+            <h2 style="font-size:1.1em;margin-bottom:0.5em;">
+                <?php esc_html_e('Connection diagnostics', 'octavawms'); ?>
+            </h2>
+            <p class="description" style="max-width:960px;">
+                <?php esc_html_e(
+                    'Runs from your WordPress server. Compares timings to your configured Integration API host plus the standard cloud hosts https://pro.oawms.com, https://alpha.orderadmin.eu, and https://api.octavawms.com.',
+                    'octavawms'
+                ); ?>
+            </p>
+            <p>
+                <button type="button" class="button button-secondary" id="octavawms-connectivity-run">
+                    <?php esc_html_e('Run connection diagnostics', 'octavawms'); ?>
+                </button>
+                <span class="spinner" id="octavawms-connectivity-spinner" style="float:none;visibility:hidden;margin-left:8px;"></span>
+            </p>
+            <pre id="octavawms-connectivity-output"
+                 class="octavawms-connectivity-output"
+                 style="background:#fafafa;padding:12px;border:1px solid #ccd0d4;max-height:28em;overflow:auto;white-space:pre-wrap;"
+                 aria-live="polite"></pre>
+        </div>
         <?php
 
         return (string) ob_get_clean();

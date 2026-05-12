@@ -23,10 +23,13 @@
   "scripts": {
     "php-lint": [
       "php -l octavawms-woocommerce.php",
+      "php -l scripts/check-pro-oawms-connection.php",
       "php -l src/Activation.php",
       "php -l src/AdminLabelActions.php",
+      "php -l src/Admin/ConnectivityProbe.php",
       "php -l src/Admin/LabelAjax.php",
       "php -l src/Admin/LabelMetaBox.php",
+      "php -l src/Admin/SettingsAjax.php",
       "php -l src/Api/BackendApiClient.php",
       "php -l src/Api/LabelService.php",
       "php -l src/ConnectService.php",
