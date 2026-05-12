@@ -40,16 +40,23 @@ final class WooOrderExtId
 
     /**
      * extId used in POST /api/integrations/import sourceData.filters (legacy contract).
+     *
+     * Must match the WooCommerce integration connector’s order {@code extId} (typically the numeric
+     * shop order id), not the internal {@code order_key} ({@code wc_order_…}) unless no id exists yet.
      */
     public static function importFilterExtId(WC_Order $order): string
     {
         $meta = trim((string) $order->get_meta('_octavawms_external_order_id', true));
-        if ($meta !== '') {
+        if (
+            $meta !== ''
+            && ! ($order->get_id() > 0 && self::isWooCommerceOrderKeyShape($meta))
+        ) {
             return $meta;
         }
 
         $num = trim((string) $order->get_order_number());
-        if ($num !== '') {
+        $key = trim((string) $order->get_order_key());
+        if ($num !== '' && $num !== $key && ! self::isWooCommerceOrderKeyShape($num)) {
             return $num;
         }
 
@@ -57,6 +64,15 @@ final class WooOrderExtId
             return (string) $order->get_id();
         }
 
+        if ($num !== '') {
+            return $num;
+        }
+
         return (string) $order->get_order_key();
+    }
+
+    private static function isWooCommerceOrderKeyShape(string $value): bool
+    {
+        return $value !== '' && str_starts_with($value, 'wc_order_');
     }
 }

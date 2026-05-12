@@ -42,10 +42,12 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
 
 register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);
 
-add_action('plugins_loaded', static function () {
-    if (! class_exists(\WooCommerce::class, false)) {
+$octavawms_bootstrap_woocommerce = static function (): void {
+    static $done = false;
+    if ($done) {
         return;
     }
+    $done = true;
 
     if (function_exists('add_filter')) {
         \OctavaWMS\WooCommerce\I18n\BrandedStrings::register();
@@ -74,7 +76,24 @@ add_action('plugins_loaded', static function () {
     $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
     $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax, $apiClient);
     $adminActions->register();
-}, 11);
+};
+
+// Run after WooCommerce is ready. `woocommerce_loaded` can fire before this plugin's file loads
+// (plugin load order); use did_action so we still bootstrap in that case.
+add_action(
+    'plugins_loaded',
+    static function () use ($octavawms_bootstrap_woocommerce): void {
+        if (! function_exists('WC')) {
+            return;
+        }
+        if (did_action('woocommerce_loaded')) {
+            $octavawms_bootstrap_woocommerce();
+        } else {
+            add_action('woocommerce_loaded', $octavawms_bootstrap_woocommerce, 10);
+        }
+    },
+    5
+);
 
 if (is_admin() && is_readable(__DIR__ . '/src/Notices.php')) {
     require_once __DIR__ . '/src/Notices.php';

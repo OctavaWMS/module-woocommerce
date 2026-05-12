@@ -29,6 +29,12 @@ final class OrderSyncServiceTest extends TestCase
             $this->hooksAdded[] = $hook;
         });
 
+        Functions\when('apply_filters')->alias(static function (string $hook, $value, mixed ...$args) {
+            unset($hook, $args);
+
+            return $value;
+        });
+
         Functions\when('get_transient')->alias(function (string $key) {
             return $this->transients[$key] ?? false;
         });
@@ -89,6 +95,23 @@ final class OrderSyncServiceTest extends TestCase
             ],
             $this->hooksAdded
         );
+    }
+
+    public function testRegisterSkipsActionsWhenFilteredOff(): void
+    {
+        Functions\when('apply_filters')->alias(static function (string $hook, $value, mixed ...$args) {
+            unset($args);
+            if ($hook === 'octavawms_register_order_sync_hooks') {
+                return false;
+            }
+
+            return $value;
+        });
+
+        $api = $this->createMock(BackendApiClient::class);
+        (new OrderSyncService($api))->register();
+
+        self::assertSame([], $this->hooksAdded);
     }
 
     public function testOnNewOrderSkipsWhenSyncDisabled(): void
@@ -221,5 +244,36 @@ final class OrderSyncServiceTest extends TestCase
         $api->expects(self::once())->method('importOrder')->with('88', 1)->willReturn(['ok' => true, 'data' => null]);
 
         (new OrderSyncService($api))->onNewOrder($order);
+    }
+
+    public function testOnNewOrderSkipsWhenCrossRequestThrottleActive(): void
+    {
+        $this->transients['octavawms_ord_import_100'] = '1';
+
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::never())->method('importOrder');
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api);
+        $service->onNewOrder(100);
+    }
+
+    /** Second {@see OrderSyncService} simulates another PHP request where in-request dedupe resets. */
+    public function testThrottleAppliesAcrossNewServiceInstances(): void
+    {
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::once())
+            ->method('importOrder')
+            ->with('100', 7)
+            ->willReturn(['ok' => true, 'data' => null]);
+
+        ['service' => $first] = $this->serviceWithConfiguredOrder(100, $api);
+        $first->onNewOrder(100);
+        self::assertArrayHasKey('octavawms_ord_import_100', $this->transients);
+
+        $sameScenarioApi = $this->createMock(BackendApiClient::class);
+        $sameScenarioApi->expects(self::never())->method('importOrder');
+
+        ['service' => $second] = $this->serviceWithConfiguredOrder(100, $sameScenarioApi);
+        $second->onNewOrder(100);
     }
 }

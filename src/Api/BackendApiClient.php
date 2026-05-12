@@ -85,28 +85,44 @@ class BackendApiClient
     }
 
     /**
-     * Resolve refresh token for web panel auto-login (stored OAuth, or same flow as Shopify app).
+     * Resolve refresh token for web panel auto-login: when a Bearer is available, always GET a fresh token
+     * from the user authenticate endpoint and persist rotated refresh; otherwise try OAuth/connect,
+     * then fall back to stored refresh if the site is not yet able to call the API.
      *
      * @return array{ok: bool, refresh_token: string, message: string}
      */
     public function getPanelLoginRefreshToken(): array
     {
+        if (Options::getApiKey() === '') {
+            $this->refreshBearerToken();
+        }
+
+        if (Options::getApiKey() !== '') {
+            return $this->fetchPanelLoginRefreshTokenFromApi();
+        }
+
         $stored = Options::getRefreshToken();
         if ($stored !== '') {
             return ['ok' => true, 'refresh_token' => $stored, 'message' => ''];
         }
 
-        if (Options::getApiKey() === '') {
-            return [
-                'ok' => false,
-                'refresh_token' => '',
-                'message' => __(
-                    'Connect the plugin under WooCommerce → Settings → Integrations first.',
-                    'octavawms'
-                ),
-            ];
-        }
+        return [
+            'ok' => false,
+            'refresh_token' => '',
+            'message' => __(
+                'Connect the plugin under WooCommerce → Settings → Integrations first.',
+                'octavawms'
+            ),
+        ];
+    }
 
+    /**
+     * GET current user and panel refresh token from the API (always use for login when Bearer is available).
+     *
+     * @return array{ok: bool, refresh_token: string, message: string}
+     */
+    private function fetchPanelLoginRefreshTokenFromApi(): array
+    {
         $user = $this->request('GET', 'api/users/users/0');
         if (! $user['ok'] || ! is_array($user['data'])) {
             return [
@@ -141,6 +157,11 @@ class BackendApiClient
                 'refresh_token' => '',
                 'message' => __('Could not open panel login (missing refresh token).', 'octavawms'),
             ];
+        }
+
+        $access = Options::getApiKey();
+        if ($access !== '') {
+            Options::mergeAccessTokenFromOAuth($access, $rt);
         }
 
         return ['ok' => true, 'refresh_token' => $rt, 'message' => ''];
@@ -997,11 +1018,12 @@ class BackendApiClient
             return ['ok' => false, 'message' => 'OctavaWMS source is not configured. Connect the plugin under WooCommerce → Settings → Integrations.'];
         }
 
+        $importAsync = Options::isImportAsyncEnabled();
         $payload = [
             'extId' => '',
             'sourceData' => [
-                'async' => Options::isImportAsyncEnabled(),
-                'asyncMode' => ['Orderadmin\\Products\\Entity\\AbstractOrder' => true],
+                'async' => $importAsync,
+                'asyncMode' => ['Orderadmin\\Products\\Entity\\AbstractOrder' => $importAsync],
                 'filters' => ['extId' => $extId],
             ],
             'source' => $sourceId,

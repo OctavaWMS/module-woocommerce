@@ -9,12 +9,16 @@ use WC_Order;
 
 /**
  * Auto-imports WooCommerce orders to OctavaWMS on create/update (when enabled in integration settings).
+ *
+ * Outbound imports are limited to once per order per transient window on the server so bursts of WooCommerce hooks
+ * (and parallel PHP workers) do not overrun API rate limits. Filter {@code octavawms_order_import_throttle_seconds}
+ * (seconds, default 30; {@code 0} disables cross-request throttle). Filter {@code octavawms_register_order_sync_hooks}
+ * with {@code false} to unregister all Woo auto-sync hooks.
  */
 final class OrderSyncService
 {
-    private const TRANSIENT_PREFIX = 'octavawms_ord_sync_';
-
-    private const TRANSIENT_TTL = 10;
+    /** Transient key: last outbound import attempt for one order across PHP requests (rate-limit friendly). */
+    private const IMPORT_THROTTLE_TRANSIENT_PREFIX = 'octavawms_ord_import_';
 
     /** @var array<int, true> Order IDs already imported this HTTP request (any hook). */
     private array $importedThisRequest = [];
@@ -26,6 +30,10 @@ final class OrderSyncService
 
     public function register(): void
     {
+        if (! apply_filters('octavawms_register_order_sync_hooks', true)) {
+            return;
+        }
+
         add_action('woocommerce_checkout_order_processed', [$this, 'onCheckoutOrderProcessed'], 20, 3);
         add_action('woocommerce_new_order', [$this, 'onNewOrder'], 20, 2);
         add_action('woocommerce_update_order', [$this, 'onOrderUpdate'], 20, 1);
@@ -125,12 +133,6 @@ final class OrderSyncService
             return;
         }
 
-        $tkey = self::TRANSIENT_PREFIX . $orderId;
-        if (get_transient($tkey) !== false) {
-            return;
-        }
-        set_transient($tkey, '1', self::TRANSIENT_TTL);
-
         $this->importedThisRequest[$orderId] = true;
 
         $this->doImport($orderId);
@@ -149,6 +151,15 @@ final class OrderSyncService
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
             return;
+        }
+
+        $seconds = max(0, (int) apply_filters('octavawms_order_import_throttle_seconds', 30));
+        if ($seconds > 0) {
+            $throttleKey = self::IMPORT_THROTTLE_TRANSIENT_PREFIX . $orderId;
+            if (get_transient($throttleKey) !== false) {
+                return;
+            }
+            set_transient($throttleKey, '1', $seconds);
         }
 
         $extId = WooOrderExtId::importFilterExtId($order);

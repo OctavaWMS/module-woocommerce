@@ -20,12 +20,25 @@ final class ConnectServicePanelLoginTest extends TestCase
         Functions\when('apply_filters')->alias(static function (string $hook, $value, ...$args) {
             return $value;
         });
+        Functions\when('wp_json_encode')->alias('json_encode');
+        Functions\when('update_option')->justReturn(true);
+        Functions\when('wp_remote_retrieve_response_code')->alias(static function ($response) {
+            return (int) ($response['response']['code'] ?? 0);
+        });
+        Functions\when('wp_remote_retrieve_body')->alias(static function ($response) {
+            return (string) ($response['body'] ?? '');
+        });
+        Functions\when('wp_remote_retrieve_headers')->alias(static function ($response) {
+            $hdr = is_array($response) ? ($response['headers'] ?? []) : [];
+
+            return new \ArrayObject(is_array($hdr) ? $hdr : []);
+        });
 
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
                 return [
-                    'refresh_token' => 'a+b',
-                    'api_key' => '',
+                    'refresh_token' => 'ignored-stale',
+                    'api_key' => 'bearer-present',
                     'label_endpoint' => 'https://h.example/apps/woocommerce/api/label',
                 ];
             }
@@ -36,8 +49,21 @@ final class ConnectServicePanelLoginTest extends TestCase
             return $default;
         });
 
-        Functions\when('wp_remote_request')->alias(static function (): void {
-            throw new \RuntimeException('wp_remote_request should not run when refresh_token is stored');
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) {
+            if (str_contains($url, '/api/users/users/0')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['id' => 7], JSON_THROW_ON_ERROR),
+                ];
+            }
+            if (str_contains($url, '/api/users/authenticate/7')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['refreshToken' => 'a+b'], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            return ['response' => ['code' => 500], 'body' => '{}'];
         });
 
         $captured = null;

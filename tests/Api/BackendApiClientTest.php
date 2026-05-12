@@ -36,6 +36,7 @@ final class BackendApiClientTest extends TestCase
 
             return new \ArrayObject(is_array($hdr) ? $hdr : []);
         });
+        Functions\when('update_option')->justReturn(true);
         Functions\when('wc_get_logger')->alias(static function () {
             return new class () {
                 public function log(string $_level = '', string $_message = '', array $_ctx = []): void {}
@@ -542,6 +543,7 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(7, $data['source']);
         self::assertSame('order-key-1', $data['sourceData']['filters']['extId']);
         self::assertTrue($data['sourceData']['async']);
+        self::assertTrue($data['sourceData']['asyncMode']['Orderadmin\\Products\\Entity\\AbstractOrder']);
     }
 
     public function testImportOrderPayloadAsyncFalseWhenSettingDisabled(): void
@@ -571,6 +573,7 @@ final class BackendApiClientTest extends TestCase
         $data = json_decode((string) ($captured['args']['body'] ?? ''), true);
         self::assertIsArray($data);
         self::assertFalse($data['sourceData']['async']);
+        self::assertFalse($data['sourceData']['asyncMode']['Orderadmin\\Products\\Entity\\AbstractOrder']);
     }
 
     public function testImportOrderFailureLogsAndReturnsStatusAndExcerpt(): void
@@ -1155,13 +1158,53 @@ final class BackendApiClientTest extends TestCase
         self::assertCount(1, $r['items']);
     }
 
-    public function testGetPanelLoginRefreshTokenUsesStoredRefreshWithoutHttp(): void
+    public function testGetPanelLoginRefreshTokenFallbackToStoredWhenBearerUnavailable(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
                 return [
                     'refresh_token' => 'rt-from-db',
+                    'oauth_domain' => 'dom',
                     'api_key' => '',
+                    'label_endpoint' => 'https://api.example.com/apps/woocommerce/api/label',
+                ];
+            }
+            if ($name === Options::LEGACY_API_KEY) {
+                return '';
+            }
+            if ($name === 'admin_email') {
+                return 'a@b.c';
+            }
+
+            return $default;
+        });
+
+        Functions\when('home_url')->justReturn('https://wc.example');
+        Functions\when('get_bloginfo')->justReturn('Shop');
+
+        Functions\when('wp_remote_post')->alias(static function (): array {
+            return ['response' => ['code' => 502], 'body' => ''];
+        });
+
+        Functions\when('wp_remote_request')->alias(static function (): void {
+            throw new \RuntimeException('wp_remote_request should not run when bearer remains empty');
+        });
+
+        $client = new BackendApiClient();
+        $out = $client->getPanelLoginRefreshToken();
+        self::assertTrue($out['ok']);
+        self::assertSame('rt-from-db', $out['refresh_token']);
+        self::assertSame('', $out['message']);
+    }
+
+    public function testGetPanelLoginRefreshTokenFetchesFromApiWhenStoredRefreshExistsButBearerWorks(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'refresh_token' => 'stale-rt',
+                    'oauth_domain' => 'dom',
+                    'api_key' => 'bearer-token',
                     'label_endpoint' => 'https://api.example.com/apps/woocommerce/api/label',
                 ];
             }
@@ -1172,15 +1215,35 @@ final class BackendApiClientTest extends TestCase
             return $default;
         });
 
-        Functions\when('wp_remote_request')->alias(static function (): void {
-            throw new \RuntimeException('wp_remote_request should not run when refresh_token is stored');
+        $urls = [];
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) use (&$urls) {
+            $urls[] = $url;
+            if (str_contains($url, '/api/users/users/0')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['id' => 42], JSON_THROW_ON_ERROR),
+                ];
+            }
+            if (str_contains($url, '/api/users/authenticate/42')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['refreshToken' => 'fresh-rt'], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            return [
+                'response' => ['code' => 500],
+                'body' => '{}',
+            ];
         });
 
         $client = new BackendApiClient();
         $out = $client->getPanelLoginRefreshToken();
         self::assertTrue($out['ok']);
-        self::assertSame('rt-from-db', $out['refresh_token']);
-        self::assertSame('', $out['message']);
+        self::assertSame('fresh-rt', $out['refresh_token']);
+        self::assertCount(2, $urls);
+        self::assertStringContainsString('/api/users/users/0', $urls[0]);
+        self::assertStringContainsString('/api/users/authenticate/42', $urls[1]);
     }
 
     public function testGetPanelLoginRefreshTokenFetchesFromUserEndpointsWhenNoStoredRefresh(): void
@@ -1242,9 +1305,14 @@ final class BackendApiClientTest extends TestCase
             if ($name === Options::LEGACY_API_KEY) {
                 return '';
             }
+            if ($name === 'admin_email') {
+                return '';
+            }
 
             return $default;
         });
+
+        Functions\when('home_url')->justReturn('https://wc.example');
 
         $client = new BackendApiClient();
         $out = $client->getPanelLoginRefreshToken();

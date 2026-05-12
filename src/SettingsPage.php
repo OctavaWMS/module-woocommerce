@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce;
 
+use OctavaWMS\WooCommerce\Api\BackendApiClient;
+
 class SettingsPage extends \WC_Integration
 {
     public function __construct()
@@ -124,6 +126,7 @@ class SettingsPage extends \WC_Integration
 
     public function process_admin_options(): void
     {
+        $beforeImportAsync = Options::isImportAsyncEnabled();
         parent::process_admin_options();
 
         if (! is_array($this->settings)) {
@@ -134,6 +137,29 @@ class SettingsPage extends \WC_Integration
         }
         if (isset($this->settings['api_key'])) {
             update_option(Options::LEGACY_API_KEY, (string) $this->settings['api_key']);
+        }
+
+        $afterImportAsync = Options::isImportAsyncEnabled();
+        if ($beforeImportAsync === $afterImportAsync) {
+            return;
+        }
+
+        $sourceId = Options::getSourceId();
+        if ($sourceId <= 0 || Options::getApiKey() === '') {
+            return;
+        }
+
+        $result = IntegrationSourceImportAsyncSync::syncImportAsyncSetting(
+            new BackendApiClient(),
+            $sourceId,
+            $afterImportAsync
+        );
+        if (! $result['ok'] && $result['message'] !== '') {
+            if (class_exists(\WC_Admin_Settings::class, false)) {
+                \WC_Admin_Settings::add_error($result['message']);
+            } else {
+                add_settings_error('general', 'octavawms_import_async_sync', $result['message'], 'error');
+            }
         }
     }
 

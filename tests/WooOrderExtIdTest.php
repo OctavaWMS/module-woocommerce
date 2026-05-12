@@ -26,6 +26,27 @@ final class WooOrderExtIdTest extends TestCase
         self::assertSame('42', WooOrderExtId::importFilterExtId($order));
     }
 
+    public function testImportFilterExtIdUsesNumericIdWhenOrderNumberIsWooOrderKey(): void
+    {
+        $key = 'wc_order_2V21SVLG4Mqfj';
+        $order = new \WC_Order(44364, $key, '', $key);
+        self::assertSame('44364', WooOrderExtId::importFilterExtId($order));
+    }
+
+    public function testImportFilterExtIdUsesNumericIdWhenOrderNumberLooksLikeKeyButDiffers(): void
+    {
+        $order = new \WC_Order(44364, 'wc_order_realKeyHere', '', 'wc_order_displayBug');
+        self::assertSame('44364', WooOrderExtId::importFilterExtId($order));
+    }
+
+    public function testImportFilterExtIdIgnoresMetaWhenItIsWooOrderKeyAndOrderHasId(): void
+    {
+        $key = 'wc_order_badLegacyMeta';
+        $order = new \WC_Order(9001, $key, $key, '');
+
+        self::assertSame('9001', WooOrderExtId::importFilterExtId($order));
+    }
+
     public function testImportFilterExtIdFallsBackToOrderKeyWhenIdZero(): void
     {
         $order = new \WC_Order(0, 'draft_wc_key', '');
