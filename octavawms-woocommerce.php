@@ -47,12 +47,18 @@ $octavawms_bootstrap_woocommerce = static function (): void {
     if ($done) {
         return;
     }
-    $done = true;
+
+    /**
+     * Prevents attaching the WooCommerce integrations filter twice if bootstrap retries after a fatal error mid-run.
+     */
+    static $integrationsFilterAttached = false;
 
     if (function_exists('add_filter')) {
         \OctavaWMS\WooCommerce\I18n\BrandedStrings::register();
     }
-    if (is_readable(__DIR__ . '/src/SettingsPage.php') && class_exists(\WC_Integration::class, false)) {
+    if (! $integrationsFilterAttached && is_readable(__DIR__ . '/src/SettingsPage.php')
+        && class_exists(\WC_Integration::class, false)) {
+        $integrationsFilterAttached = true;
         require_once __DIR__ . '/src/SettingsPage.php';
         if (class_exists(\OctavaWMS\WooCommerce\SettingsPage::class, false)) {
             add_filter('woocommerce_integrations', static function (array $list): array {
@@ -67,8 +73,7 @@ $octavawms_bootstrap_woocommerce = static function (): void {
     $connect->register();
 
     $apiClient = new \OctavaWMS\WooCommerce\Api\BackendApiClient();
-    $settingsAjax = new \OctavaWMS\WooCommerce\Admin\SettingsAjax($apiClient);
-    $settingsAjax->register();
+    \OctavaWMS\WooCommerce\Admin\SettingsAjax::registerAjax();
     $orderSync = new \OctavaWMS\WooCommerce\OrderSyncService($apiClient);
     $orderSync->register();
     $labelService = new \OctavaWMS\WooCommerce\Api\LabelService($apiClient);
@@ -76,7 +81,42 @@ $octavawms_bootstrap_woocommerce = static function (): void {
     $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
     $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax, $apiClient);
     $adminActions->register();
+
+    $done = true;
 };
+
+// Register carrier-matrix AJAX early so admin-ajax always sees wp_ajax_* / wp_ajax_nopriv_* hooks,
+// even if WooCommerce bootstrap timing defers the rest of the plugin. No BackendApiClient here.
+add_action(
+    'plugins_loaded',
+    static function (): void {
+        if (! function_exists('has_action')) {
+            return;
+        }
+        $action = \OctavaWMS\WooCommerce\Admin\SettingsAjax::ACTION;
+        if (has_action('wp_ajax_' . $action) && has_action('wp_ajax_nopriv_' . $action)) {
+            return;
+        }
+        \OctavaWMS\WooCommerce\Admin\SettingsAjax::registerAjax();
+    },
+    20
+);
+
+// If hooks were removed or never attached, register before admin-ajax reaches admin_init.
+add_action(
+    'init',
+    static function (): void {
+        if (! function_exists('has_action')) {
+            return;
+        }
+        $action = \OctavaWMS\WooCommerce\Admin\SettingsAjax::ACTION;
+        if (has_action('wp_ajax_' . $action) && has_action('wp_ajax_nopriv_' . $action)) {
+            return;
+        }
+        \OctavaWMS\WooCommerce\Admin\SettingsAjax::registerAjax();
+    },
+    0
+);
 
 // Run after WooCommerce is ready. `woocommerce_loaded` can fire before this plugin's file loads
 // (plugin load order); use did_action so we still bootstrap in that case.
@@ -93,6 +133,21 @@ add_action(
         }
     },
     5
+);
+
+// Recover from load-order failures: WP 6+ returns wp_die('0', 400) when no wp_ajax_<action> hook exists yet.
+add_action(
+    'plugins_loaded',
+    static function () use ($octavawms_bootstrap_woocommerce): void {
+        if (! function_exists('WC')) {
+            return;
+        }
+        $action = \OctavaWMS\WooCommerce\Admin\SettingsAjax::ACTION;
+        if (! has_action('wp_ajax_' . $action) || ! has_action('wp_ajax_nopriv_' . $action)) {
+            $octavawms_bootstrap_woocommerce();
+        }
+    },
+    PHP_INT_MAX
 );
 
 if (is_admin() && is_readable(__DIR__ . '/src/Notices.php')) {

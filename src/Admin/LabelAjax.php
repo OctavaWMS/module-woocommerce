@@ -48,6 +48,9 @@ class LabelAjax
 
     public function register(): void
     {
+        if (has_action('wp_ajax_octavawms_order_status')) {
+            return;
+        }
         add_action('wp_ajax_octavawms_order_status', [$this, 'handleAjaxOrderStatus']);
         add_action('wp_ajax_octavawms_upload_order', [$this, 'handleAjaxUploadOrder']);
         add_action('wp_ajax_octavawms_generate_label', [$this, 'handleAjaxGenerateLabel']);

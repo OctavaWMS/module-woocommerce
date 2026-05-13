@@ -21,9 +21,31 @@ class SettingsAjax
         $this->apiClient = $apiClient;
     }
 
+    /**
+     * Registers admin-ajax hooks without instantiating this class first, so a fatal during
+     * BackendApiClient construction cannot prevent the hooks from existing.
+     *
+     * WordPress dispatches logged-out requests only to wp_ajax_nopriv_<action>.
+     */
+    public static function registerAjax(): void
+    {
+        if (! has_action('wp_ajax_' . self::ACTION)) {
+            add_action('wp_ajax_' . self::ACTION, [self::class, 'dispatchAjax']);
+        }
+        if (! has_action('wp_ajax_nopriv_' . self::ACTION)) {
+            add_action('wp_ajax_nopriv_' . self::ACTION, [self::class, 'dispatchAjax']);
+        }
+    }
+
+    public static function dispatchAjax(): void
+    {
+        $api = new BackendApiClient();
+        (new self($api))->handleAjax();
+    }
+
     public function register(): void
     {
-        add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjax']);
+        self::registerAjax();
     }
 
     public function handleAjax(): void

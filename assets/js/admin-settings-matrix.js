@@ -13,7 +13,120 @@
     return window.octavawmsCarrierMatrix || {};
   }
 
+  function matrixStrings() {
+    return cfg().strings || {};
+  }
+
+  function matrixAjaxConfigOk() {
+    var c = cfg();
+    return !!(c.ajaxUrl && c.action && c.nonce);
+  }
+
+  function rejectMissingMatrixAjaxConfig() {
+    var msg =
+      matrixStrings().ajaxMissingConfig ||
+      'Carrier matrix script configuration is missing. Reload the page or clear your cache.';
+    var fakeXhr = {
+      status: 0,
+      responseText: '',
+      responseJSON: { data: { message: msg } }
+    };
+    var d = $.Deferred();
+    d.reject(fakeXhr, 'error', msg);
+    return d.promise();
+  }
+
+  function appendAjaxDebug(base, xhr, textStatus) {
+    if (!cfg().detailAjaxErrors) {
+      return base;
+    }
+    var status = xhr && xhr.status != null ? xhr.status : '';
+    var raw = xhr && xhr.responseText != null ? String(xhr.responseText).trim() : '';
+    var first = raw ? raw.split(/\r?\n/)[0] : '';
+    if (first.length > 200) {
+      first = first.slice(0, 200) + '…';
+    }
+    var bits = [];
+    if (status !== '') {
+      bits.push('HTTP ' + status);
+    }
+    if (textStatus) {
+      bits.push(textStatus);
+    }
+    if (first) {
+      bits.push(first);
+    }
+    return bits.length ? base + ' [' + bits.join(' | ') + ']' : base;
+  }
+
+  /**
+   * Maps admin-ajax failures (including WordPress bare "0" + 400) to a readable message.
+   *
+   * @param {JQuery.jqXHR|null} xhr
+   * @param {string} textStatus
+   * @returns {string}
+   */
+  function formatMatrixAjaxError(xhr, textStatus) {
+    var s = matrixStrings();
+    if (textStatus === 'parsererror') {
+      return appendAjaxDebug(s.ajaxParseError || s.saveFailed || 'Error', xhr, textStatus);
+    }
+    var wpJsonMsg = null;
+    if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+      wpJsonMsg = String(xhr.responseJSON.data.message);
+    } else if (xhr && xhr.responseText) {
+      try {
+        var parsed = JSON.parse(String(xhr.responseText));
+        if (parsed && parsed.data && parsed.data.message) {
+          wpJsonMsg = String(parsed.data.message);
+        }
+      } catch (ignore) {
+        /* not JSON */
+      }
+    }
+    if (wpJsonMsg) {
+      return appendAjaxDebug(wpJsonMsg, xhr, textStatus);
+    }
+    var status = xhr && xhr.status != null ? xhr.status : 0;
+    var body = xhr && xhr.responseText != null ? String(xhr.responseText).trim() : '';
+    if (status === 400 && body === '0') {
+      return appendAjaxDebug(s.ajaxNoHandler || s.saveFailed || 'Error', xhr, textStatus);
+    }
+    if (status === 403 && (body === '-1' || body === '0')) {
+      return appendAjaxDebug(s.ajaxNonceExpired || s.saveFailed || 'Error', xhr, textStatus);
+    }
+    if (status >= 400) {
+      return appendAjaxDebug(s.ajaxHttpError || s.saveFailed || 'Error', xhr, textStatus);
+    }
+    return appendAjaxDebug(s.ajaxHttpError || s.saveFailed || 'Error', xhr, textStatus);
+  }
+
+  function setSpinner(on) {
+    var $sp = $('#octavawms-matrix-spinner');
+    if (!$sp.length) {
+      return;
+    }
+    $sp.css('visibility', on ? 'visible' : 'hidden');
+    if (on) {
+      $sp.addClass('is-active');
+    } else {
+      $sp.removeClass('is-active');
+    }
+  }
+
+  function setMessage(text, isError) {
+    var $m = $('#octavawms-matrix-message');
+    if (!$m.length) {
+      return;
+    }
+    $m.text(text || '');
+    $m.css('color', isError ? '#b32d2d' : '#1e4620');
+  }
+
   function post(subaction, extra) {
+    if (!matrixAjaxConfigOk()) {
+      return rejectMissingMatrixAjaxConfig();
+    }
     var data = $.extend(
       {
         action: cfg().action,
@@ -79,7 +192,7 @@
       $('<div/>').text(ds).html() +
       '" data-initial-label=""></select></td>' +
       '<td><select class="octavawms-rate widefat"><option value="">' +
-      (cfg().strings && cfg().strings.anyRate ? cfg().strings.anyRate : '—') +
+      (matrixStrings().anyRate ? matrixStrings().anyRate : '—') +
       '</option></select></td>' +
       '<td><button type="button" class="button octavawms-matrix-del-row">&times;</button></td>' +
       '</tr>'
@@ -109,23 +222,27 @@
     var $rate = $tr.find('.octavawms-rate');
     $rate.empty();
     $rate.append(
-      $('<option/>', { value: '', text: (cfg().strings && cfg().strings.anyRate) || '—' })
+      $('<option/>', { value: '', text: matrixStrings().anyRate || '—' })
     );
     if (!deliveryServiceId || deliveryServiceId <= 0) {
       return;
     }
-    post('rates', { delivery_service_id: String(deliveryServiceId) }).done(function (res) {
-      if (!res || !res.success || !res.data || !res.data.items) {
-        return;
-      }
-      res.data.items.forEach(function (it) {
-        var o = $('<option/>', { value: String(it.id), text: it.text || String(it.id) });
-        if (selectedRateId && String(it.id) === String(selectedRateId)) {
-          o.prop('selected', true);
+    post('rates', { delivery_service_id: String(deliveryServiceId) })
+      .done(function (res) {
+        if (!res || !res.success || !res.data || !res.data.items) {
+          return;
         }
-        $rate.append(o);
+        res.data.items.forEach(function (it) {
+          var o = $('<option/>', { value: String(it.id), text: it.text || String(it.id) });
+          if (selectedRateId && String(it.id) === String(selectedRateId)) {
+            o.prop('selected', true);
+          }
+          $rate.append(o);
+        });
+      })
+      .fail(function (jqXHR, textStatus) {
+        setMessage(formatMatrixAjaxError(jqXHR, textStatus), true);
       });
-    });
   }
 
   function initCarrierSelect($tr, row) {
@@ -137,7 +254,7 @@
       $sel.selectWoo({
         width: '100%',
         allowClear: true,
-        placeholder: (cfg().strings && cfg().strings.pickCarrier) || '…',
+        placeholder: matrixStrings().pickCarrier || '…',
         ajax: {
           url: cfg().ajaxUrl,
           type: 'POST',
@@ -152,6 +269,28 @@
               search: params.term || '',
               page: params.page || 1
             };
+          },
+          transport: function (params, success, failure) {
+            if (!matrixAjaxConfigOk()) {
+              var msg =
+                matrixStrings().ajaxMissingConfig ||
+                'Carrier matrix script configuration is missing. Reload the page or clear your cache.';
+              setMessage(msg, true);
+              var fakeXhr = {
+                status: 0,
+                responseText: '',
+                responseJSON: { data: { message: msg } }
+              };
+              failure(fakeXhr, 'error', msg);
+              return $.Deferred().resolve().promise();
+            }
+            var request = $.ajax(params);
+            request.then(success);
+            request.fail(function (jqXHR, textStatus) {
+              setMessage(formatMatrixAjaxError(jqXHR, textStatus), true);
+              failure(jqXHR, textStatus, jqXHR && jqXHR.statusText);
+            });
+            return request;
           },
           processResults: function (data, params) {
             params.page = params.page || 1;
@@ -212,26 +351,17 @@
     });
   }
 
-  function setSpinner(on) {
-    var $sp = $('#octavawms-matrix-spinner');
-    if (!$sp.length) {
-      return;
+  function unexpectedJsonResponseMessage(res) {
+    var s = matrixStrings();
+    var base = s.ajaxInvalidResponse || s.saveFailed || 'Error';
+    if (!cfg().detailAjaxErrors) {
+      return base;
     }
-    $sp.css('visibility', on ? 'visible' : 'hidden');
-    if (on) {
-      $sp.addClass('is-active');
-    } else {
-      $sp.removeClass('is-active');
+    var snippet = res === null || res === undefined ? '' : String(res);
+    if (snippet.length > 120) {
+      snippet = snippet.slice(0, 120) + '…';
     }
-  }
-
-  function setMessage(text, isError) {
-    var $m = $('#octavawms-matrix-message');
-    if (!$m.length) {
-      return;
-    }
-    $m.text(text || '');
-    $m.css('color', isError ? '#b32d2d' : '#1e4620');
+    return snippet ? base + ' [' + snippet + ']' : base;
   }
 
   $(function () {
@@ -261,7 +391,7 @@
       $visual.hide();
       $jsonWrap.show();
       jsonMode = true;
-      $toggle.text((cfg().strings && cfg().strings.switchVisual) || 'Visual');
+      $toggle.text(matrixStrings().switchVisual || 'Visual');
     }
 
     function switchToVisual() {
@@ -270,11 +400,11 @@
       try {
         parsed = JSON.parse(raw);
       } catch (e) {
-        setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
+        setMessage(matrixStrings().invalidJson || 'Invalid JSON', true);
         return;
       }
       if (!Array.isArray(parsed)) {
-        setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
+        setMessage(matrixStrings().invalidJson || 'Invalid JSON', true);
         return;
       }
       setMessage('', false);
@@ -285,7 +415,7 @@
       $jsonWrap.hide();
       $visual.show();
       jsonMode = false;
-      $toggle.text((cfg().strings && cfg().strings.switchJson) || 'JSON');
+      $toggle.text(matrixStrings().switchJson || 'JSON');
     }
 
     $toggle.on('click', function () {
@@ -318,11 +448,11 @@
         try {
           payload = JSON.parse($jsonTa.val());
         } catch (e) {
-          setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
+          setMessage(matrixStrings().invalidJson || 'Invalid JSON', true);
           return;
         }
         if (!Array.isArray(payload)) {
-          setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
+          setMessage(matrixStrings().invalidJson || 'Invalid JSON', true);
           return;
         }
       } else {
@@ -333,8 +463,12 @@
       post('save', { carrier_mapping_json: JSON.stringify(payload) })
         .done(function (res) {
           setSpinner(false);
+          if (res === 0 || res === '0') {
+            setMessage(unexpectedJsonResponseMessage(res), true);
+            return;
+          }
           if (res && res.success) {
-            setMessage((cfg().strings && cfg().strings.saved) || 'Saved', false);
+            setMessage(matrixStrings().saved || 'Saved', false);
             if (!jsonMode && res.data && res.data.carrierMapping) {
               $tbody.find('tr').each(function () {
                 destroySelectWoo($(this).find('.octavawms-carrier'));
@@ -344,37 +478,45 @@
           } else {
             setMessage(
               (res && res.data && res.data.message) ||
-                (cfg().strings && cfg().strings.saveFailed) ||
+                matrixStrings().saveFailed ||
                 'Error',
               true
             );
           }
         })
-        .fail(function () {
+        .fail(function (jqXHR, textStatus) {
           setSpinner(false);
-          setMessage((cfg().strings && cfg().strings.saveFailed) || 'Error', true);
+          setMessage(formatMatrixAjaxError(jqXHR, textStatus), true);
         });
     });
 
     // Populate WC meta key datalist from order meta in the database.
-    post('meta_keys', { search: '' }).done(function (res) {
-      if (!res || !res.success || !res.data || !res.data.items) {
-        return;
-      }
-      var $dl = $('#octavawms-wc-meta-keys');
-      res.data.items.forEach(function (k) {
-        $dl.append($('<option/>', { value: k }));
+    post('meta_keys', { search: '' })
+      .done(function (res) {
+        if (!res || !res.success || !res.data || !res.data.items) {
+          return;
+        }
+        var $dl = $('#octavawms-wc-meta-keys');
+        res.data.items.forEach(function (k) {
+          $dl.append($('<option/>', { value: k }));
+        });
+      })
+      .fail(function (jqXHR, textStatus) {
+        setMessage(formatMatrixAjaxError(jqXHR, textStatus), true);
       });
-    });
 
     setSpinner(true);
     post('get')
       .done(function (res) {
         setSpinner(false);
+        if (res === 0 || res === '0') {
+          setMessage(unexpectedJsonResponseMessage(res), true);
+          return;
+        }
         if (!res || !res.success) {
           setMessage(
             (res && res.data && res.data.message) ||
-              (cfg().strings && cfg().strings.loadFailed) ||
+              matrixStrings().loadFailed ||
               'Load failed',
             true
           );
@@ -384,9 +526,9 @@
         renderRows($tbody, rows);
         $jsonTa.val(rowsToJsonPretty(rows));
       })
-      .fail(function () {
+      .fail(function (jqXHR, textStatus) {
         setSpinner(false);
-        setMessage((cfg().strings && cfg().strings.loadFailed) || 'Load failed', true);
+        setMessage(formatMatrixAjaxError(jqXHR, textStatus), true);
       });
   });
 })(jQuery);

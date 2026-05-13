@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce;
 
+use OctavaWMS\WooCommerce\Admin\ConnectivityProbe;
 use OctavaWMS\WooCommerce\Admin\SettingsAjax;
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
 
@@ -16,10 +17,20 @@ class ConnectService
     /** @see handleAjaxPanelLoginUrl() */
     public const PANEL_LOGIN_NONCE_ACTION = 'octavawms_panel_login';
 
+    /** @see handleAjaxConnectivityProbe() Dedicated action so diagnostics does not reuse carrier-matrix AJAX. */
+    public const CONNECTIVITY_PROBE_ACTION = 'octavawms_connectivity_probe';
+
     public function register(): void
     {
-        add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
-        add_action('wp_ajax_' . self::PANEL_LOGIN_ACTION, [$this, 'handleAjaxPanelLoginUrl']);
+        if (! has_action('wp_ajax_' . self::ACTION)) {
+            add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
+        }
+        if (! has_action('wp_ajax_' . self::PANEL_LOGIN_ACTION)) {
+            add_action('wp_ajax_' . self::PANEL_LOGIN_ACTION, [$this, 'handleAjaxPanelLoginUrl']);
+        }
+        if (! has_action('wp_ajax_' . self::CONNECTIVITY_PROBE_ACTION)) {
+            add_action('wp_ajax_' . self::CONNECTIVITY_PROBE_ACTION, [$this, 'handleAjaxConnectivityProbe']);
+        }
         // Priority 20: run after WooCommerce (priority 10) has registered selectWoo.
         add_action('admin_enqueue_scripts', [$this, 'maybeEnqueueConnectScript'], 20);
     }
@@ -71,23 +82,6 @@ class ConnectService
         $script_url = plugins_url($script_rel, $plugin_root . '/octavawms-woocommerce.php');
         $version = is_readable($script_path) ? (string) filemtime($script_path) : '1.0.0';
 
-        wp_register_script('octavawms-admin-connect', $script_url, ['jquery'], $version, true);
-
-        wp_localize_script('octavawms-admin-connect', 'octavawmsConnect', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce(self::ACTION),
-            'panelLoginNonce' => wp_create_nonce(self::PANEL_LOGIN_NONCE_ACTION),
-            'strings' => [
-                'connected' => __('Connected to OctavaWMS', 'octavawms'),
-                'notConnected' => __('Not connected', 'octavawms'),
-                'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'octavawms'),
-                'panelLogin' => __('Login to the panel', 'octavawms'),
-                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
-            ],
-        ]);
-
-        wp_enqueue_script('octavawms-admin-connect');
-
         $matrixRel = 'assets/js/admin-settings-matrix.js';
         $matrixPath = $plugin_root . '/' . $matrixRel;
         $matrixUrl = plugins_url($matrixRel, $plugin_root . '/octavawms-woocommerce.php');
@@ -110,6 +104,7 @@ class ConnectService
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(SettingsAjax::ACTION),
             'action' => SettingsAjax::ACTION,
+            'detailAjaxErrors' => ( defined('WP_DEBUG') && WP_DEBUG && current_user_can('manage_options') ),
             'strings' => [
                 'switchJson' => __('Switch to JSON', 'octavawms'),
                 'switchVisual' => __('Switch to Visual', 'octavawms'),
@@ -120,9 +115,41 @@ class ConnectService
                 'pickCarrier' => __('Search carrier…', 'octavawms'),
                 'pickRate' => __('Rate (optional)', 'octavawms'),
                 'anyRate' => __('— Any / none —', 'octavawms'),
+                'ajaxNoHandler' => __( 'WordPress returned an empty handler response for this request. In the browser Network tab, confirm the POST body includes action=octavawms_carrier_matrix. If it is missing, a security rule or proxy may be stripping the request. Otherwise reload the page, confirm WooCommerce and OctavaWMS are active and up to date, and ensure admin cookies are sent to admin-ajax.php (same site, HTTPS).', 'octavawms' ),
+                'ajaxNonceExpired' => __( 'Your session or security token expired. Reload the page and try again.', 'octavawms' ),
+                'ajaxHttpError' => __( 'The server returned an error. Reload the page and try again.', 'octavawms' ),
+                'ajaxParseError' => __( 'The server response could not be read as JSON. Reload the page or check for a plugin conflict.', 'octavawms' ),
+                'ajaxInvalidResponse' => __( 'The server returned an unexpected response. Reload the page and try again.', 'octavawms' ),
+                'ajaxMissingConfig' => __( 'Carrier matrix script configuration is missing (ajax URL, action, or nonce). Reload this page with cache bypass (hard refresh) or clear any page cache or minify plugin output for wp-admin.', 'octavawms' ),
             ],
         ]);
-        wp_enqueue_script('octavawms-admin-settings-matrix');
+
+        wp_register_script(
+            'octavawms-admin-connect',
+            $script_url,
+            ['jquery', 'octavawms-admin-settings-matrix'],
+            $version,
+            true
+        );
+
+        wp_localize_script('octavawms-admin-connect', 'octavawmsConnect', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce(self::ACTION),
+            'panelLoginNonce' => wp_create_nonce(self::PANEL_LOGIN_NONCE_ACTION),
+            'connectivityProbeAction' => self::CONNECTIVITY_PROBE_ACTION,
+            'connectivityProbeNonce' => wp_create_nonce(self::CONNECTIVITY_PROBE_ACTION),
+            'strings' => [
+                'connected' => __('Connected to OctavaWMS', 'octavawms'),
+                'notConnected' => __('Not connected', 'octavawms'),
+                'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'octavawms'),
+                'panelLogin' => __('Login to the panel', 'octavawms'),
+                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
+                'connectivityRunning' => __('Running diagnostics…', 'octavawms'),
+                'connectivityFailed' => __('Diagnostics request failed.', 'octavawms'),
+            ],
+        ]);
+
+        wp_enqueue_script('octavawms-admin-connect');
     }
 
     public function handleAjaxConnect(): void
@@ -291,6 +318,32 @@ class ConnectService
         $loginUrl = $base . '/#/login?refreshToken=' . rawurlencode($resolved['refresh_token']);
 
         wp_send_json_success(['loginUrl' => $loginUrl]);
+    }
+
+    public function handleAjaxConnectivityProbe(): void
+    {
+        if (! current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('You do not have permission.', 'octavawms')], 403);
+        }
+
+        check_ajax_referer(self::CONNECTIVITY_PROBE_ACTION, 'security');
+
+        if (! function_exists('curl_init')) {
+            wp_send_json_error(['message' => __('PHP curl extension is required for diagnostics.', 'octavawms')], 500);
+        }
+
+        $baseUrl = Options::getBaseUrl();
+        if ($baseUrl === '') {
+            $baseUrl = Options::DEFAULT_API_BASE;
+        }
+
+        $report = ConnectivityProbe::buildFullDiagnosticsReport(
+            $baseUrl,
+            ConnectivityProbe::DEFAULT_CONNECT_TIMEOUT,
+            ConnectivityProbe::DEFAULT_MAX_TIME
+        );
+
+        wp_send_json_success(['report' => $report]);
     }
 
     public const CONNECT_PATH = '/apps/woocommerce/connect';
