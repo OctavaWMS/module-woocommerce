@@ -21,12 +21,6 @@ final class BackendApiClientTest extends TestCase
         Functions\when('wp_remote_retrieve_body')->alias(static function ($response) {
             return (string) ($response['body'] ?? '');
         });
-        Functions\when('wp_remote_retrieve_response_header')->alias(static function ($response, $header = '') {
-            $h = strtolower((string) $header);
-            $headers = $response['headers'] ?? [];
-
-            return (string) ($headers[$h] ?? '');
-        });
         Functions\when('wp_remote_retrieve_headers')->alias(static function ($response) {
             if (! is_array($response)) {
                 return new \ArrayObject([]);

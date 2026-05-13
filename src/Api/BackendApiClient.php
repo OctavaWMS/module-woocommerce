@@ -1377,7 +1377,7 @@ class BackendApiClient
             ];
         }
 
-        $contentType = strtolower((string) wp_remote_retrieve_response_header($response, 'content-type'));
+        $contentType = self::lowercaseContentTypeFromWpResponse($response);
         $body = (string) wp_remote_retrieve_body($response);
 
         if (str_contains($contentType, 'application/pdf') || str_contains($contentType, 'text/html')) {
@@ -1421,7 +1421,7 @@ class BackendApiClient
         }
 
         $status = (int) wp_remote_retrieve_response_code($response);
-        $contentType = strtolower((string) wp_remote_retrieve_response_header($response, 'content-type'));
+        $contentType = self::lowercaseContentTypeFromWpResponse($response);
         $body = (string) wp_remote_retrieve_body($response);
 
         if ($status >= 200 && $status < 300 && (str_contains($contentType, 'application/pdf') || str_contains($contentType, 'text/html'))) {
@@ -1437,6 +1437,21 @@ class BackendApiClient
         }
 
         return ['ok' => $status >= 200 && $status < 300, 'ready' => false, 'pdf' => null, 'content_type' => $contentType, 'status' => $status];
+    }
+
+    /**
+     * @param array<string, mixed> $response Success value from wp_remote_request()
+     */
+    private static function lowercaseContentTypeFromWpResponse(array $response): string
+    {
+        $flat = PluginLog::flattenWpResponseHeaders(wp_remote_retrieve_headers($response));
+        foreach ($flat as $name => $value) {
+            if (strtolower((string) $name) === 'content-type') {
+                return strtolower((string) $value);
+            }
+        }
+
+        return '';
     }
 
     /**
