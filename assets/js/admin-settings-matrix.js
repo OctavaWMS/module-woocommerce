@@ -13,30 +13,6 @@
     return window.octavawmsCarrierMatrix || {};
   }
 
-  function post(subaction, extra) {
-    var data = $.extend(
-      {
-        action: cfg().action,
-        security: cfg().nonce,
-        subaction: subaction
-      },
-      extra || {}
-    );
-    return $.post(cfg().ajaxUrl, data, null, 'json');
-  }
-
-  function destroySelectWoo($el) {
-    if ($.fn.selectWoo && $el && $el.length) {
-      try {
-        if ($el.hasClass('select2-hidden-accessible')) {
-          $el.selectWoo('destroy');
-        }
-      } catch (e) {
-        /* ignore */
-      }
-    }
-  }
-
   function buildTypeSelect(selected) {
     var h = '<select class="octavawms-matrix-type widefat">';
     TYPE_OPTIONS.forEach(function (o) {
@@ -63,7 +39,7 @@
     var rt = row.rate != null && row.rate !== '' ? String(row.rate) : '';
     return (
       '<tr class="octavawms-matrix-row">' +
-      '<td><input type="text" class="octavawms-ck widefat" list="octavawms-wc-meta-keys" value="' +
+      '<td><input type="text" class="octavawms-ck widefat" value="' +
       $('<div/>').text(ck).html() +
       '" placeholder="e.g. courierName" /></td>' +
       '<td><input type="text" class="octavawms-cv widefat" value="' +
@@ -75,12 +51,12 @@
       '<td>' +
       buildTypeSelect(ty) +
       '</td>' +
-      '<td><select class="octavawms-carrier widefat" style="min-width:220px" data-initial-ds="' +
+      '<td><input type="number" class="octavawms-carrier widefat" min="1" step="1" value="' +
       $('<div/>').text(ds).html() +
-      '" data-initial-label=""></select></td>' +
-      '<td><select class="octavawms-rate widefat"><option value="">' +
-      (cfg().strings && cfg().strings.anyRate ? cfg().strings.anyRate : '—') +
-      '</option></select></td>' +
+      '" placeholder="delivery service id" /></td>' +
+      '<td><input type="number" class="octavawms-rate widefat" min="1" step="1" value="' +
+      $('<div/>').text(rt).html() +
+      '" placeholder="optional rate id" /></td>' +
       '<td><button type="button" class="button octavawms-matrix-del-row">&times;</button></td>' +
       '</tr>'
     );
@@ -90,8 +66,7 @@
     var rows = [];
     $tbody.find('tr.octavawms-matrix-row').each(function () {
       var $tr = $(this);
-      var $c = $tr.find('.octavawms-carrier');
-      var dsStr = $c.length ? $c.val() : $tr.find('.octavawms-carrier-fallback').val();
+      var dsStr = $tr.find('.octavawms-carrier').val();
       var rateVal = $tr.find('.octavawms-rate').val();
       rows.push({
         courierMetaKey: $.trim($tr.find('.octavawms-ck').val()),
@@ -105,110 +80,11 @@
     return rows;
   }
 
-  function loadRatesForRow($tr, deliveryServiceId, selectedRateId) {
-    var $rate = $tr.find('.octavawms-rate');
-    $rate.empty();
-    $rate.append(
-      $('<option/>', { value: '', text: (cfg().strings && cfg().strings.anyRate) || '—' })
-    );
-    if (!deliveryServiceId || deliveryServiceId <= 0) {
-      return;
-    }
-    post('rates', { delivery_service_id: String(deliveryServiceId) }).done(function (res) {
-      if (!res || !res.success || !res.data || !res.data.items) {
-        return;
-      }
-      res.data.items.forEach(function (it) {
-        var o = $('<option/>', { value: String(it.id), text: it.text || String(it.id) });
-        if (selectedRateId && String(it.id) === String(selectedRateId)) {
-          o.prop('selected', true);
-        }
-        $rate.append(o);
-      });
-    });
-  }
-
-  function initCarrierSelect($tr, row) {
-    var $sel = $tr.find('.octavawms-carrier');
-    var initialDs = parseInt($sel.attr('data-initial-ds'), 10) || 0;
-    var initialRate = row && row.rate != null ? row.rate : null;
-    destroySelectWoo($sel);
-    if ($.fn.selectWoo) {
-      $sel.selectWoo({
-        width: '100%',
-        allowClear: true,
-        placeholder: (cfg().strings && cfg().strings.pickCarrier) || '…',
-        ajax: {
-          url: cfg().ajaxUrl,
-          type: 'POST',
-          dataType: 'json',
-          delay: 250,
-          data: function (params) {
-            params = params || {};
-            return {
-              action: cfg().action,
-              security: cfg().nonce,
-              subaction: 'integrations',
-              search: params.term || '',
-              page: params.page || 1
-            };
-          },
-          processResults: function (data, params) {
-            params.page = params.page || 1;
-            if (!data || !data.success || !data.data || !data.data.items) {
-              return { results: [], pagination: { more: false } };
-            }
-            var items = data.data.items.map(function (it) {
-              return {
-                id: String(it.deliveryServiceId),
-                text: it.text || String(it.deliveryServiceId)
-              };
-            });
-            var total = data.data.total_pages || 1;
-            return {
-              results: items,
-              pagination: { more: params.page < total }
-            };
-          }
-        }
-      });
-      if (initialDs > 0) {
-        var label =
-          'Delivery service #' +
-          initialDs +
-          (row && row.courierMetaValue ? ' (' + row.courierMetaValue + ')' : '');
-        var opt = new Option(label, String(initialDs), true, true);
-        $sel.append(opt).trigger('change');
-      }
-      $sel.on('change', function () {
-        var v = parseInt(String($sel.val() || ''), 10) || 0;
-        loadRatesForRow($tr, v, null);
-      });
-      if (initialDs > 0) {
-        loadRatesForRow($tr, initialDs, initialRate);
-      }
-    } else {
-      $sel.replaceWith(
-        '<input type="number" class="octavawms-carrier-fallback widefat" min="1" step="1" value="' +
-          (initialDs > 0 ? initialDs : '') +
-          '" placeholder="delivery service id" />'
-      );
-      $tr.find('.octavawms-carrier-fallback').on('change input', function () {
-        var v = parseInt(String($(this).val() || ''), 10) || 0;
-        loadRatesForRow($tr, v, null);
-      });
-      if (initialDs > 0) {
-        loadRatesForRow($tr, initialDs, initialRate);
-      }
-    }
-  }
-
   function renderRows($tbody, rows) {
     $tbody.empty();
     (rows || []).forEach(function (r) {
       var $tr = $(rowHtml(r));
       $tbody.append($tr);
-      initCarrierSelect($tr, r);
     });
   }
 
@@ -256,6 +132,55 @@
       $jsonTa.val(rowsToJsonPretty(rows));
     }
 
+    function setHiddenRows(rows) {
+      $('#octavawms-carrier-mapping-json').val(JSON.stringify(rows || []));
+    }
+
+    function currentRowsOrNull() {
+      var payload;
+      if (jsonMode) {
+        try {
+          payload = JSON.parse($jsonTa.val());
+        } catch (e) {
+          setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
+          return null;
+        }
+        if (!Array.isArray(payload)) {
+          setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
+          return null;
+        }
+        return payload;
+      }
+
+      return collectRowsFromVisual($tbody);
+    }
+
+    function submitSettingsForm() {
+      var payload = currentRowsOrNull();
+      if (payload === null) {
+        return;
+      }
+      setHiddenRows(payload);
+      setMessage((cfg().strings && cfg().strings.saved) || 'Saving settings…', false);
+
+      var $form = $root.closest('form');
+      if (!$form.length) {
+        setMessage((cfg().strings && cfg().strings.saveFailed) || 'Save failed.', true);
+        return;
+      }
+
+      var $save = $form.find('button[name="save"], input[name="save"]').first();
+      if ($save.length) {
+        $save.trigger('click');
+        return;
+      }
+
+      if (!$form.find('input[name="save"][data-octavawms-matrix]').length) {
+        $form.append('<input type="hidden" name="save" value="Save changes" data-octavawms-matrix="1" />');
+      }
+      $form.trigger('submit');
+    }
+
     function switchToJson() {
       syncJsonFromVisual();
       $visual.hide();
@@ -278,9 +203,6 @@
         return;
       }
       setMessage('', false);
-      $tbody.find('tr').each(function () {
-        destroySelectWoo($(this).find('.octavawms-carrier'));
-      });
       renderRows($tbody, parsed);
       $jsonWrap.hide();
       $visual.show();
@@ -303,90 +225,30 @@
       }
       var $tr = $(rowHtml({}));
       $tbody.append($tr);
-      initCarrierSelect($tr, {});
     });
 
     $tbody.on('click', '.octavawms-matrix-del-row', function () {
       var $tr = $(this).closest('tr');
-      destroySelectWoo($tr.find('.octavawms-carrier'));
       $tr.remove();
     });
 
     $('#octavawms-matrix-save').on('click', function () {
-      var payload;
-      if (jsonMode) {
-        try {
-          payload = JSON.parse($jsonTa.val());
-        } catch (e) {
-          setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
-          return;
-        }
-        if (!Array.isArray(payload)) {
-          setMessage((cfg().strings && cfg().strings.invalidJson) || 'Invalid JSON', true);
-          return;
-        }
-      } else {
-        payload = collectRowsFromVisual($tbody);
-      }
-      setSpinner(true);
-      setMessage('', false);
-      post('save', { carrier_mapping_json: JSON.stringify(payload) })
-        .done(function (res) {
-          setSpinner(false);
-          if (res && res.success) {
-            setMessage((cfg().strings && cfg().strings.saved) || 'Saved', false);
-            if (!jsonMode && res.data && res.data.carrierMapping) {
-              $tbody.find('tr').each(function () {
-                destroySelectWoo($(this).find('.octavawms-carrier'));
-              });
-              renderRows($tbody, res.data.carrierMapping);
-            }
-          } else {
-            setMessage(
-              (res && res.data && res.data.message) ||
-                (cfg().strings && cfg().strings.saveFailed) ||
-                'Error',
-              true
-            );
-          }
-        })
-        .fail(function () {
-          setSpinner(false);
-          setMessage((cfg().strings && cfg().strings.saveFailed) || 'Error', true);
-        });
+      submitSettingsForm();
     });
 
-    // Populate WC meta key datalist from order meta in the database.
-    post('meta_keys', { search: '' }).done(function (res) {
-      if (!res || !res.success || !res.data || !res.data.items) {
-        return;
+    $root.closest('form').on('submit', function (e) {
+      var payload = currentRowsOrNull();
+      if (payload === null) {
+        e.preventDefault();
+        return false;
       }
-      var $dl = $('#octavawms-wc-meta-keys');
-      res.data.items.forEach(function (k) {
-        $dl.append($('<option/>', { value: k }));
-      });
+      setHiddenRows(payload);
+      return true;
     });
 
-    setSpinner(true);
-    post('get')
-      .done(function (res) {
-        setSpinner(false);
-        if (!res || !res.success) {
-          setMessage(
-            (res && res.data && res.data.message) ||
-              (cfg().strings && cfg().strings.loadFailed) ||
-              'Load failed',
-            true
-          );
-          return;
-        }
-        var rows = (res.data && res.data.carrierMapping) || [];
-        renderRows($tbody, rows);
-        $jsonTa.val(rowsToJsonPretty(rows));
-      })
-      .fail(function () {
-        setSpinner(false);
-        setMessage((cfg().strings && cfg().strings.loadFailed) || 'Load failed', true);
-      });
+    var initialRows = Array.isArray(cfg().initialRows) ? cfg().initialRows : [];
+    renderRows($tbody, initialRows);
+    $jsonTa.val(rowsToJsonPretty(initialRows));
+    setHiddenRows(initialRows);
   });
 })(jQuery);

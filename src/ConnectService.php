@@ -93,12 +93,6 @@ class ConnectService
         $matrixUrl = plugins_url($matrixRel, $plugin_root . '/octavawms-woocommerce.php');
         $matrixVersion = is_readable($matrixPath) ? (string) filemtime($matrixPath) : '1.0.0';
         $matrixDeps = ['jquery'];
-        if (function_exists('wp_script_is') && wp_script_is('selectWoo', 'registered')) {
-            // Explicitly enqueue so the script (and its CSS) is present when our matrix JS runs.
-            wp_enqueue_script('selectWoo');
-            wp_enqueue_style('select2');
-            $matrixDeps[] = 'selectWoo';
-        }
         wp_register_script(
             'octavawms-admin-settings-matrix',
             $matrixUrl,
@@ -110,10 +104,11 @@ class ConnectService
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(SettingsAjax::ACTION),
             'action' => SettingsAjax::ACTION,
+            'initialRows' => Options::getCarrierMappingRows(),
             'strings' => [
                 'switchJson' => __('Switch to JSON', 'octavawms'),
                 'switchVisual' => __('Switch to Visual', 'octavawms'),
-                'saved' => __('Mapping saved.', 'octavawms'),
+                'saved' => __('Saving settings…', 'octavawms'),
                 'loadFailed' => __('Could not load mapping.', 'octavawms'),
                 'saveFailed' => __('Save failed.', 'octavawms'),
                 'invalidJson' => __('Invalid JSON. Fix errors before switching to Visual.', 'octavawms'),

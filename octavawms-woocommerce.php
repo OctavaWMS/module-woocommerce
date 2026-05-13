@@ -42,6 +42,26 @@ if (is_readable(__DIR__ . '/vendor/autoload.php')) {
 
 register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);
 
+$octavawms_register_admin_ajax = static function (): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $connect = new \OctavaWMS\WooCommerce\ConnectService();
+    $connect->register();
+
+    $settingsAjax = new \OctavaWMS\WooCommerce\Admin\SettingsAjax(
+        new \OctavaWMS\WooCommerce\Api\BackendApiClient()
+    );
+    $settingsAjax->register();
+};
+
+// Register admin AJAX handlers without waiting for WooCommerce runtime hooks. Some hosts/plugins load a lean
+// admin-ajax.php stack; these handlers should return JSON errors instead of WordPress's bare "0".
+$octavawms_register_admin_ajax();
+
 $octavawms_bootstrap_woocommerce = static function (): void {
     static $done = false;
     if ($done) {
@@ -63,12 +83,7 @@ $octavawms_bootstrap_woocommerce = static function (): void {
         }
     }
 
-    $connect = new \OctavaWMS\WooCommerce\ConnectService();
-    $connect->register();
-
     $apiClient = new \OctavaWMS\WooCommerce\Api\BackendApiClient();
-    $settingsAjax = new \OctavaWMS\WooCommerce\Admin\SettingsAjax($apiClient);
-    $settingsAjax->register();
     $orderSync = new \OctavaWMS\WooCommerce\OrderSyncService($apiClient);
     $orderSync->register();
     $labelService = new \OctavaWMS\WooCommerce\Api\LabelService($apiClient);

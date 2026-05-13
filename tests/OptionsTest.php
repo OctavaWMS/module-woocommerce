@@ -241,4 +241,22 @@ final class OptionsTest extends TestCase
         self::assertFalse(Options::isOrderUpdateSyncEnabled());
     }
 
+    public function testCarrierMappingRowsDecodeLocalJson(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    Options::CARRIER_MAPPING_JSON => '[{"courierMetaKey":"courierName","courierMetaValue":"Speedy","deliveryService":23}]',
+                ];
+            }
+
+            return $default;
+        });
+
+        $rows = Options::getCarrierMappingRows();
+
+        self::assertCount(1, $rows);
+        self::assertSame('Speedy', $rows[0]['courierMetaValue'] ?? null);
+    }
+
 }

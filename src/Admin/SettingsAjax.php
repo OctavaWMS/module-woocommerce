@@ -24,6 +24,7 @@ class SettingsAjax
     public function register(): void
     {
         add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjax']);
+        add_action('wp_ajax_nopriv_' . self::ACTION, [$this, 'handleAjax']);
     }
 
     public function handleAjax(): void
@@ -86,9 +87,6 @@ class SettingsAjax
     private function handleSave(): void
     {
         $sourceId = Options::getSourceId();
-        if ($sourceId <= 0) {
-            wp_send_json_error(['message' => __('Connect the store first (no source id).', 'octavawms')], 400);
-        }
 
         $raw = isset($_POST['carrier_mapping_json'])
             ? wp_unslash((string) $_POST['carrier_mapping_json'])
@@ -96,6 +94,33 @@ class SettingsAjax
         $decoded = json_decode($raw, true);
         if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
             wp_send_json_error(['message' => __('carrierMapping must be a JSON array.', 'octavawms')], 400);
+        }
+
+        $saved = $this->saveCarrierMappingForSource($sourceId, $decoded);
+        if (! $saved['ok']) {
+            wp_send_json_error(['message' => $saved['message']], $saved['status']);
+        }
+
+        wp_send_json_success(['carrierMapping' => $saved['carrierMapping']]);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $decoded
+     *
+     * @return array{ok: bool, status: int, message: string, carrierMapping: list<array<string, mixed>>}
+     */
+    public function saveCarrierMappingForSource(int $sourceId, array $decoded): array
+    {
+        if ($sourceId <= 0) {
+            return [
+                'ok' => false,
+                'status' => 400,
+                'message' => __(
+                    'Connect the store first. Carrier mapping is saved to the OctavaWMS integration source, but this site has no source id yet.',
+                    'octavawms'
+                ),
+                'carrierMapping' => [],
+            ];
         }
 
         $nonEmpty = [];
@@ -115,34 +140,102 @@ class SettingsAjax
             $nonEmpty[] = $row;
         }
 
-        $normalized = $this->validateAndNormalizeRows($nonEmpty);
+        $normalized = self::validateAndNormalizeRows($nonEmpty);
         if ($normalized === null) {
-            wp_send_json_error(['message' => __('Invalid mapping row(s).', 'octavawms')], 400);
+            return [
+                'ok' => false,
+                'status' => 400,
+                'message' => __('Invalid mapping row(s). Check meta key, meta value, type, carrier, and rate.', 'octavawms'),
+                'carrierMapping' => [],
+            ];
         }
 
         $source = $this->apiClient->getIntegrationSource($sourceId);
         if ($source === null) {
-            wp_send_json_error(['message' => __('Could not load integration source.', 'octavawms')], 502);
+            return [
+                'ok' => false,
+                'status' => 502,
+                'message' => __('Could not load OctavaWMS integration source before saving carrier mapping.', 'octavawms'),
+                'carrierMapping' => [],
+            ];
         }
 
         $settings = is_array($source['settings'] ?? null) ? $source['settings'] : [];
+        $settings = self::mergeCarrierMappingIntoSettings($settings, $normalized);
+
+        $patch = $this->apiClient->patchIntegrationSource($sourceId, ['settings' => $settings]);
+        if (! $patch['ok']) {
+            return [
+                'ok' => false,
+                'status' => min(599, max(400, (int) $patch['status'])),
+                'message' => self::patchFailureMessage($patch),
+                'carrierMapping' => [],
+            ];
+        }
+
+        Options::saveCarrierMappingJson(self::encodeCarrierMappingRows($normalized));
+
+        return [
+            'ok' => true,
+            'status' => 200,
+            'message' => '',
+            'carrierMapping' => $normalized,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>        $settings
+     * @param list<array<string, mixed>> $carrierMapping
+     *
+     * @return array<string, mixed>
+     */
+    public static function mergeCarrierMappingIntoSettings(array $settings, array $carrierMapping): array
+    {
         if (! isset($settings['DeliveryServices']) || ! is_array($settings['DeliveryServices'])) {
             $settings['DeliveryServices'] = [];
         }
         if (! isset($settings['DeliveryServices']['options']) || ! is_array($settings['DeliveryServices']['options'])) {
             $settings['DeliveryServices']['options'] = [];
         }
-        $settings['DeliveryServices']['options']['carrierMapping'] = $normalized;
 
-        $patch = $this->apiClient->patchIntegrationSource($sourceId, ['settings' => $settings]);
-        if (! $patch['ok']) {
-            $msg = is_array($patch['data']) && isset($patch['data']['detail']) && is_string($patch['data']['detail'])
-                ? $patch['data']['detail']
-                : __('Could not save settings.', 'octavawms');
-            wp_send_json_error(['message' => $msg], min(599, max(400, (int) $patch['status'])));
+        $settings['DeliveryServices']['options']['carrierMapping'] = $carrierMapping;
+
+        return $settings;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $carrierMapping
+     */
+    public static function encodeCarrierMappingRows(array $carrierMapping): string
+    {
+        $encoded = json_encode($carrierMapping, JSON_UNESCAPED_SLASHES);
+
+        return is_string($encoded) ? $encoded : '[]';
+    }
+
+    /**
+     * @param array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>} $patch
+     */
+    private static function patchFailureMessage(array $patch): string
+    {
+        if (is_array($patch['data'])) {
+            foreach (['detail', 'message', 'title', 'error'] as $key) {
+                if (isset($patch['data'][$key]) && is_string($patch['data'][$key]) && trim($patch['data'][$key]) !== '') {
+                    return trim($patch['data'][$key]);
+                }
+            }
         }
 
-        wp_send_json_success(['carrierMapping' => $normalized]);
+        $raw = trim((string) $patch['raw']);
+        if ($raw !== '') {
+            return sprintf(
+                /* translators: %s backend response excerpt. */
+                __('Could not save carrier mapping. Backend response: %s', 'octavawms'),
+                mb_substr($raw, 0, 300)
+            );
+        }
+
+        return __('Could not save carrier mapping to OctavaWMS integration source.', 'octavawms');
     }
 
     /**
@@ -150,7 +243,7 @@ class SettingsAjax
      *
      * @return list<array<string, mixed>>|null
      */
-    private function validateAndNormalizeRows(array $rows): ?array
+    public static function validateAndNormalizeRows(array $rows): ?array
     {
         $out = [];
         foreach ($rows as $row) {

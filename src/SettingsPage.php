@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OctavaWMS\WooCommerce;
 
+use OctavaWMS\WooCommerce\Admin\SettingsAjax;
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
 
 class SettingsPage extends \WC_Integration
@@ -20,6 +21,8 @@ class SettingsPage extends \WC_Integration
         // WC_Settings_API / WC_Integration do not declare __construct(); calling parent::__construct() fatal-errors on PHP.
         $this->init_form_fields();
         $this->init_settings();
+
+        add_action('woocommerce_update_options_integration_' . $this->id, [$this, 'process_admin_options']);
     }
 
     public function init_settings(): void
@@ -128,6 +131,7 @@ class SettingsPage extends \WC_Integration
     {
         $beforeImportAsync = Options::isImportAsyncEnabled();
         parent::process_admin_options();
+        $postedCarrierMapping = $this->savePostedCarrierMappingJson();
 
         if (! is_array($this->settings)) {
             $this->init_settings();
@@ -137,6 +141,9 @@ class SettingsPage extends \WC_Integration
         }
         if (isset($this->settings['api_key'])) {
             update_option(Options::LEGACY_API_KEY, (string) $this->settings['api_key']);
+        }
+        if ($postedCarrierMapping !== null) {
+            $this->syncCarrierMappingToIntegrationSource($postedCarrierMapping);
         }
 
         $afterImportAsync = Options::isImportAsyncEnabled();
@@ -163,6 +170,125 @@ class SettingsPage extends \WC_Integration
         }
     }
 
+    /**
+     * @return list<array<string, mixed>>|null
+     */
+    private function savePostedCarrierMappingJson(): ?array
+    {
+        $postKey = 'woocommerce_' . $this->id . '_' . Options::CARRIER_MAPPING_JSON;
+        if (! isset($_POST[$postKey])) {
+            return null;
+        }
+
+        $raw = function_exists('wp_unslash')
+            ? wp_unslash((string) $_POST[$postKey])
+            : (string) $_POST[$postKey];
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
+            $this->addAdminError(__('Carrier mapping must be a JSON array.', 'octavawms'));
+
+            return null;
+        }
+
+        $nonEmpty = [];
+        foreach ($decoded as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $k = isset($row['courierMetaKey']) && is_string($row['courierMetaKey'])
+                ? trim($row['courierMetaKey'])
+                : '';
+            $v = isset($row['courierMetaValue']) && is_string($row['courierMetaValue'])
+                ? trim($row['courierMetaValue'])
+                : '';
+            if ($k !== '' && $v !== '') {
+                $nonEmpty[] = $row;
+            }
+        }
+
+        $normalized = SettingsAjax::validateAndNormalizeRows($nonEmpty);
+        if ($normalized === null) {
+            $this->addAdminError(__('Invalid carrier mapping row(s). Check meta key, meta value, type, carrier, and rate.', 'octavawms'));
+
+            return null;
+        }
+
+        $json = SettingsAjax::encodeCarrierMappingRows($normalized);
+        Options::saveCarrierMappingJson($json);
+        $this->settings[Options::CARRIER_MAPPING_JSON] = $json;
+
+        return $normalized;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $carrierMapping
+     */
+    private function syncCarrierMappingToIntegrationSource(array $carrierMapping): void
+    {
+        $sourceId = Options::getSourceId();
+        if ($sourceId <= 0 || Options::getApiKey() === '') {
+            return;
+        }
+
+        $apiClient = $this->createBackendApiClient();
+        $source = $apiClient->getIntegrationSource($sourceId);
+        if ($source === null) {
+            $this->addAdminError(__('Carrier mapping was saved in WordPress, but OctavaWMS integration source could not be loaded.', 'octavawms'));
+
+            return;
+        }
+
+        $settings = is_array($source['settings'] ?? null) ? $source['settings'] : [];
+        $settings = SettingsAjax::mergeCarrierMappingIntoSettings($settings, $carrierMapping);
+        $patch = $apiClient->patchIntegrationSource($sourceId, ['settings' => $settings]);
+        if (! $patch['ok']) {
+            $this->addAdminError($this->carrierMappingPatchFailureMessage($patch));
+        }
+    }
+
+    /**
+     * @param array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>} $patch
+     */
+    private function carrierMappingPatchFailureMessage(array $patch): string
+    {
+        if (is_array($patch['data'])) {
+            foreach (['detail', 'message', 'title', 'error'] as $key) {
+                if (isset($patch['data'][$key]) && is_string($patch['data'][$key]) && trim($patch['data'][$key]) !== '') {
+                    return sprintf(
+                        /* translators: %s backend error. */
+                        __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed: %s', 'octavawms'),
+                        trim($patch['data'][$key])
+                    );
+                }
+            }
+        }
+
+        $raw = trim((string) $patch['raw']);
+        if ($raw !== '') {
+            return sprintf(
+                /* translators: %s backend response excerpt. */
+                __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed: %s', 'octavawms'),
+                mb_substr($raw, 0, 300)
+            );
+        }
+
+        return __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed.', 'octavawms');
+    }
+
+    private function addAdminError(string $message): void
+    {
+        if (class_exists(\WC_Admin_Settings::class, false)) {
+            \WC_Admin_Settings::add_error($message);
+        } else {
+            add_settings_error('general', 'octavawms_settings_error', $message, 'error');
+        }
+    }
+
+    protected function createBackendApiClient(): BackendApiClient
+    {
+        return new BackendApiClient();
+    }
+
     public function admin_options(): void
     {
         echo $this->getConnectDescriptionHtml();
@@ -178,7 +304,6 @@ class SettingsPage extends \WC_Integration
 
         ob_start();
         ?>
-        <datalist id="octavawms-wc-meta-keys"></datalist>
         <div id="octavawms-carrier-matrix-root" class="octavawms-carrier-matrix" style="margin:1.25em 0 2em;max-width:1280px;">
             <h2 style="font-size:1.1em;margin-bottom:0.5em;">
                 <?php esc_html_e('Carrier meta mapping (Woo → Octava)', 'octavawms'); ?>
@@ -201,6 +326,10 @@ class SettingsPage extends \WC_Integration
                 </button>
                 <span class="spinner" id="octavawms-matrix-spinner" style="float:none;visibility:hidden;margin-left:8px;"></span>
             </p>
+            <input type="hidden"
+                   id="octavawms-carrier-mapping-json"
+                   name="woocommerce_<?php echo esc_attr($this->id); ?>_<?php echo esc_attr(Options::CARRIER_MAPPING_JSON); ?>"
+                   value="<?php echo esc_attr(Options::getCarrierMappingJson()); ?>">
             <p id="octavawms-matrix-message" class="description" style="min-height:1.25em;color:#b32d2d;" aria-live="polite"></p>
             <div id="octavawms-matrix-visual-wrap">
                 <table class="widefat striped" id="octavawms-matrix-table" style="margin-top:0.5em;">

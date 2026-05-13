@@ -11,6 +11,8 @@ class Options
 
     public const INTEGRATION_ID = 'octavawms';
 
+    public const CARRIER_MAPPING_JSON = 'carrier_mapping_json';
+
     /** Default OctavaWMS API host (no trailing slash). */
     public const DEFAULT_API_BASE = 'https://pro.oawms.com';
 
@@ -161,6 +163,45 @@ class Options
         $v = $settings['import_async'] ?? null;
 
         return ! (is_string($v) && $v === 'no');
+    }
+
+    public static function getCarrierMappingJson(): string
+    {
+        $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+        $json = $settings[self::CARRIER_MAPPING_JSON] ?? '';
+
+        return is_string($json) && trim($json) !== '' ? trim($json) : '[]';
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public static function getCarrierMappingRows(): array
+    {
+        $decoded = json_decode(self::getCarrierMappingJson(), true);
+        if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($decoded as $row) {
+            if (is_array($row)) {
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    public static function saveCarrierMappingJson(string $json): void
+    {
+        $name = 'woocommerce_' . self::INTEGRATION_ID . '_settings';
+        $settings = (array) get_option($name, []);
+        if (! is_array($settings)) {
+            $settings = [];
+        }
+        $settings[self::CARRIER_MAPPING_JSON] = $json;
+        update_option($name, $settings);
     }
 
     public static function saveCredentials(string $apiKey, string $labelEndpoint, int $sourceId): void
