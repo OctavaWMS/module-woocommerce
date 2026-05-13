@@ -22,9 +22,15 @@ class ConnectService
 
     public function register(): void
     {
-        add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
-        add_action('wp_ajax_' . self::PANEL_LOGIN_ACTION, [$this, 'handleAjaxPanelLoginUrl']);
-        add_action('wp_ajax_' . self::CONNECTIVITY_PROBE_ACTION, [$this, 'handleAjaxConnectivityProbe']);
+        if (! has_action('wp_ajax_' . self::ACTION)) {
+            add_action('wp_ajax_' . self::ACTION, [$this, 'handleAjaxConnect']);
+        }
+        if (! has_action('wp_ajax_' . self::PANEL_LOGIN_ACTION)) {
+            add_action('wp_ajax_' . self::PANEL_LOGIN_ACTION, [$this, 'handleAjaxPanelLoginUrl']);
+        }
+        if (! has_action('wp_ajax_' . self::CONNECTIVITY_PROBE_ACTION)) {
+            add_action('wp_ajax_' . self::CONNECTIVITY_PROBE_ACTION, [$this, 'handleAjaxConnectivityProbe']);
+        }
         // Priority 20: run after WooCommerce (priority 10) has registered selectWoo.
         add_action('admin_enqueue_scripts', [$this, 'maybeEnqueueConnectScript'], 20);
     }
@@ -98,6 +104,7 @@ class ConnectService
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(SettingsAjax::ACTION),
             'action' => SettingsAjax::ACTION,
+            'detailAjaxErrors' => ( defined('WP_DEBUG') && WP_DEBUG && current_user_can('manage_options') ),
             'strings' => [
                 'switchJson' => __('Switch to JSON', 'octavawms'),
                 'switchVisual' => __('Switch to Visual', 'octavawms'),
@@ -108,6 +115,12 @@ class ConnectService
                 'pickCarrier' => __('Search carrier…', 'octavawms'),
                 'pickRate' => __('Rate (optional)', 'octavawms'),
                 'anyRate' => __('— Any / none —', 'octavawms'),
+                'ajaxNoHandler' => __( 'WordPress returned an empty handler response for this request. In the browser Network tab, confirm the POST body includes action=octavawms_carrier_matrix. If it is missing, a security rule or proxy may be stripping the request. Otherwise reload the page, confirm WooCommerce and OctavaWMS are active and up to date, and ensure admin cookies are sent to admin-ajax.php (same site, HTTPS).', 'octavawms' ),
+                'ajaxNonceExpired' => __( 'Your session or security token expired. Reload the page and try again.', 'octavawms' ),
+                'ajaxHttpError' => __( 'The server returned an error. Reload the page and try again.', 'octavawms' ),
+                'ajaxParseError' => __( 'The server response could not be read as JSON. Reload the page or check for a plugin conflict.', 'octavawms' ),
+                'ajaxInvalidResponse' => __( 'The server returned an unexpected response. Reload the page and try again.', 'octavawms' ),
+                'ajaxMissingConfig' => __( 'Carrier matrix script configuration is missing (ajax URL, action, or nonce). Reload this page with cache bypass (hard refresh) or clear any page cache or minify plugin output for wp-admin.', 'octavawms' ),
             ],
         ]);
 
