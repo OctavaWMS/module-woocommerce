@@ -7,8 +7,21 @@
   const box = root.closest('.octavawms-label-box');
   let spDetail = null;
   let lastSpShipmentId = 0;
-  /** @type {{ id?: unknown, state?: string, error_message?: string }|null} */
+  /** @type {{ id?: unknown, state?: string, error_message?: string, tracking_number?: string }|null} */
   let panelShipment = null;
+  /** @type {{ has_label_locally?: boolean, download_url?: string, shipment?: Record<string, unknown> }|null} */
+  let lastOrderPanelPayload = null;
+  /** @type {any} */
+  let pdfJsDoc = null;
+  /** @type {any} */
+  let pdfJsPage = null;
+  /** @type {string|null} */
+  let labelViewerPdfObjectUrl = null;
+  let pdfCurrentScale = 0.65;
+  const PDF_INITIAL_SCALE = 0.65;
+  const PDF_MIN_SCALE = 0.25;
+  const PDF_MAX_SCALE = 3;
+  const PDF_ZOOM_FACTOR = 1.2;
 
   var carrierFirstPageGen = 0;
   /** @type {unknown} */
@@ -267,6 +280,9 @@
   /** @param {HTMLElement} tbody */
   function bindPlacesInputDelegation(tbody, shipmentId) {
     tbody.addEventListener('input', function (e) {
+      if (currentPanelLabelState() === 'locked') {
+        return;
+      }
       var t = e.target;
       if (!(t instanceof HTMLInputElement) || !t.classList.contains('octavawms-place-input')) {
         return;
@@ -282,6 +298,9 @@
       scheduleDebouncedPatchForPlaceRow(shipmentId, pid, trEl);
     });
     tbody.addEventListener('blur', function (e) {
+      if (currentPanelLabelState() === 'locked') {
+        return;
+      }
       var t = e.target;
       if (!(t instanceof HTMLInputElement) || !t.classList.contains('octavawms-place-input')) {
         return;
@@ -325,6 +344,9 @@
       return 'neutral';
     }
     const s = raw.toLowerCase();
+    if (s === 'sent' || s === 'closed') {
+      return 'info';
+    }
     if (/(error|fail|reject|invalid|exception)/.test(s)) {
       return 'error';
     }
@@ -346,9 +368,15 @@
     return 'neutral';
   }
 
-  function statusPillHtml(stateRaw) {
+  /**
+   * @param {string} stateRaw shipment state key from backend
+   * @param {string} [displayLabel] human-readable label; defaults to raw state
+   */
+  function statusPillHtml(stateRaw, displayLabel) {
     const tone = shipmentStateTone(stateRaw);
-    const label = esc(String(stateRaw || '').trim() || '—');
+    const raw = String(stateRaw || '').trim();
+    const vis = String(displayLabel != null && String(displayLabel).trim() !== '' ? displayLabel : raw || '—');
+    const label = esc(vis);
     return (
       '<span class="octavawms-status-pill octavawms-status-pill--' + tone + '" title="' + esc(cfg.strings.shipmentStatus) + '">' + label + '</span>'
     );
@@ -365,7 +393,8 @@
     if (st !== 'pending_error') {
       return '';
     }
-    let statusRow = '<p class="octavawms-shipment-state-banner__status">' + statusPillHtml(st);
+    let statusRow =
+      '<p class="octavawms-shipment-state-banner__status">' + statusPillHtml(st, shipmentStateDisplayName(st));
     const extra = detail && detail.shipment_status_text ? String(detail.shipment_status_text).trim() : '';
     if (extra) {
       statusRow += ' <span class="octavawms-shipment-state-banner__extra">' + esc(extra) + '</span>';
@@ -449,7 +478,9 @@
     if (!isCod) {
       return '<span class="octavawms-cod-pill octavawms-cod-pill--no">' + esc(cfg.strings.codNo) + '</span>';
     }
-    const baseLabel = String(ci.label || cfg.strings.codYes).trim();
+    const pmRaw = ci.payment_method_title ? String(ci.payment_method_title).trim() : '';
+    const fromLabel = String(ci.label || cfg.strings.codYes).trim();
+    const baseLabel = (pmRaw || fromLabel).trim();
     let inner = esc(baseLabel);
     const amt = ci.formatted_total ? String(ci.formatted_total).trim() : '';
     if (amt !== '') {
@@ -457,8 +488,7 @@
     }
     let h =
       '<span class="octavawms-cod-pill octavawms-cod-pill--yes" title="' + esc(cfg.strings.codYes) + '">' + inner + '</span>';
-    const pmRaw = ci.payment_method_title ? String(ci.payment_method_title).trim() : '';
-    if (pmRaw && pmRaw.toLowerCase() !== baseLabel.toLowerCase()) {
+    if (pmRaw && fromLabel && pmRaw.toLowerCase() !== fromLabel.toLowerCase() && baseLabel === fromLabel) {
       h +=
         '<span class="octavawms-muted octavawms-muted--tight octavawms-label-shipment__pm">' +
         esc(pmRaw) +
@@ -472,18 +502,29 @@
     const sidStr = shipment && shipment.id ? String(shipment.id) : '';
     const codInfo = data && data.cod && typeof data.cod === 'object' ? data.cod : {};
     const state = (shipment && shipment.state) || '';
+    const statusHuman = shipmentStateDisplayName(state);
     return (
       '<div class="octavawms-create-label-shipment-meta">' +
-      '<p class="octavawms-create-label-shipment-ref">' +
+      '<p class="octavawms-create-label-shipment-ref octavawms-create-label-shipment-ref--top">' +
       '<strong>' +
       esc(cfg.strings.shipmentLabel) +
       '</strong>' +
       ' ' +
       esc(sidStr ? '#' + sidStr : '—') +
       '</p>' +
-      '<div class="octavawms-label-shipment__badges">' +
-      statusPillHtml(state) +
+      '<div class="octavawms-create-label-shipment-badges">' +
+      '<span class="ow-toolbar-badge-row">' +
+      '<span class="ow-meta-key">' +
+      esc(cfg.strings.statusLabel || cfg.strings.shipmentStatus || 'Status') +
+      ':</span> ' +
+      statusPillHtml(state, statusHuman || state || '—') +
+      '</span>' +
+      '<span class="ow-toolbar-badge-row">' +
+      '<span class="ow-meta-key">' +
+      esc(cfg.strings.paymentLabel || 'Payment') +
+      ':</span> ' +
       codPillHtml(codInfo) +
+      '</span>' +
       '</div></div>'
     );
   }
@@ -498,6 +539,392 @@
       return parseInt(String(data.shipment.id), 10) || 0;
     }
     return parseInt(String(data.shipment_id || 0), 10) || 0;
+  }
+
+  function shipmentStateDisplayName(raw) {
+    const key = String(raw || '').trim();
+    const map = cfg.strings.shipmentStateNames || {};
+    return (map && map[key]) ? String(map[key]) : key;
+  }
+
+  /**
+   * @param {{ has_label_locally?: boolean, download_url?: string }|null|undefined} data
+   * @param {{ tracking_number?: string }|null|undefined} shipment
+   * @returns {'draft'|'generated'|'locked'}
+   */
+  function panelLabelState(data, shipment) {
+    const tn = shipment && shipment.tracking_number != null ? String(shipment.tracking_number).trim() : '';
+    if (tn !== '') {
+      return 'locked';
+    }
+    if (data && data.has_label_locally && data.download_url) {
+      return 'generated';
+    }
+    return 'draft';
+  }
+
+  function currentPanelLabelState() {
+    if (!lastOrderPanelPayload || !lastOrderPanelPayload.shipment) {
+      return 'draft';
+    }
+    return panelLabelState(lastOrderPanelPayload, lastOrderPanelPayload.shipment);
+  }
+
+  function labelUrlInline(url) {
+    if (!url || typeof url !== 'string') {
+      return '';
+    }
+    try {
+      var u = new URL(url, window.location.origin || undefined);
+      if ((u.pathname || '').indexOf('admin-post.php') !== -1 && u.searchParams.get('action') === 'octavawms_download_label') {
+        u.searchParams.set('inline', '1');
+        return u.toString();
+      }
+    } catch (e) {}
+    return url;
+  }
+
+  function buildCarrierTrackUrl(trackingNumber) {
+    const n = encodeURIComponent(String(trackingNumber || '').trim());
+    return n ? 'https://www.speedy.bg/en/track-shipment?shipmentNumber=' + n : '';
+  }
+
+  function destroyPdfRender() {
+    if (pdfJsDoc) {
+      try {
+        pdfJsDoc.destroy();
+      } catch (e) {}
+      pdfJsDoc = null;
+      pdfJsPage = null;
+    }
+    pdfCurrentScale = PDF_INITIAL_SCALE;
+  }
+
+  function revokeLabelViewerPdfObjectUrl() {
+    destroyPdfRender();
+    if (labelViewerPdfObjectUrl) {
+      try {
+        URL.revokeObjectURL(labelViewerPdfObjectUrl);
+      } catch (e) {}
+      labelViewerPdfObjectUrl = null;
+    }
+  }
+
+  function stripDataUrlBase64(data) {
+    if (!data || typeof data !== 'string') {
+      return '';
+    }
+    if (data.indexOf('data:') === 0) {
+      const comma = data.indexOf(',');
+      return comma >= 0 ? data.slice(comma + 1) : data;
+    }
+    return data;
+  }
+
+  function byteArrayStartsWithPdfMagic(bytes) {
+    return bytes && bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+  }
+
+  function uint8StripUtf8Bom(bytes) {
+    if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+      return bytes.subarray(3);
+    }
+    return bytes;
+  }
+
+  function sanitizeBase64Candidate(input) {
+    let s = String(input || '');
+    s = s.replace(/^\uFEFF/, '');
+    s = s.replace(/[^A-Za-z0-9+/=_-]/g, '');
+    s = s.replace(/-/g, '+').replace(/_/g, '/');
+    s = s.replace(/=+$/g, '');
+    const mod = s.length % 4;
+    if (mod === 2) {
+      s += '==';
+    } else if (mod === 3) {
+      s += '=';
+    } else if (mod === 1) {
+      s = s.slice(0, -1);
+    }
+    return s;
+  }
+
+  function base64ToPdfBlob(base64) {
+    const sanitized = sanitizeBase64Candidate(base64);
+    if (sanitized.length < 16) {
+      throw new Error('base64_too_short');
+    }
+    let binStr;
+    try {
+      binStr = atob(sanitized);
+    } catch (e) {
+      throw new Error('atob_failed');
+    }
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+      bytes[i] = binStr.charCodeAt(i);
+    }
+    if (!byteArrayStartsWithPdfMagic(bytes)) {
+      throw new Error('not_pdf');
+    }
+    return new Blob([bytes], { type: 'application/pdf' });
+  }
+
+  function walkJsonForPdfBlob(node, depth) {
+    if (depth > 10 || node == null) {
+      return null;
+    }
+    if (typeof node === 'string') {
+      if (node.length < 100) {
+        return null;
+      }
+      try {
+        return base64ToPdfBlob(stripDataUrlBase64(node));
+      } catch (e) {
+        return null;
+      }
+    }
+    if (Array.isArray(node)) {
+      for (let i = 0; i < node.length; i++) {
+        const blob = walkJsonForPdfBlob(node[i], depth + 1);
+        if (blob) {
+          return blob;
+        }
+      }
+      return null;
+    }
+    if (typeof node === 'object') {
+      const priority = ['pdfData', 'pdf', 'pdf_base64', 'pdfBase64', 'labelPdf', 'label_pdf', 'content', 'data', 'file', 'body'];
+      for (let pi = 0; pi < priority.length; pi++) {
+        if (Object.prototype.hasOwnProperty.call(node, priority[pi])) {
+          const blob = walkJsonForPdfBlob(node[priority[pi]], depth + 1);
+          if (blob) {
+            return blob;
+          }
+        }
+      }
+      const keys = Object.keys(node);
+      for (let ki = 0; ki < keys.length; ki++) {
+        const blob = walkJsonForPdfBlob(node[keys[ki]], depth + 1);
+        if (blob) {
+          return blob;
+        }
+      }
+    }
+    return null;
+  }
+
+  async function resolvePdfPreviewForViewer(downloadUrl) {
+    const trimmed = String(downloadUrl || '').trim();
+    if (!trimmed) {
+      return { ok: false };
+    }
+    if (trimmed.indexOf('data:') === 0) {
+      try {
+        const blob = base64ToPdfBlob(stripDataUrlBase64(trimmed));
+        return { ok: true, url: URL.createObjectURL(blob), objectUrl: true };
+      } catch (e) {
+        return { ok: false };
+      }
+    }
+    const looksLikeHttpUrl =
+      /^https?:\/\//i.test(trimmed) ||
+      trimmed.charAt(0) === '/' ||
+      trimmed.indexOf('admin-post.php') !== -1 ||
+      trimmed.indexOf('admin-ajax.php') !== -1 ||
+      trimmed.indexOf('action=') !== -1 ||
+      trimmed.indexOf('octavawms_') !== -1;
+    if (!looksLikeHttpUrl && trimmed.length > 40) {
+      try {
+        const blob = base64ToPdfBlob(trimmed);
+        return { ok: true, url: URL.createObjectURL(blob), objectUrl: true };
+      } catch (e) {
+        return { ok: false };
+      }
+    }
+    try {
+      const res = await fetch(labelUrlInline(trimmed), { credentials: 'same-origin', redirect: 'follow' });
+      if (!res.ok) {
+        return { ok: true, url: labelUrlInline(trimmed), objectUrl: false };
+      }
+      const buf = await res.arrayBuffer();
+      const bytesRaw = new Uint8Array(buf);
+      const bytes = uint8StripUtf8Bom(bytesRaw);
+      if (byteArrayStartsWithPdfMagic(bytes)) {
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        return { ok: true, url: URL.createObjectURL(blob), objectUrl: true };
+      }
+      let text = '';
+      try {
+        text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      } catch (e) {
+        return { ok: true, url: labelUrlInline(trimmed), objectUrl: false };
+      }
+      const cleaned = text.replace(/^\uFEFF/, '').trim();
+      try {
+        const j = JSON.parse(cleaned);
+        const blob = walkJsonForPdfBlob(j, 0);
+        if (blob) {
+          return { ok: true, url: URL.createObjectURL(blob), objectUrl: true };
+        }
+      } catch (e) {}
+      try {
+        const blob = base64ToPdfBlob(cleaned);
+        return { ok: true, url: URL.createObjectURL(blob), objectUrl: true };
+      } catch (e) {}
+      const match = cleaned.match(/[A-Za-z0-9+/=_-]{200,}/);
+      if (match && match[0]) {
+        try {
+          const blob = base64ToPdfBlob(match[0]);
+          return { ok: true, url: URL.createObjectURL(blob), objectUrl: true };
+        } catch (e) {}
+      }
+      return { ok: true, url: labelUrlInline(trimmed), objectUrl: false };
+    } catch (e) {
+      return { ok: true, url: labelUrlInline(trimmed), objectUrl: false };
+    }
+  }
+
+  function syncLabelViewerActionUrls(resolvedUrl, objectUrlFlag) {
+    const card = document.getElementById('octavawms-label-viewer-card');
+    if (!card) {
+      return;
+    }
+    const printBt = card.querySelector('[data-octavawms-action="print-label"]');
+    if (printBt) {
+      printBt.setAttribute('data-label-url', resolvedUrl);
+    }
+    const dl = card.querySelector('a.octavawms-label-viewer-download');
+    if (dl instanceof HTMLAnchorElement) {
+      dl.href = resolvedUrl;
+      if (objectUrlFlag) {
+        dl.setAttribute('download', 'label.pdf');
+      } else {
+        dl.removeAttribute('download');
+      }
+    }
+  }
+
+  function renderPdfPageToCanvas(mode) {
+    const canvas = document.getElementById('octavawms-label-pdf-canvas');
+    const wrap = canvas ? canvas.closest('.ow-pdf-canvas-wrap') : null;
+    if (!canvas || !wrap || !pdfJsPage) {
+      return;
+    }
+    const page = pdfJsPage;
+    if (mode === 'fit') {
+      const baseVp = page.getViewport({ scale: 1 });
+      const cw = Math.max(wrap.clientWidth || 400, 200);
+      pdfCurrentScale = cw / baseVp.width;
+    } else if (mode === 'zoom-in') {
+      pdfCurrentScale *= PDF_ZOOM_FACTOR;
+    } else if (mode === 'zoom-out') {
+      pdfCurrentScale /= PDF_ZOOM_FACTOR;
+    }
+    if (pdfCurrentScale < PDF_MIN_SCALE) {
+      pdfCurrentScale = PDF_MIN_SCALE;
+    } else if (pdfCurrentScale > PDF_MAX_SCALE) {
+      pdfCurrentScale = PDF_MAX_SCALE;
+    }
+    const viewport = page.getViewport({ scale: pdfCurrentScale });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function () {
+      ctx.restore();
+    });
+  }
+
+  function attachLabelPdfViewer(downloadUrl) {
+    revokeLabelViewerPdfObjectUrl();
+    const loading = document.getElementById('octavawms-label-viewer-loading');
+    const canvas = document.getElementById('octavawms-label-pdf-canvas');
+    const errBox = document.getElementById('octavawms-label-viewer-error');
+    const fallbackDl = document.getElementById('octavawms-label-viewer-fallback-dl');
+    if (!canvas || !downloadUrl) {
+      return Promise.resolve();
+    }
+    if (loading) {
+      loading.style.display = '';
+    }
+    canvas.style.display = 'none';
+    if (errBox) {
+      errBox.style.display = 'none';
+      errBox.innerHTML = '';
+    }
+    if (fallbackDl instanceof HTMLAnchorElement) {
+      fallbackDl.style.display = 'none';
+    }
+
+    if (typeof pdfjsLib === 'undefined') {
+      if (loading) {
+        loading.style.display = 'none';
+      }
+      if (errBox) {
+        errBox.style.display = '';
+        errBox.innerHTML =
+          '<p class="octavawms-notice octavawms-notice--error">' +
+          esc(cfg.strings.labelPreviewError || 'Unable to render label preview.') +
+          '</p>';
+      }
+      return Promise.resolve();
+    }
+    if (cfg.pdfjs && cfg.pdfjs.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = cfg.pdfjs.workerSrc;
+    }
+
+    return resolvePdfPreviewForViewer(downloadUrl)
+      .then(function (resolved) {
+        if (!resolved.ok || !resolved.url) {
+          throw new Error('preview_unavailable');
+        }
+        if (resolved.objectUrl) {
+          labelViewerPdfObjectUrl = resolved.url;
+        }
+        syncLabelViewerActionUrls(resolved.url, !!resolved.objectUrl);
+        return fetch(resolved.url)
+          .then(function (r) {
+            return r.arrayBuffer();
+          })
+          .then(function (buf) {
+            return pdfjsLib.getDocument({ data: buf }).promise;
+          })
+          .then(function (pdf) {
+            pdfJsDoc = pdf;
+            return pdf.getPage(1);
+          })
+          .then(function (page) {
+            pdfJsPage = page;
+            pdfCurrentScale = PDF_INITIAL_SCALE;
+            if (loading) {
+              loading.style.display = 'none';
+            }
+            canvas.style.display = '';
+            renderPdfPageToCanvas('render');
+          });
+      })
+      .catch(function () {
+        if (loading) {
+          loading.style.display = 'none';
+        }
+        if (errBox) {
+          errBox.style.display = '';
+          errBox.innerHTML =
+            '<p class="octavawms-notice octavawms-notice--error">' +
+            esc(cfg.strings.labelPreviewError || 'Unable to render label preview.') +
+            '</p>';
+        }
+        if (fallbackDl instanceof HTMLAnchorElement) {
+          fallbackDl.href = String(downloadUrl || '');
+          fallbackDl.style.display = '';
+        }
+      });
   }
 
   /**
@@ -604,20 +1031,24 @@
     const sec = document.getElementById('octavawms-panel-label');
     const loading = sec ? sec.classList.contains('is-loading') : false;
     const bodies = !!placesTableHasRenderableRows();
+    const locked = currentPanelLabelState() === 'locked';
     const gen = root.querySelector('[data-octavawms-action="generate-label"]');
     if (gen instanceof HTMLButtonElement) {
-      gen.disabled = loading || !bodies;
+      gen.disabled = locked || loading || !bodies;
     }
     const addBt = root.querySelector('[data-octavawms-action="place-add"]');
     if (addBt instanceof HTMLButtonElement) {
       var el = document.getElementById('octavawms-places-body');
       var sid = el ? parseInt(String(el.getAttribute('data-shipment-id') || '0'), 10) || 0 : 0;
-      addBt.disabled = loading || !(sid > 0);
+      addBt.disabled = locked || loading || !(sid > 0);
     }
   }
 
   /** @param {{ shipment?: Record<string,string>, shipment_id?: unknown, cod?: Record<string, unknown>, has_label_locally?: boolean }} data */
   function labelTopActionsRowHtml(shipmentId, useRegenerateLabel) {
+    if (currentPanelLabelState() === 'locked') {
+      return '';
+    }
     const sidStr = esc(String(shipmentId));
     const dis = shipmentId <= 0 ? ' disabled' : '';
     const lbl = useRegenerateLabel ? cfg.strings.regenerateLabel : cfg.strings.generateLabel;
@@ -641,9 +1072,49 @@
 
   function createLabelAndBoxesSection(data, shipment, hasLocal, dl, shipmentId, placesInitialInnerHtml) {
     const useRegen = hasLocal && !!dl;
+    const labelState = panelLabelState(data, shipment);
+    const tn =
+      shipment && shipment.tracking_number != null && String(shipment.tracking_number).trim() !== ''
+        ? String(shipment.tracking_number).trim()
+        : '';
+    const shipmentLocked = labelState === 'locked';
+
+    let banner = '';
+    if (shipmentLocked) {
+      banner =
+        '<div class="octavawms-tracking-lock-banner ow-tracking-card">' +
+        '<span class="ow-tracking-number-label">' +
+        esc(cfg.strings.trackingNumberLabel || 'Tracking number') +
+        '</span>' +
+        '<div class="ow-tracking-number-row">' +
+        '<span class="ow-tracking-number-lg">' +
+        esc(tn) +
+        '</span>' +
+        '<button type="button" class="button button-small" data-octavawms-action="copy-tracking" data-tracking-number="' +
+        hrefAttr(tn) +
+        '">' +
+        esc(cfg.strings.copyTracking || 'Copy') +
+        '</button>' +
+        '<button type="button" class="button button-primary" data-octavawms-action="track-shipment" data-tracking-number="' +
+        hrefAttr(tn) +
+        '">' +
+        esc(cfg.strings.trackShipment || 'Track shipment') +
+        '</button>' +
+        '</div>' +
+        '<div class="ow-tracking-cancel-row">' +
+        '<button type="button" class="button button-small" data-octavawms-action="cancel-shipment" data-shipment-id="' +
+        esc(String(shipmentId)) +
+        '">' +
+        esc(cfg.strings.cancelShipment || 'Cancel Shipment') +
+        '</button>' +
+        '</div>' +
+        '<p class="octavawms-muted octavawms-shipment-locked-msg">' +
+        esc(cfg.strings.shipmentLocked || '') +
+        '</p></div>';
+    }
 
     let notices = '';
-    if (hasLocal && dl) {
+    if (hasLocal && dl && !shipmentLocked) {
       notices +=
         '<p class="octavawms-notice octavawms-notice--success">' + esc(cfg.strings.labelReady) + '</p>';
     }
@@ -668,6 +1139,7 @@
 
     const boxesWrap =
       '<div class="octavawms-label-boxes-mount">' +
+      banner +
       '<div class="octavawms-label-top-actions" data-shipment-id="' +
       esc(String(shipmentId)) +
       '">' +
@@ -680,7 +1152,9 @@
       '</div></div>';
 
     return (
-      '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label" id="octavawms-panel-label" aria-label="' +
+      '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label' +
+      (shipmentLocked ? ' octavawms-panel-label--locked' : '') +
+      '" id="octavawms-panel-label" aria-label="' +
       esc(cfg.strings.labelPanelSrHeading) +
       '">' +
       '<div class="octavawms-connect-section-body">' +
@@ -691,7 +1165,138 @@
     );
   }
 
+  function labelViewerActionsHtml(downloadUrl, shipmentId, labelState) {
+    const dl = labelUrlInline(String(downloadUrl || ''));
+    const locked = labelState === 'locked';
+    return (
+      '<div class="octavawms-label-viewer-actions">' +
+      (dl
+        ? '<button type="button" class="button button-primary" data-octavawms-action="print-label" data-label-url="' +
+          hrefAttr(dl) +
+          '">' +
+          esc(cfg.strings.printLabel || 'Print Label') +
+          '</button>' +
+          '<a class="button button-secondary octavawms-label-viewer-download" href="' +
+          hrefAttr(String(downloadUrl || '')) +
+          '" target="_blank" rel="noopener noreferrer">' +
+          esc(cfg.strings.downloadLabel || 'Download Label') +
+          '</a>'
+        : '') +
+      '<button type="button" class="button button-secondary" data-octavawms-action="generate-label" data-shipment-id="' +
+      esc(String(shipmentId)) +
+      '"' +
+      (locked ? ' disabled' : '') +
+      '>' +
+      esc(cfg.strings.regenerateLabel || cfg.strings.generateLabel || 'Generate Label') +
+      '</button>' +
+      '</div>'
+    );
+  }
 
+  function labelViewerToolbarZoomHtml() {
+    return (
+      '<div class="ow-pdf-toolbar">' +
+      '<button type="button" class="button button-small" data-octavawms-action="pdf-zoom-out" title="' +
+      esc(cfg.strings.zoomOut || 'Zoom out') +
+      '">-</button>' +
+      '<button type="button" class="button button-small" data-octavawms-action="pdf-zoom-in" title="' +
+      esc(cfg.strings.zoomIn || 'Zoom in') +
+      '">+</button>' +
+      '<button type="button" class="button button-small" data-octavawms-action="pdf-fit" title="' +
+      esc(cfg.strings.fitPage || 'Fit') +
+      '">' +
+      esc(cfg.strings.fitPage || 'Fit') +
+      '</button>' +
+      '</div>'
+    );
+  }
+
+  function labelViewerSectionHtml(downloadUrl, shipmentId, labelState) {
+    const dl = labelUrlInline(String(downloadUrl || ''));
+    let body = '';
+    if (labelState === 'draft' || !dl) {
+      body =
+        '<div class="octavawms-label-viewer-placeholder"><p class="octavawms-muted">' +
+        esc(cfg.strings.labelDraftHint || '') +
+        '</p></div>';
+    } else {
+      body =
+        '<div class="octavawms-label-viewer-frame-wrap">' +
+        '<div id="octavawms-label-viewer-loading" class="octavawms-muted octavawms-label-viewer-loading">' +
+        '<span class="octavawms-spinner"></span> ' +
+        esc(cfg.strings.loading || '') +
+        '</div>' +
+        '<div class="ow-pdf-canvas-wrap">' +
+        labelViewerToolbarZoomHtml() +
+        '<canvas id="octavawms-label-pdf-canvas" class="ow-pdf-canvas" aria-label="' +
+        esc(cfg.strings.labelViewerTitle || 'Shipping Label') +
+        '"></canvas>' +
+        '</div>' +
+        '<div id="octavawms-label-viewer-error" class="octavawms-label-viewer-error" style="display:none"></div>' +
+        '<a id="octavawms-label-viewer-fallback-dl" class="button button-primary octavawms-label-viewer-fallback-dl" href="' +
+        hrefAttr(dl) +
+        '" style="display:none" target="_blank" rel="noopener noreferrer">' +
+        esc(cfg.strings.downloadLabel || 'Download Label') +
+        '</a>' +
+        '</div>';
+    }
+    return (
+      '<div class="octavawms-sp-card octavawms-label-viewer-card" id="octavawms-label-viewer-card" data-shipment-id="' +
+      esc(String(shipmentId)) +
+      '">' +
+      '<div class="octavawms-label-viewer-head">' +
+      '<h3 class="octavawms-label-viewer-title">' +
+      esc(cfg.strings.labelViewerTitle || 'Shipping Label') +
+      '</h3>' +
+      labelViewerActionsHtml(downloadUrl, shipmentId, labelState) +
+      '</div>' +
+      body +
+      '</div>'
+    );
+  }
+
+  function openLabelPrint(url) {
+    const printSrc = labelUrlInline(String(url || ''));
+    if (!printSrc) {
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = printSrc;
+    document.body.appendChild(iframe);
+    iframe.onload = function () {
+      window.setTimeout(function () {
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.print();
+          }
+        } catch (e) {
+          window.open(printSrc, '_blank', 'noopener,noreferrer');
+        }
+        window.setTimeout(function () {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 1500);
+      }, 150);
+    };
+  }
+
+  function cancelShipmentLabel(shipmentId) {
+    const form = new URLSearchParams();
+    form.set('action', 'octavawms_cancel_label');
+    form.set('nonce', String(cfg.cancelLabelNonce || ''));
+    form.set('order_id', String(cfg.orderId));
+    form.set('shipment_id', String(shipmentId));
+    return fetch(cfg.ajaxUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form,
+      credentials: 'same-origin',
+    }).then(function (r) {
+      return r.json();
+    });
+  }
 
   function servicePointSlotLoading(shipmentId) {
     return (
@@ -710,6 +1315,7 @@
   }
 
   function renderPanel(data) {
+    lastOrderPanelPayload = data || null;
     const hasOrder = data.has_order;
     const shipment = data.shipment;
     const hasLocal = data.has_label_locally;
@@ -764,14 +1370,21 @@
     panelShipment = shipment;
     spDetail = null;
     lastSpShipmentId = 0;
+    const labelState = panelLabelState(data, shipment);
+    const hasTracking =
+      shipment &&
+      shipment.tracking_number != null &&
+      String(shipment.tracking_number).trim() !== '';
+    const labelFirst = labelState !== 'draft';
     html =
       '<div class="octavawms-connect-page">' +
       toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
       pendingErrorBannerWrapperHtml(panelShipment, null) +
-      '<div class="octavawms-connect-grid">';
+      '<div class="octavawms-connect-grid' +
+      (labelFirst ? ' octavawms-connect-grid--label-first' : '') +
+      '">';
 
-    html +=
-      '<div class="octavawms-slot octavawms-slot--label">' +
+    const boxesHtml =
       createLabelAndBoxesSection(
         data,
         shipment,
@@ -779,16 +1392,29 @@
         dl,
         sid,
         '<span class="octavawms-spinner"></span> <span>' + esc(cfg.strings.loading) + '</span>'
-      ) +
-      '</div>';
-
-    html += '<div class="octavawms-slot octavawms-slot--sp">' + servicePointSlotLoading(sid) + '</div>';
+      );
+    if (labelFirst) {
+      html += '<div class="octavawms-slot octavawms-slot--sp">' + boxesHtml;
+      if (!hasTracking) {
+        html += '<div class="octavawms-sp-below-label">' + servicePointSlotLoading(sid) + '</div>';
+      }
+      html += '</div>';
+      html += '<div class="octavawms-slot octavawms-slot--label">' + labelViewerSectionHtml(dl, sid, labelState) + '</div>';
+    } else {
+      html += '<div class="octavawms-slot octavawms-slot--label">' + boxesHtml + '</div>';
+      html += '<div class="octavawms-slot octavawms-slot--sp">' + servicePointSlotLoading(sid) + '</div>';
+    }
 
     html += '</div></div>';
     root.innerHTML = html;
 
-    loadServicePointSection(sid);
+    if (!hasTracking) {
+      loadServicePointSection(sid);
+    }
     loadPlacesSection(sid);
+    if ((labelState === 'generated' || labelState === 'locked') && dl) {
+      attachLabelPdfViewer(dl);
+    }
   }
 
   function loadServicePointSection(shipmentId) {
@@ -1638,6 +2264,7 @@
     }
 
     const nPlaces = places.length;
+    const locked = currentPanelLabelState() === 'locked';
     let h = '<p class="octavawms-muted octavawms-places-summary">' + placesSummaryLineHtmlFromPlacesJson(places) + '</p>';
     h += '<div class="octavawms-place-table-wrap"><table class="widefat striped octavawms-place-table octavawms-place-table--compact"><thead><tr>';
     h += '<th class="octavawms-place-th-box">' + esc(cfg.strings.boxColumn) + '</th>';
@@ -1664,8 +2291,11 @@
           ? p.items_count
           : parseInt(String(p.items_count), 10) || 0;
       const pidStr = esc(String(pid));
-      let actionsCell =
-        nPlaces < 2
+      let actionsCell = locked
+        ? '<button type="button" class="button-link octavawms-place-remove" disabled title="' +
+          esc(cfg.strings.placeRemoveBlockedTitle || '') +
+          '" aria-disabled="true">&times;</button>'
+        : nPlaces < 2
           ? '<span class="octavawms-place-actions-empty"></span>'
           : ic > 0
             ? '<button type="button" class="button-link octavawms-place-remove" disabled title="' +
@@ -1685,26 +2315,34 @@
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         esc(cfg.strings.weightG) +
-        '" step="any" value="' +
+        '" step="any"' +
+        (locked ? ' disabled' : '') +
+        ' value="' +
         esc(String(p.weight)) +
         '"/></td>';
       const dxLab = dimAbbrev(cfg.strings.widthMm);
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         dxLab +
-        '" step="any" value="' +
+        '" step="any"' +
+        (locked ? ' disabled' : '') +
+        ' value="' +
         esc(String(p.dim_x)) +
         '"/></td>';
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         dimAbbrev(cfg.strings.heightMm) +
-        '" step="any" value="' +
+        '" step="any"' +
+        (locked ? ' disabled' : '') +
+        ' value="' +
         esc(String(p.dim_y)) +
         '"/></td>';
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         dimAbbrev(cfg.strings.lengthMm) +
-        '" step="any" value="' +
+        '" step="any"' +
+        (locked ? ' disabled' : '') +
+        ' value="' +
         esc(String(p.dim_z)) +
         '"/></td>';
       h += '<td class="octavawms-place-td-actions">' + actionsCell + '</td>';
@@ -1778,6 +2416,9 @@
   }
 
   function generateLabel() {
+    if (currentPanelLabelState() === 'locked') {
+      return;
+    }
     var sid = currentShipmentIdFromDom();
     if (!(sid > 0) || !placesTableHasRenderableRows()) {
       window.alert(cfg.strings.generateLabelNeedBoxes || cfg.strings.error);
@@ -1897,6 +2538,77 @@
       if (act === 'refresh-status') {
         e.preventDefault();
         fetchStatus();
+        return;
+      }
+      if (act === 'print-label') {
+        e.preventDefault();
+        openLabelPrint(btn.getAttribute('data-label-url') || '');
+        return;
+      }
+      if (act === 'pdf-zoom-out') {
+        e.preventDefault();
+        renderPdfPageToCanvas('zoom-out');
+        return;
+      }
+      if (act === 'pdf-zoom-in') {
+        e.preventDefault();
+        renderPdfPageToCanvas('zoom-in');
+        return;
+      }
+      if (act === 'pdf-fit') {
+        e.preventDefault();
+        renderPdfPageToCanvas('fit');
+        return;
+      }
+      if (act === 'copy-tracking') {
+        e.preventDefault();
+        var trackNum = btn.getAttribute('data-tracking-number') || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(trackNum).then(function () {
+            var oldText = btn.textContent;
+            btn.textContent = String(cfg.strings.copiedTracking || 'Copied');
+            window.setTimeout(function () {
+              btn.textContent = oldText;
+            }, 1200);
+          });
+        }
+        return;
+      }
+      if (act === 'track-shipment') {
+        e.preventDefault();
+        var trackUrl = buildCarrierTrackUrl(btn.getAttribute('data-tracking-number') || '');
+        if (trackUrl) {
+          window.open(trackUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+      if (act === 'cancel-shipment') {
+        e.preventDefault();
+        var sidCancel = parseInt(btn.getAttribute('data-shipment-id') || '0', 10) || 0;
+        if (!(sidCancel > 0) || btn.disabled) {
+          return;
+        }
+        if (!window.confirm(String(cfg.strings.cancelShipment || 'Cancel Shipment') + '?')) {
+          return;
+        }
+        var prevCancel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = String(cfg.strings.cancellingShipment || '...');
+        cancelShipmentLabel(sidCancel)
+          .then(function (j) {
+            if (!j || !j.success) {
+              window.alert((j && j.data && j.data.message) || cfg.strings.error);
+              btn.textContent = prevCancel;
+              btn.disabled = false;
+              return;
+            }
+            fetchStatus();
+          })
+          .catch(function () {
+            window.alert(cfg.strings.error);
+            btn.textContent = prevCancel;
+            btn.disabled = false;
+          });
         return;
       }
       if (act === 'retry-pending-error') {

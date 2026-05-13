@@ -114,12 +114,47 @@ if (! class_exists('WC_Order', false)) {
             return $this->id > 0 ? (string) $this->id : '';
         }
 
+        public function get_payment_method(): string
+        {
+            return '';
+        }
+
+        public function get_payment_method_title(): string
+        {
+            return '';
+        }
+
+        public function get_total(): string
+        {
+            return '0';
+        }
+
+        public function get_currency(): string
+        {
+            return 'USD';
+        }
+
+        public function get_total_weight(): float
+        {
+            return 0.0;
+        }
+
+        public function get_items(): array
+        {
+            return [];
+        }
+
         /** @var array<string, mixed> */
         public array $updatedMeta = [];
 
         public function update_meta_data(string $key, mixed $value): void
         {
             $this->updatedMeta[$key] = $value;
+        }
+
+        public function delete_meta_data(string $key): void
+        {
+            unset($this->updatedMeta[$key]);
         }
 
         public int $saveCallCount = 0;

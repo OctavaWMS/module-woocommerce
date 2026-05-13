@@ -30,6 +30,7 @@ final class SettingsPageTest extends TestCase
         $_POST = [];
 
         Functions\when('__')->alias(static fn (string $text, $domain = null): string => $text);
+        Functions\when('wp_unslash')->returnArg(1);
         Functions\when('add_action')->alias(function (string $hook, $callback, int $priority = 10, int $acceptedArgs = 1): void {
             unset($callback, $priority, $acceptedArgs);
             $this->hooksAdded[] = $hook;

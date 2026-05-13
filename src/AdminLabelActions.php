@@ -222,21 +222,110 @@ class AdminLabelActions
         }
 
         $filePath = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
-        if ($filePath === '' || ! file_exists($filePath) || ! is_readable($filePath)) {
+        $inline = ! empty($_GET['inline']);
+
+        if ($filePath !== '' && file_exists($filePath) && is_readable($filePath)) {
+            $mime = self::mimeTypeForFilePath($filePath);
+            $ext = self::fileExtension($filePath);
+            $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
+
+            nocache_headers();
+            header('Content-Description: File Transfer');
+            header('Content-Type: ' . $mime);
+            header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
+            header('Content-Length: ' . (string) filesize($filePath));
+            readfile($filePath);
+            exit;
+        }
+
+        $shipmentId = isset($_GET['shipment_id']) ? absint(wp_unslash($_GET['shipment_id'])) : 0;
+        if ($shipmentId <= 0) {
             wp_die(esc_html__('Label file unavailable.', 'octavawms'));
         }
 
-        $mime = self::mimeTypeForFilePath($filePath);
-        $ext = self::fileExtension($filePath);
-        $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
+        $download = $this->resolveBackendLabelDownload($order, $shipmentId);
+        if (! $download['ok'] || $download['body'] === '') {
+            wp_die(esc_html__('Label file unavailable.', 'octavawms'));
+        }
 
+        $fileBase = 'order-' . (string) $orderId . '-label.' . $download['extension'];
         nocache_headers();
         header('Content-Description: File Transfer');
-        header('Content-Type: ' . $mime);
-        header('Content-Disposition: attachment; filename="' . $fileBase . '"');
-        header('Content-Length: ' . (string) filesize($filePath));
-        readfile($filePath);
+        header('Content-Type: ' . $download['content_type']);
+        header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
+        header('Content-Length: ' . (string) strlen($download['body']));
+        echo $download['body'];
         exit;
+    }
+
+    /**
+     * @return array{ok: bool, body: string, content_type: string, extension: string}
+     */
+    public function resolveBackendLabelDownload(WC_Order $order, int $shipmentId): array
+    {
+        $shipment = $this->shipmentForOrder($order, $shipmentId);
+        if ($shipment === null) {
+            return ['ok' => false, 'body' => '', 'content_type' => 'application/octet-stream', 'extension' => 'pdf'];
+        }
+
+        $state = isset($shipment['state']) && is_string($shipment['state']) ? $shipment['state'] : '';
+        if (! LabelAjax::shipmentStateCanHaveBackendLabel($state)) {
+            return ['ok' => false, 'body' => '', 'content_type' => 'application/octet-stream', 'extension' => 'pdf'];
+        }
+
+        $tasks = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
+        $taskId = $tasks['task_id'] ?? null;
+        if ($taskId === null) {
+            return ['ok' => false, 'body' => '', 'content_type' => 'application/octet-stream', 'extension' => 'pdf'];
+        }
+
+        $result = $this->apiClient->downloadPreprocessingTaskLabel($taskId);
+        if (! $result['ready'] || $result['pdf'] === null) {
+            return ['ok' => false, 'body' => '', 'content_type' => 'application/octet-stream', 'extension' => 'pdf'];
+        }
+
+        $contentType = trim((string) $result['content_type']);
+        if ($contentType === '') {
+            $contentType = 'application/pdf';
+        }
+
+        return [
+            'ok' => true,
+            'body' => $result['pdf'],
+            'content_type' => $contentType,
+            'extension' => self::fileExtensionForContentType($contentType),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function shipmentForOrder(WC_Order $order, int $shipmentId): ?array
+    {
+        if ($shipmentId <= 0) {
+            return null;
+        }
+
+        $backendOrder = null;
+        foreach (WooOrderExtId::lookupCandidates($order) as $extId) {
+            $found = $this->apiClient->findOrderByExtId($extId);
+            if ($found !== null) {
+                $backendOrder = $found;
+                break;
+            }
+        }
+
+        if ($backendOrder === null) {
+            return null;
+        }
+
+        foreach ($this->apiClient->findShipmentsForConnector($backendOrder, WooOrderExtId::lookupCandidates($order)) as $shipment) {
+            if (isset($shipment['id']) && (int) $shipment['id'] === $shipmentId) {
+                return $shipment;
+            }
+        }
+
+        return null;
     }
 
     private function orderEditUrl(int $orderId, string $state): string
@@ -285,5 +374,24 @@ class AdminLabelActions
         }
 
         return $map[$ext] ?? 'application/octet-stream';
+    }
+
+    private static function fileExtensionForContentType(string $contentType): string
+    {
+        $type = strtolower($contentType);
+        if (str_contains($type, 'text/html')) {
+            return 'html';
+        }
+        if (str_contains($type, 'image/png')) {
+            return 'png';
+        }
+        if (str_contains($type, 'image/jpeg')) {
+            return 'jpg';
+        }
+        if (str_contains($type, 'text/plain')) {
+            return 'txt';
+        }
+
+        return 'pdf';
     }
 }
