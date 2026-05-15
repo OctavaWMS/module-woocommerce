@@ -97,7 +97,7 @@ if (! class_exists('WC_Order', false)) {
                 return $this->octavaMetaValue;
             }
 
-            return '';
+            return $this->updatedMeta[$key] ?? '';
         }
 
         public function get_order_key(): string
@@ -120,6 +120,36 @@ if (! class_exists('WC_Order', false)) {
         public function update_meta_data(string $key, mixed $value): void
         {
             $this->updatedMeta[$key] = $value;
+        }
+
+        public function delete_meta_data(string $key): void
+        {
+            unset($this->updatedMeta[$key]);
+        }
+
+        public function get_payment_method(): string
+        {
+            return '';
+        }
+
+        public function get_payment_method_title(): string
+        {
+            return '';
+        }
+
+        public function get_total(): string
+        {
+            return '0';
+        }
+
+        public function get_currency(): string
+        {
+            return 'EUR';
+        }
+
+        public function get_items(): array
+        {
+            return [];
         }
 
         public int $saveCallCount = 0;
