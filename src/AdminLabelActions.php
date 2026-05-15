@@ -221,21 +221,71 @@ class AdminLabelActions
             wp_die(esc_html__('Order not found.', 'octavawms'));
         }
 
+        $inline = ! empty($_GET['inline']);
         $filePath = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
-        if ($filePath === '' || ! file_exists($filePath) || ! is_readable($filePath)) {
+        if ($filePath !== '' && file_exists($filePath) && is_readable($filePath)) {
+            $mime = self::mimeTypeForFilePath($filePath);
+            $ext = self::fileExtension($filePath);
+            $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
+
+            nocache_headers();
+            header('Content-Description: File Transfer');
+            header('Content-Type: ' . $mime);
+            header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
+            header('Content-Length: ' . (string) filesize($filePath));
+            readfile($filePath);
+            exit;
+        }
+
+        $shipmentId = isset($_GET['shipment_id']) ? absint(wp_unslash($_GET['shipment_id'])) : 0;
+        if ($shipmentId <= 0) {
             wp_die(esc_html__('Label file unavailable.', 'octavawms'));
         }
 
-        $mime = self::mimeTypeForFilePath($filePath);
-        $ext = self::fileExtension($filePath);
-        $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
+        $backendOrder = null;
+        foreach (WooOrderExtId::lookupCandidates($order) as $candidate) {
+            $backendOrder = $this->apiClient->findOrderByExtId($candidate);
+            if ($backendOrder !== null) {
+                break;
+            }
+        }
+        $shipments = $backendOrder !== null
+            ? $this->apiClient->findShipmentsForConnector($backendOrder, WooOrderExtId::lookupCandidates($order))
+            : [];
+        $shipment = null;
+        foreach ($shipments as $candidateShipment) {
+            if (is_array($candidateShipment) && isset($candidateShipment['id']) && (int) $candidateShipment['id'] === $shipmentId) {
+                $shipment = $candidateShipment;
+                break;
+            }
+        }
+        if ($shipment === null) {
+            wp_die(esc_html__('Invalid shipment.', 'octavawms'));
+        }
+
+        $tasks = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
+        $taskId = isset($tasks['task_id']) && is_numeric($tasks['task_id']) ? (int) $tasks['task_id'] : 0;
+        if ($taskId <= 0) {
+            wp_die(esc_html__('Label file unavailable.', 'octavawms'));
+        }
+
+        $download = $this->apiClient->downloadPreprocessingTaskLabel($taskId);
+        $body = isset($download['pdf']) && is_string($download['pdf']) ? $download['pdf'] : '';
+        if (! $download['ok'] || $body === '') {
+            wp_die(esc_html__('Label file unavailable.', 'octavawms'));
+        }
+
+        $mime = isset($download['content_type']) && is_string($download['content_type']) && $download['content_type'] !== ''
+            ? $download['content_type']
+            : 'application/pdf';
+        $fileBase = 'order-' . (string) $orderId . '-label.pdf';
 
         nocache_headers();
         header('Content-Description: File Transfer');
         header('Content-Type: ' . $mime);
-        header('Content-Disposition: attachment; filename="' . $fileBase . '"');
-        header('Content-Length: ' . (string) filesize($filePath));
-        readfile($filePath);
+        header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
+        header('Content-Length: ' . (string) strlen($body));
+        echo $body;
         exit;
     }
 

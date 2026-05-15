@@ -51,6 +51,7 @@ class LabelAjax
         add_action('wp_ajax_octavawms_order_status', [$this, 'handleAjaxOrderStatus']);
         add_action('wp_ajax_octavawms_upload_order', [$this, 'handleAjaxUploadOrder']);
         add_action('wp_ajax_octavawms_generate_label', [$this, 'handleAjaxGenerateLabel']);
+        add_action('wp_ajax_octavawms_cancel_label', [$this, 'handleAjaxCancelLabel']);
         add_action('wp_ajax_octavawms_shipment_detail', [$this, 'handleAjaxShipmentDetail']);
         add_action('wp_ajax_octavawms_service_points', [$this, 'handleAjaxServicePoints']);
         add_action('wp_ajax_octavawms_save_service_point', [$this, 'handleAjaxSaveServicePoint']);
@@ -95,6 +96,10 @@ class LabelAjax
                 'id' => $first['id'],
                 'state' => $st,
             ];
+            $trackingNumber = self::extractTrackingNumberFromShipment($first);
+            if ($trackingNumber !== '') {
+                $shipmentPayload['tracking_number'] = $trackingNumber;
+            }
             if ($st === 'pending_error') {
                 $em = PluginLog::shipmentErrorMessageFromApiShipment($first);
                 if ($em !== '') {
@@ -116,6 +121,18 @@ class LabelAjax
         }
 
         $shipmentIdForSections = is_array($first) && isset($first['id']) ? (int) $first['id'] : 0;
+        $hasDownloadableLabel = $hasLocal;
+        if (! $hasDownloadableLabel
+            && $shipmentIdForSections > 0
+            && is_array($first)
+            && self::shipmentStateCanHaveBackendLabel(isset($first['state']) && is_string($first['state']) ? $first['state'] : '')
+        ) {
+            $tasks = $this->apiClient->findPreprocessingTasksForShipment($shipmentIdForSections);
+            if (($tasks['task_id'] ?? null) !== null) {
+                $hasDownloadableLabel = true;
+                $downloadUrl = self::buildBackendLabelDownloadUrl($orderId, $shipmentIdForSections);
+            }
+        }
 
         $weightRaw = WooOrderWeights::contentsWeightTotal($order);
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
@@ -145,7 +162,7 @@ class LabelAjax
             'has_order' => $backendOrder !== null,
             'shipment' => $shipmentPayload,
             'shipment_id' => $shipmentIdForSections,
-            'has_label_locally' => $hasLocal,
+            'has_label_locally' => $hasDownloadableLabel,
             'download_url' => $downloadUrl,
             'label_defaults' => [
                 'weight_grams' => $defaultGrams,
@@ -155,6 +172,62 @@ class LabelAjax
             ],
             'cod' => $codPayload,
         ]);
+    }
+
+    public static function shipmentStateCanHaveBackendLabel(string $state): bool
+    {
+        $normalized = strtolower(trim($state));
+        if ($normalized === '') {
+            return false;
+        }
+        if (preg_match('/(error|fail|reject|invalid|exception|pending|queued|waiting|processing|draft|scheduled)/', $normalized) === 1) {
+            return false;
+        }
+
+        return preg_match('/(closed|sent|labeled|labelled|completed|complete|done|success|shipped|in_transit|transit|delivered|picked_up|handed_over|collected)/', $normalized) === 1;
+    }
+
+    public static function buildBackendLabelDownloadUrl(int $orderId, int $shipmentId): string
+    {
+        return wp_nonce_url(
+            admin_url('admin-post.php?action=octavawms_download_label&order_id=' . (string) $orderId . '&shipment_id=' . (string) $shipmentId),
+            'octavawms_download_label_' . (string) $orderId
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $shipment
+     */
+    public static function extractTrackingNumberFromShipment(array $shipment): string
+    {
+        foreach (['trackingNumber', 'tracking_number', 'tracking', 'awbNumber', 'awb_number', 'awb', 'barcode'] as $key) {
+            $value = $shipment[$key] ?? null;
+            if (is_scalar($value)) {
+                $tracking = trim((string) $value);
+                if ($tracking !== '') {
+                    return $tracking;
+                }
+            }
+        }
+
+        foreach ([['label', 'trackingNumber'], ['label', 'awbNumber'], ['deliveryServiceResponse', 'trackingNumber'], ['deliveryServiceResponse', 'awbNumber']] as $path) {
+            $value = $shipment;
+            foreach ($path as $segment) {
+                if (! is_array($value) || ! array_key_exists($segment, $value)) {
+                    $value = null;
+                    break;
+                }
+                $value = $value[$segment];
+            }
+            if (is_scalar($value)) {
+                $tracking = trim((string) $value);
+                if ($tracking !== '') {
+                    return $tracking;
+                }
+            }
+        }
+
+        return '';
     }
 
     public function handleAjaxUploadOrder(): void
@@ -280,6 +353,42 @@ class LabelAjax
         }
 
         wp_send_json_success(['has_label' => true, 'download_url' => $downloadUrl]);
+    }
+
+    public function handleAjaxCancelLabel(): void
+    {
+        $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
+        $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
+        if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
+            wp_send_json_error(['message' => __('Invalid order.', 'octavawms')], 403);
+        }
+
+        check_ajax_referer('octavawms_cancel_label_' . (string) $orderId, 'nonce');
+
+        $order = wc_get_order($orderId);
+        if (! $order instanceof WC_Order) {
+            wp_send_json_error(['message' => __('Order not found.', 'octavawms')], 404);
+        }
+        if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
+            wp_send_json_error(['message' => __('Invalid shipment.', 'octavawms')], 400);
+        }
+
+        $tasks = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
+        $taskId = isset($tasks['task_id']) && is_numeric($tasks['task_id']) ? (int) $tasks['task_id'] : 0;
+        if ($taskId <= 0) {
+            wp_send_json_error(['message' => __('Could not find the shipment label task.', 'octavawms')], 404);
+        }
+
+        $result = $this->apiClient->createOrUpdatePreprocessingTask($taskId, ['state' => 'cancel']);
+        if (! $result['ok']) {
+            wp_send_json_error(['message' => $result['message'] ?? __('Could not cancel shipment.', 'octavawms')], 502);
+        }
+
+        $order->delete_meta_data(LabelService::ORDER_META_LABEL_URL);
+        $order->delete_meta_data(LabelService::ORDER_META_LABEL_FILE);
+        $order->save();
+
+        wp_send_json_success(['cancelled' => true]);
     }
 
     public function handleAjaxShipmentDetail(): void

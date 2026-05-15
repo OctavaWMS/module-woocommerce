@@ -7,6 +7,7 @@
   const box = root.closest('.octavawms-label-box');
   let spDetail = null;
   let lastSpShipmentId = 0;
+  let lastOrderPanelPayload = null;
   /** @type {{ id?: unknown, state?: string, error_message?: string }|null} */
   let panelShipment = null;
 
@@ -267,6 +268,9 @@
   /** @param {HTMLElement} tbody */
   function bindPlacesInputDelegation(tbody, shipmentId) {
     tbody.addEventListener('input', function (e) {
+      if (currentPanelLabelState().indexOf('locked') === 0) {
+        return;
+      }
       var t = e.target;
       if (!(t instanceof HTMLInputElement) || !t.classList.contains('octavawms-place-input')) {
         return;
@@ -282,6 +286,9 @@
       scheduleDebouncedPatchForPlaceRow(shipmentId, pid, trEl);
     });
     tbody.addEventListener('blur', function (e) {
+      if (currentPanelLabelState().indexOf('locked') === 0) {
+        return;
+      }
       var t = e.target;
       if (!(t instanceof HTMLInputElement) || !t.classList.contains('octavawms-place-input')) {
         return;
@@ -344,6 +351,39 @@
       return 'info';
     }
     return 'neutral';
+  }
+
+  function shipmentStateIsFinal(stateRaw) {
+    const s = String(stateRaw || '').trim().toLowerCase();
+    if (!s || /(error|fail|reject|invalid|exception|pending|queued|waiting|processing|draft|scheduled)/.test(s)) {
+      return false;
+    }
+    return /(closed|sent|labeled|labelled|completed|complete|done|success|shipped|in_transit|transit|delivered|picked_up|handed_over|collected)/.test(s);
+  }
+
+  function shipmentTrackingNumber(shipment) {
+    if (!shipment || typeof shipment !== 'object') {
+      return '';
+    }
+    const direct = shipment.tracking_number != null ? String(shipment.tracking_number).trim() : '';
+    return direct;
+  }
+
+  function panelLabelState(data, shipment) {
+    const hasLabel = !!(data && data.has_label_locally && data.download_url);
+    const hasTracking = shipmentTrackingNumber(shipment) !== '';
+    const finalState = shipmentStateIsFinal(shipment && shipment.state);
+    if (hasTracking && finalState) {
+      return hasLabel ? 'locked' : 'locked-missing-label';
+    }
+    if (hasLabel) {
+      return 'generated';
+    }
+    return 'draft';
+  }
+
+  function currentPanelLabelState() {
+    return panelLabelState(lastOrderPanelPayload, panelShipment);
   }
 
   function statusPillHtml(stateRaw) {
@@ -493,6 +533,125 @@
       .replace(/&/g, '&amp;')
       .replace(/"/g, '&quot;');
   }
+
+  function labelUrlInline(url) {
+    const raw = String(url || '').trim();
+    if (!raw || raw.indexOf('data:') === 0 || raw.indexOf('blob:') === 0) {
+      return raw;
+    }
+    const joiner = raw.indexOf('?') === -1 ? '?' : '&';
+    return /(?:\?|&)inline=1(?:&|$)/.test(raw) ? raw : raw + joiner + 'inline=1';
+  }
+
+  function labelViewerSectionHtml(downloadUrl, shipmentId) {
+    const dl = String(downloadUrl || '');
+    if (!dl) {
+      return servicePointSlotLoading(shipmentId);
+    }
+    const inlineUrl = labelUrlInline(dl);
+    return (
+      '<div class="octavawms-sp-card octavawms-label-viewer-card" id="octavawms-label-viewer-card">' +
+      '<div class="octavawms-label-viewer-head">' +
+      '<h3 class="octavawms-label-viewer-title">' +
+      esc(cfg.strings.labelViewerTitle || 'Shipping Label') +
+      '</h3>' +
+      '<div class="octavawms-label-viewer-actions">' +
+      '<button type="button" class="button button-primary" data-octavawms-action="print-label" data-label-url="' +
+      hrefAttr(inlineUrl) +
+      '">' +
+      esc(cfg.strings.printLabel || 'Print Label') +
+      '</button>' +
+      '<a class="button button-secondary" href="' +
+      hrefAttr(dl) +
+      '" target="_blank" rel="noopener noreferrer">' +
+      esc(cfg.strings.downloadLabel || 'Download Label') +
+      '</a>' +
+      '</div></div>' +
+      '<div class="octavawms-label-viewer-frame-wrap" id="octavawms-label-viewer-frame-wrap">' +
+      '<div class="octavawms-label-viewer-loading"><span class="octavawms-spinner"></span> ' +
+      esc(cfg.strings.loading || '') +
+      '</div>' +
+      '<iframe class="octavawms-label-viewer-frame" id="octavawms-label-viewer-frame" src="' +
+      hrefAttr(inlineUrl) +
+      '"></iframe>' +
+      '</div></div>'
+    );
+  }
+
+  function attachLabelViewer(downloadUrl) {
+    const frame = document.getElementById('octavawms-label-viewer-frame');
+    const wrap = document.getElementById('octavawms-label-viewer-frame-wrap');
+    if (!(frame instanceof HTMLIFrameElement) || !wrap) {
+      return;
+    }
+    const src = labelUrlInline(downloadUrl);
+    frame.addEventListener('load', function () {
+      wrap.classList.add('is-ready');
+    });
+    fetch(src, { credentials: 'same-origin' })
+      .then(function (r) {
+        return r.text();
+      })
+      .then(function (body) {
+        const text = String(body || '').trim();
+        if (text.indexOf('data:application/pdf') === 0) {
+          frame.src = text;
+        }
+        wrap.classList.add('is-ready');
+      })
+      .catch(function () {
+        wrap.classList.add('is-ready');
+      });
+  }
+
+  function openLabelPrint(url) {
+    const printSrc = labelUrlInline(String(url || ''));
+    if (!printSrc) {
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = printSrc;
+    document.body.appendChild(iframe);
+    iframe.onload = function () {
+      window.setTimeout(function () {
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.print();
+          }
+        } catch (e) {
+          window.open(printSrc, '_blank', 'noopener,noreferrer');
+        }
+        window.setTimeout(function () {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 1500);
+      }, 150);
+    };
+  }
+
+  function buildCarrierTrackUrl(trackingNumber) {
+    const tn = String(trackingNumber || '').trim();
+    return tn ? 'https://www.speedy.bg/en/track-shipment?shipmentNumber=' + encodeURIComponent(tn) : '';
+  }
+
+  function cancelShipmentLabel(shipmentId) {
+    const form = new URLSearchParams();
+    form.set('action', 'octavawms_cancel_label');
+    form.set('nonce', String(cfg.cancelLabelNonce || ''));
+    form.set('order_id', String(cfg.orderId));
+    form.set('shipment_id', String(shipmentId));
+    return fetch(cfg.ajaxUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form,
+      credentials: 'same-origin',
+    }).then(function (r) {
+      return r.json();
+    });
+  }
+
   function shipmentIdFrom(data) {
     if (data.shipment && data.shipment.id) {
       return parseInt(String(data.shipment.id), 10) || 0;
@@ -604,20 +763,24 @@
     const sec = document.getElementById('octavawms-panel-label');
     const loading = sec ? sec.classList.contains('is-loading') : false;
     const bodies = !!placesTableHasRenderableRows();
+    const locked = currentPanelLabelState().indexOf('locked') === 0;
     const gen = root.querySelector('[data-octavawms-action="generate-label"]');
     if (gen instanceof HTMLButtonElement) {
-      gen.disabled = loading || !bodies;
+      gen.disabled = locked || loading || !bodies;
     }
     const addBt = root.querySelector('[data-octavawms-action="place-add"]');
     if (addBt instanceof HTMLButtonElement) {
       var el = document.getElementById('octavawms-places-body');
       var sid = el ? parseInt(String(el.getAttribute('data-shipment-id') || '0'), 10) || 0 : 0;
-      addBt.disabled = loading || !(sid > 0);
+      addBt.disabled = locked || loading || !(sid > 0);
     }
   }
 
   /** @param {{ shipment?: Record<string,string>, shipment_id?: unknown, cod?: Record<string, unknown>, has_label_locally?: boolean }} data */
   function labelTopActionsRowHtml(shipmentId, useRegenerateLabel) {
+    if (currentPanelLabelState().indexOf('locked') === 0) {
+      return '';
+    }
     const sidStr = esc(String(shipmentId));
     const dis = shipmentId <= 0 ? ' disabled' : '';
     const lbl = useRegenerateLabel ? cfg.strings.regenerateLabel : cfg.strings.generateLabel;
@@ -641,11 +804,51 @@
 
   function createLabelAndBoxesSection(data, shipment, hasLocal, dl, shipmentId, placesInitialInnerHtml) {
     const useRegen = hasLocal && !!dl;
+    const labelState = panelLabelState(data, shipment);
+    const locked = labelState.indexOf('locked') === 0;
+    const tracking = shipmentTrackingNumber(shipment);
+
+    let banner = '';
+    if (locked) {
+      banner =
+        '<div class="octavawms-tracking-lock-banner ow-tracking-card">' +
+        '<span class="ow-tracking-number-label">' +
+        esc(cfg.strings.trackingNumberLabel || 'Tracking number') +
+        '</span>' +
+        '<div class="ow-tracking-number-row">' +
+        '<span class="ow-tracking-number-lg">' +
+        esc(tracking) +
+        '</span>' +
+        '<button type="button" class="button button-small" data-octavawms-action="copy-tracking" data-tracking-number="' +
+        hrefAttr(tracking) +
+        '">' +
+        esc(cfg.strings.copyTracking || 'Copy') +
+        '</button>' +
+        '<button type="button" class="button button-primary" data-octavawms-action="track-shipment" data-tracking-number="' +
+        hrefAttr(tracking) +
+        '">' +
+        esc(cfg.strings.trackShipment || 'Track shipment') +
+        '</button>' +
+        '</div>' +
+        '<div class="ow-tracking-cancel-row">' +
+        '<button type="button" class="button button-small" data-octavawms-action="cancel-shipment" data-shipment-id="' +
+        esc(String(shipmentId)) +
+        '">' +
+        esc(cfg.strings.cancelShipment || 'Cancel Shipment') +
+        '</button>' +
+        '</div>' +
+        '<p class="octavawms-muted octavawms-shipment-locked-msg">' +
+        esc(cfg.strings.shipmentLocked || '') +
+        '</p></div>';
+    }
 
     let notices = '';
     if (hasLocal && dl) {
       notices +=
         '<p class="octavawms-notice octavawms-notice--success">' + esc(cfg.strings.labelReady) + '</p>';
+    } else if (locked) {
+      notices +=
+        '<p class="octavawms-notice octavawms-notice--info">' + esc(cfg.strings.labelUnavailable || 'Label is not available yet.') + '</p>';
     }
 
     let secondary = '';
@@ -668,6 +871,7 @@
 
     const boxesWrap =
       '<div class="octavawms-label-boxes-mount">' +
+      banner +
       '<div class="octavawms-label-top-actions" data-shipment-id="' +
       esc(String(shipmentId)) +
       '">' +
@@ -680,7 +884,9 @@
       '</div></div>';
 
     return (
-      '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label" id="octavawms-panel-label" aria-label="' +
+      '<section class="octavawms-connect-section octavawms-connect-section--label-boxes octavawms-panel-label' +
+      (locked ? ' octavawms-panel-label--locked' : '') +
+      '" id="octavawms-panel-label" aria-label="' +
       esc(cfg.strings.labelPanelSrHeading) +
       '">' +
       '<div class="octavawms-connect-section-body">' +
@@ -710,6 +916,7 @@
   }
 
   function renderPanel(data) {
+    lastOrderPanelPayload = data || null;
     const hasOrder = data.has_order;
     const shipment = data.shipment;
     const hasLocal = data.has_label_locally;
@@ -764,11 +971,16 @@
     panelShipment = shipment;
     spDetail = null;
     lastSpShipmentId = 0;
+    const labelState = panelLabelState(data, shipment);
+    const locked = labelState.indexOf('locked') === 0;
+    const labelFirst = labelState !== 'draft';
     html =
       '<div class="octavawms-connect-page">' +
       toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
       pendingErrorBannerWrapperHtml(panelShipment, null) +
-      '<div class="octavawms-connect-grid">';
+      '<div class="octavawms-connect-grid' +
+      (labelFirst ? ' octavawms-connect-grid--label-first' : '') +
+      '">';
 
     html +=
       '<div class="octavawms-slot octavawms-slot--label">' +
@@ -782,12 +994,19 @@
       ) +
       '</div>';
 
-    html += '<div class="octavawms-slot octavawms-slot--sp">' + servicePointSlotLoading(sid) + '</div>';
+    html +=
+      '<div class="octavawms-slot octavawms-slot--sp">' +
+      (hasLocal && dl ? labelViewerSectionHtml(dl, sid) : locked ? '' : servicePointSlotLoading(sid)) +
+      '</div>';
 
     html += '</div></div>';
     root.innerHTML = html;
 
-    loadServicePointSection(sid);
+    if (hasLocal && dl) {
+      attachLabelViewer(dl);
+    } else if (!locked) {
+      loadServicePointSection(sid);
+    }
     loadPlacesSection(sid);
   }
 
@@ -1631,6 +1850,7 @@
 
   function renderPlacesTable(body, shipmentId, places) {
     places = dedupePlacesJsonForTable(Array.isArray(places) ? places : []);
+    const locked = currentPanelLabelState().indexOf('locked') === 0;
     if (places.length === 0) {
       body.innerHTML = '<p class="octavawms-muted">' + esc(cfg.strings.noPlaces) + '</p>';
       syncLabelPrimaryActions();
@@ -1665,7 +1885,7 @@
           : parseInt(String(p.items_count), 10) || 0;
       const pidStr = esc(String(pid));
       let actionsCell =
-        nPlaces < 2
+        locked || nPlaces < 2
           ? '<span class="octavawms-place-actions-empty"></span>'
           : ic > 0
             ? '<button type="button" class="button-link octavawms-place-remove" disabled title="' +
@@ -1687,26 +1907,34 @@
         esc(cfg.strings.weightG) +
         '" step="any" value="' +
         esc(String(p.weight)) +
-        '"/></td>';
+        '"' +
+        (locked ? ' disabled' : '') +
+        '/></td>';
       const dxLab = dimAbbrev(cfg.strings.widthMm);
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         dxLab +
         '" step="any" value="' +
         esc(String(p.dim_x)) +
-        '"/></td>';
+        '"' +
+        (locked ? ' disabled' : '') +
+        '/></td>';
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         dimAbbrev(cfg.strings.heightMm) +
         '" step="any" value="' +
         esc(String(p.dim_y)) +
-        '"/></td>';
+        '"' +
+        (locked ? ' disabled' : '') +
+        '/></td>';
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         dimAbbrev(cfg.strings.lengthMm) +
         '" step="any" value="' +
         esc(String(p.dim_z)) +
-        '"/></td>';
+        '"' +
+        (locked ? ' disabled' : '') +
+        '/></td>';
       h += '<td class="octavawms-place-td-actions">' + actionsCell + '</td>';
       h += '</tr>';
     });
@@ -1897,6 +2125,62 @@
       if (act === 'refresh-status') {
         e.preventDefault();
         fetchStatus();
+        return;
+      }
+      if (act === 'print-label') {
+        e.preventDefault();
+        openLabelPrint(btn.getAttribute('data-label-url') || '');
+        return;
+      }
+      if (act === 'copy-tracking') {
+        e.preventDefault();
+        var trackNum = btn.getAttribute('data-tracking-number') || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(trackNum).then(function () {
+            var oldText = btn.textContent;
+            btn.textContent = String(cfg.strings.copiedTracking || 'Copied');
+            window.setTimeout(function () {
+              btn.textContent = oldText;
+            }, 1200);
+          });
+        }
+        return;
+      }
+      if (act === 'track-shipment') {
+        e.preventDefault();
+        var trackUrl = buildCarrierTrackUrl(btn.getAttribute('data-tracking-number') || '');
+        if (trackUrl) {
+          window.open(trackUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+      if (act === 'cancel-shipment') {
+        e.preventDefault();
+        var sidCancel = parseInt(btn.getAttribute('data-shipment-id') || '0', 10) || 0;
+        if (!(sidCancel > 0) || btn.disabled) {
+          return;
+        }
+        if (!window.confirm(String(cfg.strings.cancelShipment || 'Cancel Shipment') + '?')) {
+          return;
+        }
+        var prevCancel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = String(cfg.strings.cancellingShipment || '...');
+        cancelShipmentLabel(sidCancel)
+          .then(function (j) {
+            if (!j || !j.success) {
+              window.alert((j && j.data && j.data.message) || cfg.strings.error);
+              btn.textContent = prevCancel;
+              btn.disabled = false;
+              return;
+            }
+            fetchStatus();
+          })
+          .catch(function () {
+            window.alert(cfg.strings.error);
+            btn.textContent = prevCancel;
+            btn.disabled = false;
+          });
         return;
       }
       if (act === 'retry-pending-error') {

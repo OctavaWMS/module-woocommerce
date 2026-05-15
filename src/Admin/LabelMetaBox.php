@@ -116,6 +116,20 @@ class LabelMetaBox
 .octavawms-label-shipment__str{display:inline-block;max-width:100%;}
 .octavawms-label-shipment__cod{display:block;max-width:100%;}
 .octavawms-toolbar-inline{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;}
+.octavawms-label-viewer-card{padding:18px;}
+.octavawms-label-viewer-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;margin:0 0 14px;}
+.octavawms-label-viewer-title{font-size:16px;line-height:1.35;margin:0;font-weight:600;color:#1d2327;}
+.octavawms-label-viewer-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;}
+.octavawms-label-viewer-frame-wrap{position:relative;min-height:360px;border:1px solid #dcdcde;border-radius:4px;background:#f6f7f7;overflow:hidden;}
+.octavawms-label-viewer-frame{display:block;width:100%;height:640px;max-height:76vh;border:0;background:#fff;}
+.octavawms-label-viewer-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#f6f7f7;z-index:2;}
+.octavawms-label-viewer-frame-wrap.is-ready .octavawms-label-viewer-loading{display:none;}
+.ow-tracking-card{border:1px solid #c3c4c7;border-radius:4px;padding:16px;margin:0 0 16px;background:#fff;}
+.ow-tracking-number-label{display:block;color:#646970;font-weight:600;margin:0 0 8px;font-size:13px;}
+.ow-tracking-number-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin:0 0 12px;}
+.ow-tracking-number-lg{font-size:32px;line-height:1.1;font-weight:600;letter-spacing:.04em;color:#3c434a;}
+.ow-tracking-cancel-row{border-top:1px solid #dcdcde;padding-top:12px;margin-top:12px;}
+.octavawms-panel-label--locked .octavawms-place-input{background:#f6f7f7;color:#646970;}
 .octavawms-label-boxes-wrap{margin:0;padding:0;width:100%;}
 .octavawms-label-top-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 12px;width:100%;}
 .octavawms-connect-section--label-boxes .octavawms-actions-row--label-secondary{margin-top:14px;padding-top:0;border-top:none;}
@@ -214,6 +228,7 @@ CSS;
             'statusNonce' => wp_create_nonce('octavawms_order_status_' . (string) $orderId),
             'uploadNonce' => wp_create_nonce('octavawms_upload_order_' . (string) $orderId),
             'generateLabelNonce' => wp_create_nonce('octavawms_generate_label_' . (string) $orderId),
+            'cancelLabelNonce' => wp_create_nonce('octavawms_cancel_label_' . (string) $orderId),
             'connectorNonce' => wp_create_nonce('octavawms_connector_' . (string) $orderId),
             'deliveryStrategyOptions' => LabelAjax::deliveryStrategyOptionsForScript(),
             'weightUnit' => $weightUnitSlug,
@@ -229,6 +244,16 @@ CSS;
                 'shipment' => UiBranding::shipmentHeadingWord(),
                 'labelReady' => __('Label Ready', 'octavawms'),
                 'downloadLabel' => __('Download Label', 'octavawms'),
+                'printLabel' => __('Print Label', 'octavawms'),
+                'labelViewerTitle' => __('Shipping Label', 'octavawms'),
+                'trackingNumberLabel' => __('Tracking number', 'octavawms'),
+                'copyTracking' => __('Copy', 'octavawms'),
+                'copiedTracking' => __('Copied', 'octavawms'),
+                'trackShipment' => __('Track shipment', 'octavawms'),
+                'cancelShipment' => __('Cancel Shipment', 'octavawms'),
+                'cancellingShipment' => __('Cancelling…', 'octavawms'),
+                'shipmentLocked' => __('Shipment is locked (tracking number assigned).', 'octavawms'),
+                'labelUnavailable' => __('Shipment is finished, but no label file is available from OctavaWMS yet.', 'octavawms'),
                 'generateLabel' => __('Generate Label', 'octavawms'),
                 'regenerateLabel' => __('Re-generate Label', 'octavawms'),
                 'generatingLabel' => __('Generating label…', 'octavawms'),
