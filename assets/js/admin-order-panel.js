@@ -609,26 +609,40 @@
     if (!printSrc) {
       return;
     }
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = printSrc;
-    document.body.appendChild(iframe);
-    iframe.onload = function () {
-      window.setTimeout(function () {
-        try {
-          if (iframe.contentWindow) {
-            iframe.contentWindow.print();
-          }
-        } catch (e) {
-          window.open(printSrc, '_blank', 'noopener,noreferrer');
-        }
+    function doIframePrint(src) {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = src;
+      document.body.appendChild(iframe);
+      iframe.onload = function () {
         window.setTimeout(function () {
-          if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.print();
+            }
+          } catch (e) {
+            window.open(src, '_blank', 'noopener,noreferrer');
           }
-        }, 1500);
-      }, 150);
-    };
+          window.setTimeout(function () {
+            if (iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+          }, 1500);
+        }, 150);
+      };
+    }
+    // Fetch the label URL first so we can detect a data URI response
+    // (the API may return "data:application/pdf;base64,..." as the body)
+    // and use it as the iframe src directly rather than the opaque admin URL.
+    fetch(printSrc, { credentials: 'same-origin' })
+      .then(function (r) { return r.text(); })
+      .then(function (body) {
+        const text = String(body || '').trim();
+        doIframePrint(text.indexOf('data:') === 0 ? text : printSrc);
+      })
+      .catch(function () {
+        doIframePrint(printSrc);
+      });
   }
 
   function buildCarrierTrackUrl(trackingNumber) {

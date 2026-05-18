@@ -224,16 +224,18 @@ class AdminLabelActions
         $inline = ! empty($_GET['inline']);
         $filePath = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
         if ($filePath !== '' && file_exists($filePath) && is_readable($filePath)) {
-            $mime = self::mimeTypeForFilePath($filePath);
-            $ext = self::fileExtension($filePath);
+            $content = (string) file_get_contents($filePath);
+            [$content, $decodedMime] = self::decodeDataUriIfNeeded($content);
+            $mime = $decodedMime ?? self::mimeTypeForFilePath($filePath);
+            $ext = $decodedMime !== null ? self::mimeToExt($decodedMime) : self::fileExtension($filePath);
             $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
 
             nocache_headers();
             header('Content-Description: File Transfer');
             header('Content-Type: ' . $mime);
             header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
-            header('Content-Length: ' . (string) filesize($filePath));
-            readfile($filePath);
+            header('Content-Length: ' . (string) strlen($content));
+            echo $content;
             exit;
         }
 
@@ -275,10 +277,13 @@ class AdminLabelActions
             wp_die(esc_html__('Label file unavailable.', 'octavawms'));
         }
 
-        $mime = isset($download['content_type']) && is_string($download['content_type']) && $download['content_type'] !== ''
-            ? $download['content_type']
-            : 'application/pdf';
-        $fileBase = 'order-' . (string) $orderId . '-label.pdf';
+        [$body, $decodedMime] = self::decodeDataUriIfNeeded($body);
+        $mime = $decodedMime
+            ?? (isset($download['content_type']) && is_string($download['content_type']) && $download['content_type'] !== ''
+                ? $download['content_type']
+                : 'application/pdf');
+        $ext = self::mimeToExt($mime);
+        $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
 
         nocache_headers();
         header('Content-Description: File Transfer');
@@ -335,5 +340,47 @@ class AdminLabelActions
         }
 
         return $map[$ext] ?? 'application/octet-stream';
+    }
+
+    /**
+     * If $raw is a data URI (data:<mime>;base64,<data>), decode and return
+     * [decoded_binary, mime_type].  Otherwise return [$raw, null].
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    private static function decodeDataUriIfNeeded(string $raw): array
+    {
+        $trimmed = ltrim($raw);
+        if (! str_starts_with($trimmed, 'data:')) {
+            return [$raw, null];
+        }
+        $commaPos = strpos($trimmed, ',');
+        if ($commaPos === false) {
+            return [$raw, null];
+        }
+        $meta = substr($trimmed, 5, $commaPos - 5); // e.g. "application/pdf;base64"
+        $data = substr($trimmed, $commaPos + 1);
+        if (! str_contains($meta, 'base64')) {
+            return [$raw, null];
+        }
+        $decoded = base64_decode($data, true);
+        if ($decoded === false || $decoded === '') {
+            return [$raw, null];
+        }
+        $mime = trim(explode(';', $meta)[0]);
+
+        return [$decoded, $mime !== '' ? $mime : null];
+    }
+
+    private static function mimeToExt(string $mime): string
+    {
+        return match (strtolower(trim($mime))) {
+            'application/pdf' => 'pdf',
+            'image/png' => 'png',
+            'image/jpeg', 'image/jpg' => 'jpg',
+            'image/gif' => 'gif',
+            'text/plain' => 'txt',
+            default => 'pdf',
+        };
     }
 }

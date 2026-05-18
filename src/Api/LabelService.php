@@ -246,6 +246,25 @@ class LabelService
             return null;
         }
 
+        // Decode data URI if the API returned base64-encoded content instead of raw bytes
+        // (e.g. Content-Type: text/html; body: "data:application/pdf;base64,JVBERi...")
+        if (str_starts_with(ltrim($binary), 'data:')) {
+            $commaPos = strpos($binary, ',');
+            if ($commaPos !== false) {
+                $meta = substr($binary, 5, $commaPos - 5); // strip leading "data:"
+                $rawData = substr($binary, $commaPos + 1);
+                if (str_contains($meta, 'base64')) {
+                    $decoded = base64_decode($rawData, true);
+                    if ($decoded !== false && $decoded !== '') {
+                        $binary = $decoded;
+                        if (str_contains($meta, 'application/pdf')) {
+                            $extension = 'pdf';
+                        }
+                    }
+                }
+            }
+        }
+
         $safeExt = preg_replace('/[^a-z0-9]/', '', strtolower($extension));
         $safeExt = $safeExt !== '' ? $safeExt : 'pdf';
         $secureToken = wp_generate_password(20, false, false);
