@@ -310,7 +310,7 @@ class SettingsPage extends \WC_Integration
             </h2>
             <p class="description" style="max-width:960px;">
                 <?php esc_html_e(
-                    'Map WooCommerce order meta (e.g. courierName, courierID) and optional delivery_type to a carrier service, rate, and pickup strategy. Saved to your OctavaWMS integration source (same as Orderadmin settings).',
+                    'Map WooCommerce order meta (e.g. courierName, courierID) and optional delivery_type to a carrier service, rate, pickup strategy, and optional locker markers. Saved to your OctavaWMS integration source (same as Orderadmin settings).',
                     'octavawms'
                 ); ?>
             </p>
@@ -339,6 +339,7 @@ class SettingsPage extends \WC_Integration
                             <th><?php esc_html_e('WC meta value', 'octavawms'); ?></th>
                             <th><?php esc_html_e('WC delivery_type (optional)', 'octavawms'); ?></th>
                             <th><?php esc_html_e('Strategy for AI', 'octavawms'); ?></th>
+                            <th><?php esc_html_e('Locker markers', 'octavawms'); ?></th>
                             <th><?php esc_html_e('Carrier', 'octavawms'); ?></th>
                             <th><?php esc_html_e('Rate', 'octavawms'); ?></th>
                             <th style="width:48px;"></th>

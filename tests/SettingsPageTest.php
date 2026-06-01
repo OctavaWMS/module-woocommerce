@@ -30,6 +30,14 @@ final class SettingsPageTest extends TestCase
         $_POST = [];
 
         Functions\when('__')->alias(static fn (string $text, $domain = null): string => $text);
+        Functions\when('esc_html_e')->alias(static function (string $text, $domain = null): void {
+            unset($domain);
+            echo $text;
+        });
+        Functions\when('esc_attr')->alias(
+            static fn ($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8')
+        );
+        Functions\when('current_user_can')->alias(static fn (string $capability): bool => true);
         Functions\when('wp_unslash')->returnArg(1);
         Functions\when('add_action')->alias(function (string $hook, $callback, int $priority = 10, int $acceptedArgs = 1): void {
             unset($callback, $priority, $acceptedArgs);
@@ -212,5 +220,21 @@ final class SettingsPageTest extends TestCase
         self::assertSame($payload, json_decode((string) $settings[Options::CARRIER_MAPPING_JSON], true));
         self::assertCount(1, $this->settingsErrors);
         self::assertStringContainsString('backend rejected mapping', $this->settingsErrors[0]);
+    }
+
+    public function testCarrierMatrixSectionRendersLockerMarkersColumn(): void
+    {
+        $this->stored['woocommerce_octavawms_settings'] = [
+            Options::CARRIER_MAPPING_JSON => '[]',
+        ];
+
+        $page = new SettingsPage();
+        $method = new \ReflectionMethod($page, 'getCarrierMatrixSectionHtml');
+        $method->setAccessible(true);
+
+        $html = $method->invoke($page);
+
+        self::assertIsString($html);
+        self::assertStringContainsString('Locker markers', $html);
     }
 }

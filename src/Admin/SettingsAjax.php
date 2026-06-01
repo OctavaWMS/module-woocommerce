@@ -283,7 +283,7 @@ class SettingsAjax
                 }
             }
 
-            $out[] = [
+            $normalizedRow = [
                 'courierMetaKey' => $k,
                 'courierMetaValue' => $v,
                 'wooDeliveryType' => $wooDt,
@@ -291,9 +291,48 @@ class SettingsAjax
                 'deliveryService' => (int) $ds,
                 'rate' => $rate,
             ];
+            $lockerMarkers = self::normalizeLockerMarkers($row['lockerMarkers'] ?? null);
+            if ($lockerMarkers === null) {
+                return null;
+            }
+            if ($lockerMarkers !== []) {
+                $normalizedRow['lockerMarkers'] = $lockerMarkers;
+            }
+
+            $out[] = $normalizedRow;
         }
 
         return $out;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    private static function normalizeLockerMarkers(mixed $value): ?array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $markers = [];
+        foreach ($value as $marker) {
+            if (! is_string($marker)) {
+                return null;
+            }
+            $marker = trim($marker);
+            if ($marker !== '') {
+                $markers[] = $marker;
+            }
+        }
+
+        return array_values(array_unique($markers));
     }
 
     private function handleIntegrations(): void

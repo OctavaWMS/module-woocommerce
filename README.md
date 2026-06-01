@@ -78,6 +78,7 @@ Each row defines one rule:
 | **WC meta value** | Exact string the meta must equal (e.g. `Speedy`). |
 | **WC delivery_type** *(optional)* | If your checkout also writes a `delivery_type` meta key, add its expected value here (e.g. `office`). Leave blank to match any delivery type. |
 | **Strategy for AI** | OctavaWMS pickup strategy passed to the AI router: `address` / `office` / `locker` / `office_locker`. |
+| **Locker markers** *(optional)* | Comma-separated markers used by `office_locker` to detect lockers from the selected point name (e.g. `АВТОМАТ`). Speedy carrier `23` uses `АВТОМАТ` by default. |
 | **Carrier** | OctavaWMS delivery service integration (search by name). |
 | **Rate** | Specific rate within that integration (optional). |
 
@@ -110,6 +111,11 @@ To route all such orders to **Speedy delivery service integration #23** (office 
 ```
 
 **How it works at runtime:** when the order is imported (`POST /api/integrations/import`), OctavaWMS reads the mapping from the integration source settings and resolves carrier + type for each order before creating the delivery request. No extra action is needed after saving the mapping.
+
+For mixed office/locker checkout plugins, use `type = "office_locker"`. If `lockerMarkers`
+contains a marker found in the selected point name, the import uses a locker (`self_service_point`);
+otherwise it uses an office (`service_point`). Speedy carrier `23` has the built-in marker `АВТОМАТ`,
+so existing Speedy `office_locker` rows work without adding the field manually.
 
 **Alternative key — `courierID`:** if the store uses numeric courier IDs you can match on those instead (or add a second row as a fallback):
 

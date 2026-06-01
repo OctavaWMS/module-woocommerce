@@ -111,6 +111,75 @@ final class SettingsAjaxTest extends TestCase
         self::assertSame($payload, $result['carrierMapping']);
     }
 
+    public function testSaveCarrierMappingPersistsLockerMarkers(): void
+    {
+        $expected = [
+            [
+                'courierMetaKey' => 'courierName',
+                'courierMetaValue' => 'Speedy',
+                'wooDeliveryType' => 'office',
+                'type' => 'office_locker',
+                'deliveryService' => 23,
+                'rate' => null,
+                'lockerMarkers' => ['АВТОМАТ'],
+            ],
+        ];
+
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::once())
+            ->method('getIntegrationSource')
+            ->with(77)
+            ->willReturn(['settings' => []]);
+        $api->expects(self::once())
+            ->method('patchIntegrationSource')
+            ->with(
+                77,
+                self::callback(static function (array $body) use ($expected): bool {
+                    return ($body['settings']['DeliveryServices']['options']['carrierMapping'] ?? null) === $expected;
+                })
+            )
+            ->willReturn([
+                'ok' => true,
+                'status' => 200,
+                'data' => [],
+                'raw' => '',
+                'response_headers' => [],
+            ]);
+
+        $result = (new SettingsAjax($api))->saveCarrierMappingForSource(77, [
+            [
+                'courierMetaKey' => 'courierName',
+                'courierMetaValue' => 'Speedy',
+                'wooDeliveryType' => 'office',
+                'type' => 'office_locker',
+                'deliveryService' => 23,
+                'rate' => null,
+                'lockerMarkers' => [' АВТОМАТ ', '', 'АВТОМАТ'],
+            ],
+        ]);
+
+        self::assertTrue($result['ok']);
+        self::assertSame($expected, $result['carrierMapping']);
+    }
+
+    public function testValidateAndNormalizeRowsAcceptsCommaSeparatedLockerMarkers(): void
+    {
+        $normalized = SettingsAjax::validateAndNormalizeRows([
+            [
+                'courierMetaKey' => 'courierName',
+                'courierMetaValue' => 'Other',
+                'wooDeliveryType' => 'office',
+                'type' => 'office_locker',
+                'deliveryService' => 99,
+                'rate' => null,
+                'lockerMarkers' => 'BOX, Locker, BOX',
+            ],
+        ]);
+
+        self::assertNotNull($normalized);
+        self::assertSame(['BOX', 'Locker'], $normalized[0]['lockerMarkers'] ?? null);
+    }
+
     public function testSaveCarrierMappingReturnsBackendDetailOnPatchFailure(): void
     {
         $api = $this->createMock(BackendApiClient::class);

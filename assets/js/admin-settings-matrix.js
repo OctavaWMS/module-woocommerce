@@ -29,12 +29,34 @@
     return h;
   }
 
+  function lockerMarkersText(row) {
+    if (!row || row.lockerMarkers == null) {
+      return '';
+    }
+    if (Array.isArray(row.lockerMarkers)) {
+      return row.lockerMarkers.join(', ');
+    }
+    return String(row.lockerMarkers);
+  }
+
+  function parseLockerMarkers(value) {
+    return String(value || '')
+      .split(',')
+      .map(function (marker) {
+        return $.trim(marker);
+      })
+      .filter(function (marker, index, markers) {
+        return marker !== '' && markers.indexOf(marker) === index;
+      });
+  }
+
   function rowHtml(row) {
     row = row || {};
     var ck = row.courierMetaKey != null ? String(row.courierMetaKey) : '';
     var cv = row.courierMetaValue != null ? String(row.courierMetaValue) : '';
     var wd = row.wooDeliveryType != null ? String(row.wooDeliveryType) : '';
     var ty = row.type != null ? String(row.type) : 'address';
+    var lm = lockerMarkersText(row);
     var ds = row.deliveryService != null ? String(row.deliveryService) : '';
     var rt = row.rate != null && row.rate !== '' ? String(row.rate) : '';
     return (
@@ -51,6 +73,9 @@
       '<td>' +
       buildTypeSelect(ty) +
       '</td>' +
+      '<td><input type="text" class="octavawms-locker-markers widefat" value="' +
+      $('<div/>').text(lm).html() +
+      '" placeholder="e.g. АВТОМАТ" /></td>' +
       '<td><input type="number" class="octavawms-carrier widefat" min="1" step="1" value="' +
       $('<div/>').text(ds).html() +
       '" placeholder="delivery service id" /></td>' +
@@ -68,14 +93,19 @@
       var $tr = $(this);
       var dsStr = $tr.find('.octavawms-carrier').val();
       var rateVal = $tr.find('.octavawms-rate').val();
-      rows.push({
+      var lockerMarkers = parseLockerMarkers($tr.find('.octavawms-locker-markers').val());
+      var row = {
         courierMetaKey: $.trim($tr.find('.octavawms-ck').val()),
         courierMetaValue: $.trim($tr.find('.octavawms-cv').val()),
         wooDeliveryType: $.trim($tr.find('.octavawms-wd').val()),
         type: $.trim($tr.find('.octavawms-matrix-type').val()) || 'address',
         deliveryService: dsStr ? parseInt(String(dsStr), 10) : 0,
         rate: rateVal === '' || rateVal === null ? null : parseInt(String(rateVal), 10)
-      });
+      };
+      if (lockerMarkers.length) {
+        row.lockerMarkers = lockerMarkers;
+      }
+      rows.push(row);
     });
     return rows;
   }
