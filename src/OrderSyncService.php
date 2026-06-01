@@ -17,6 +17,10 @@ use WC_Order;
  */
 final class OrderSyncService
 {
+    private const IMPORT_ORDER_ACTION = 'octavawms_import_order';
+
+    private const IMPORT_ORDER_ACTION_GROUP = 'octavawms';
+
     /** Transient key: last outbound import attempt for one order across PHP requests (rate-limit friendly). */
     private const IMPORT_THROTTLE_TRANSIENT_PREFIX = 'octavawms_ord_import_';
 
@@ -30,6 +34,8 @@ final class OrderSyncService
 
     public function register(): void
     {
+        add_action(self::IMPORT_ORDER_ACTION, [$this, 'runQueuedImport'], 10, 1);
+
         if (! apply_filters('octavawms_register_order_sync_hooks', true)) {
             return;
         }
@@ -38,6 +44,20 @@ final class OrderSyncService
         add_action('woocommerce_new_order', [$this, 'onNewOrder'], 20, 2);
         add_action('woocommerce_update_order', [$this, 'onOrderUpdate'], 20, 1);
         add_action('woocommerce_order_status_changed', [$this, 'onOrderStatusChanged'], 20, 4);
+    }
+
+    /**
+     * Worker action for async order imports scheduled from WooCommerce order hooks.
+     *
+     * @param int|string $orderId
+     */
+    public function runQueuedImport($orderId): void
+    {
+        if (! is_numeric($orderId) || (int) $orderId <= 0) {
+            return;
+        }
+
+        $this->doImport((int) $orderId);
     }
 
     /**
@@ -124,7 +144,7 @@ final class OrderSyncService
             return;
         }
         $this->importedThisRequest[$orderId] = true;
-        $this->doImport($orderId);
+        $this->scheduleOrImport($orderId);
     }
 
     private function syncOrderUpdate(int $orderId): void
@@ -135,7 +155,52 @@ final class OrderSyncService
 
         $this->importedThisRequest[$orderId] = true;
 
+        $this->scheduleOrImport($orderId);
+    }
+
+    private function scheduleOrImport(int $orderId): void
+    {
+        if (Options::getSourceId() <= 0 || Options::getApiKey() === '') {
+            return;
+        }
+
+        $seconds = max(0, (int) apply_filters('octavawms_order_import_throttle_seconds', 30));
+        if ($seconds > 0) {
+            $throttleKey = self::IMPORT_THROTTLE_TRANSIENT_PREFIX . $orderId;
+            if (get_transient($throttleKey) !== false) {
+                return;
+            }
+            set_transient($throttleKey, '1', $seconds);
+        }
+
+        if (Options::isImportAsyncEnabled() && $this->enqueueImport($orderId)) {
+            return;
+        }
+
         $this->doImport($orderId);
+    }
+
+    private function enqueueImport(int $orderId): bool
+    {
+        $args = [$orderId];
+
+        if (function_exists('as_enqueue_async_action')) {
+            as_enqueue_async_action(self::IMPORT_ORDER_ACTION, $args, self::IMPORT_ORDER_ACTION_GROUP);
+
+            return true;
+        }
+
+        if (! function_exists('wp_schedule_single_event')) {
+            return false;
+        }
+
+        if (function_exists('wp_next_scheduled') && wp_next_scheduled(self::IMPORT_ORDER_ACTION, $args) !== false) {
+            return true;
+        }
+
+        $scheduled = wp_schedule_single_event(time() + 1, self::IMPORT_ORDER_ACTION, $args);
+
+        return $scheduled !== false && ! $scheduled instanceof \WP_Error;
     }
 
     private function doImport(int $orderId): void
@@ -151,15 +216,6 @@ final class OrderSyncService
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
             return;
-        }
-
-        $seconds = max(0, (int) apply_filters('octavawms_order_import_throttle_seconds', 30));
-        if ($seconds > 0) {
-            $throttleKey = self::IMPORT_THROTTLE_TRANSIENT_PREFIX . $orderId;
-            if (get_transient($throttleKey) !== false) {
-                return;
-            }
-            set_transient($throttleKey, '1', $seconds);
         }
 
         $extId = WooOrderExtId::importFilterExtId($order);

@@ -176,3 +176,28 @@ if (! function_exists('wc_get_order')) {
         return is_callable($cb) ? $cb($order) : false;
     }
 }
+
+if (! function_exists('as_enqueue_async_action')) {
+    /**
+     * Test shim for WooCommerce Action Scheduler.
+     *
+     * @param string $hook
+     * @param array<int, mixed> $args
+     * @param string $group
+     */
+    function as_enqueue_async_action($hook, $args = [], $group = '')
+    {
+        $cb = $GLOBALS['octavawms_test_as_enqueue_async_action_callback'] ?? null;
+        if (is_callable($cb)) {
+            return $cb($hook, $args, $group);
+        }
+
+        $GLOBALS['octavawms_test_async_actions'][] = [
+            'hook' => $hook,
+            'args' => $args,
+            'group' => $group,
+        ];
+
+        return count($GLOBALS['octavawms_test_async_actions']);
+    }
+}

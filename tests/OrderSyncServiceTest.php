@@ -22,7 +22,11 @@ final class OrderSyncServiceTest extends TestCase
         parent::setUp();
         $this->transients = [];
         $this->hooksAdded = [];
-        unset($GLOBALS['octavawms_test_wc_get_order_callback']);
+        unset(
+            $GLOBALS['octavawms_test_wc_get_order_callback'],
+            $GLOBALS['octavawms_test_async_actions'],
+            $GLOBALS['octavawms_test_as_enqueue_async_action_callback']
+        );
 
         Functions\when('add_action')->alias(function (string $hook, $callback, int $priority = 10, int $accepted_args = 1): void {
             unset($callback, $priority, $accepted_args);
@@ -51,23 +55,28 @@ final class OrderSyncServiceTest extends TestCase
 
     protected function tearDown(): void
     {
-        unset($GLOBALS['octavawms_test_wc_get_order_callback']);
+        unset(
+            $GLOBALS['octavawms_test_wc_get_order_callback'],
+            $GLOBALS['octavawms_test_async_actions'],
+            $GLOBALS['octavawms_test_as_enqueue_async_action_callback']
+        );
         parent::tearDown();
     }
 
     /**
      * @return array{service: OrderSyncService, order: WC_Order}
      */
-    private function serviceWithConfiguredOrder(int $orderId, BackendApiClient $api): array
+    private function serviceWithConfiguredOrder(int $orderId, BackendApiClient $api, array $settingsOverride = []): array
     {
-        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) use ($settingsOverride) {
             if ($name === 'woocommerce_octavawms_settings') {
-                return [
+                return array_merge([
                     'api_key' => 'bearer-token',
                     'source_id' => '7',
                     'sync_new_orders' => 'yes',
                     'sync_order_updates' => 'yes',
-                ];
+                    'import_async' => 'yes',
+                ], $settingsOverride);
             }
 
             return $default;
@@ -81,6 +90,14 @@ final class OrderSyncServiceTest extends TestCase
         return ['service' => new OrderSyncService($api), 'order' => $order];
     }
 
+    /**
+     * @return list<array{hook: string, args: array<int, mixed>, group: string}>
+     */
+    private function queuedActions(): array
+    {
+        return $GLOBALS['octavawms_test_async_actions'] ?? [];
+    }
+
     public function testRegisterAddsWooCommerceActions(): void
     {
         $api = $this->createMock(BackendApiClient::class);
@@ -88,6 +105,7 @@ final class OrderSyncServiceTest extends TestCase
 
         self::assertSame(
             [
+                'octavawms_import_order',
                 'woocommerce_checkout_order_processed',
                 'woocommerce_new_order',
                 'woocommerce_update_order',
@@ -111,7 +129,7 @@ final class OrderSyncServiceTest extends TestCase
         $api = $this->createMock(BackendApiClient::class);
         (new OrderSyncService($api))->register();
 
-        self::assertSame([], $this->hooksAdded);
+        self::assertSame(['octavawms_import_order'], $this->hooksAdded);
     }
 
     public function testOnNewOrderSkipsWhenSyncDisabled(): void
@@ -150,7 +168,29 @@ final class OrderSyncServiceTest extends TestCase
         (new OrderSyncService($api))->onNewOrder(5);
     }
 
-    public function testOnNewOrderCallsImportOncePerRequest(): void
+    public function testOnNewOrderEnqueuesImportOncePerRequestWhenAsyncEnabled(): void
+    {
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::never())->method('importOrder');
+        $api->expects(self::never())->method('extractFirstOrderFromCollectionJson');
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api);
+        $service->onNewOrder(100);
+        $service->onCheckoutOrderProcessed(100, []);
+
+        self::assertSame(
+            [
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [100],
+                    'group' => 'octavawms',
+                ],
+            ],
+            $this->queuedActions()
+        );
+    }
+
+    public function testOnNewOrderRunsInlineWhenAsyncDisabled(): void
     {
         $api = $this->createMock(BackendApiClient::class);
         $api->expects(self::once())
@@ -159,12 +199,14 @@ final class OrderSyncServiceTest extends TestCase
             ->willReturn(['ok' => true, 'data' => null]);
         $api->expects(self::never())->method('extractFirstOrderFromCollectionJson');
 
-        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api);
+        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api, ['import_async' => 'no']);
         $service->onNewOrder(100);
         $service->onCheckoutOrderProcessed(100, []);
+
+        self::assertSame([], $this->queuedActions());
     }
 
-    public function testOnNewOrderPersistsCanonicalExtIdFromResponse(): void
+    public function testQueuedImportPersistsCanonicalExtIdFromResponse(): void
     {
         $api = $this->createMock(BackendApiClient::class);
         $api->method('importOrder')->willReturn([
@@ -174,7 +216,7 @@ final class OrderSyncServiceTest extends TestCase
         $api->method('extractFirstOrderFromCollectionJson')->willReturn(['extId' => 'canonical-from-api']);
 
         ['service' => $service, 'order' => $order] = $this->serviceWithConfiguredOrder(200, $api);
-        $service->onNewOrder(200);
+        $service->runQueuedImport(200);
 
         self::assertSame(['_octavawms_external_order_id' => 'canonical-from-api'], $order->updatedMeta);
         self::assertSame(1, $order->saveCallCount);
@@ -198,13 +240,22 @@ final class OrderSyncServiceTest extends TestCase
         $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (int $id) => $id === 55 ? $order : false;
 
         $api = $this->createMock(BackendApiClient::class);
-        $api->expects(self::once())
-            ->method('importOrder')
-            ->willReturn(['ok' => true, 'data' => null]);
+        $api->expects(self::never())->method('importOrder');
 
         $service = new OrderSyncService($api);
         $service->onOrderUpdate(55);
         $service->onOrderStatusChanged(55, 'pending', 'processing');
+
+        self::assertSame(
+            [
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [55],
+                    'group' => 'octavawms',
+                ],
+            ],
+            $this->queuedActions()
+        );
     }
 
     public function testOnOrderUpdateSkipsWhenSettingDisabled(): void
@@ -241,9 +292,20 @@ final class OrderSyncServiceTest extends TestCase
         $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (int $id) => $id === 88 ? $order : false;
 
         $api = $this->createMock(BackendApiClient::class);
-        $api->expects(self::once())->method('importOrder')->with('88', 1)->willReturn(['ok' => true, 'data' => null]);
+        $api->expects(self::never())->method('importOrder');
 
         (new OrderSyncService($api))->onNewOrder($order);
+
+        self::assertSame(
+            [
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [88],
+                    'group' => 'octavawms',
+                ],
+            ],
+            $this->queuedActions()
+        );
     }
 
     public function testOnNewOrderSkipsWhenCrossRequestThrottleActive(): void
@@ -261,10 +323,7 @@ final class OrderSyncServiceTest extends TestCase
     public function testThrottleAppliesAcrossNewServiceInstances(): void
     {
         $api = $this->createMock(BackendApiClient::class);
-        $api->expects(self::once())
-            ->method('importOrder')
-            ->with('100', 7)
-            ->willReturn(['ok' => true, 'data' => null]);
+        $api->expects(self::never())->method('importOrder');
 
         ['service' => $first] = $this->serviceWithConfiguredOrder(100, $api);
         $first->onNewOrder(100);
@@ -275,5 +334,7 @@ final class OrderSyncServiceTest extends TestCase
 
         ['service' => $second] = $this->serviceWithConfiguredOrder(100, $sameScenarioApi);
         $second->onNewOrder(100);
+
+        self::assertCount(1, $this->queuedActions());
     }
 }
