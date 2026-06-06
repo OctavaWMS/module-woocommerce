@@ -118,19 +118,6 @@
     });
   }
 
-  function setSpinner(on) {
-    var $sp = $('#octavawms-matrix-spinner');
-    if (!$sp.length) {
-      return;
-    }
-    $sp.css('visibility', on ? 'visible' : 'hidden');
-    if (on) {
-      $sp.addClass('is-active');
-    } else {
-      $sp.removeClass('is-active');
-    }
-  }
-
   function setMessage(text, isError) {
     var $m = $('#octavawms-matrix-message');
     if (!$m.length) {
@@ -185,32 +172,6 @@
       return collectRowsFromVisual($tbody);
     }
 
-    function submitSettingsForm() {
-      var payload = currentRowsOrNull();
-      if (payload === null) {
-        return;
-      }
-      setHiddenRows(payload);
-      setMessage((cfg().strings && cfg().strings.saved) || 'Saving settings…', false);
-
-      var $form = $root.closest('form');
-      if (!$form.length) {
-        setMessage((cfg().strings && cfg().strings.saveFailed) || 'Save failed.', true);
-        return;
-      }
-
-      var $save = $form.find('button[name="save"], input[name="save"]').first();
-      if ($save.length) {
-        $save.trigger('click');
-        return;
-      }
-
-      if (!$form.find('input[name="save"][data-octavawms-matrix]').length) {
-        $form.append('<input type="hidden" name="save" value="Save changes" data-octavawms-matrix="1" />');
-      }
-      $form.trigger('submit');
-    }
-
     function switchToJson() {
       syncJsonFromVisual();
       $visual.hide();
@@ -260,10 +221,6 @@
     $tbody.on('click', '.octavawms-matrix-del-row', function () {
       var $tr = $(this).closest('tr');
       $tr.remove();
-    });
-
-    $('#octavawms-matrix-save').on('click', function () {
-      submitSettingsForm();
     });
 
     $root.closest('form').on('submit', function (e) {

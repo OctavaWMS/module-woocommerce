@@ -318,13 +318,6 @@ class SettingsPage extends \WC_Integration
                 <button type="button" class="button" id="octavawms-matrix-toggle-mode">
                     <?php esc_html_e('Switch to JSON', 'octavawms'); ?>
                 </button>
-                <button type="button" class="button button-primary" id="octavawms-matrix-save" style="margin-left:8px;">
-                    <?php esc_html_e('Save mapping', 'octavawms'); ?>
-                </button>
-                <button type="button" class="button" id="octavawms-matrix-add-row" style="margin-left:8px;">
-                    <?php esc_html_e('Add row', 'octavawms'); ?>
-                </button>
-                <span class="spinner" id="octavawms-matrix-spinner" style="float:none;visibility:hidden;margin-left:8px;"></span>
             </p>
             <input type="hidden"
                    id="octavawms-carrier-mapping-json"
@@ -347,6 +340,11 @@ class SettingsPage extends \WC_Integration
                     </thead>
                     <tbody id="octavawms-matrix-tbody"></tbody>
                 </table>
+                <p style="margin:0.75em 0 0;text-align:right;">
+                    <button type="button" class="button" id="octavawms-matrix-add-row">
+                        <?php esc_html_e('Add row', 'octavawms'); ?>
+                    </button>
+                </p>
             </div>
             <div id="octavawms-matrix-json-wrap" style="display:none;">
                 <label for="octavawms-matrix-json" class="screen-reader-text"><?php esc_html_e('JSON', 'octavawms'); ?></label>

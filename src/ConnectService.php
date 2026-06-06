@@ -108,9 +108,7 @@ class ConnectService
             'strings' => [
                 'switchJson' => __('Switch to JSON', 'octavawms'),
                 'switchVisual' => __('Switch to Visual', 'octavawms'),
-                'saved' => __('Saving settings…', 'octavawms'),
                 'loadFailed' => __('Could not load mapping.', 'octavawms'),
-                'saveFailed' => __('Save failed.', 'octavawms'),
                 'invalidJson' => __('Invalid JSON. Fix errors before switching to Visual.', 'octavawms'),
                 'pickCarrier' => __('Search carrier…', 'octavawms'),
                 'pickRate' => __('Rate (optional)', 'octavawms'),

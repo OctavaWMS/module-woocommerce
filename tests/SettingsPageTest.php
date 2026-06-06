@@ -236,5 +236,13 @@ final class SettingsPageTest extends TestCase
 
         self::assertIsString($html);
         self::assertStringContainsString('Locker markers', $html);
+        self::assertStringNotContainsString('id="octavawms-matrix-save"', $html);
+
+        $tablePosition = strpos($html, 'id="octavawms-matrix-table"');
+        $addRowPosition = strpos($html, 'id="octavawms-matrix-add-row"');
+
+        self::assertIsInt($tablePosition);
+        self::assertIsInt($addRowPosition);
+        self::assertGreaterThan($tablePosition, $addRowPosition);
     }
 }
