@@ -8,6 +8,28 @@ if (! defined('ABSPATH')) {
     define('ABSPATH', '/tmp/wordpress/');
 }
 
+if (! class_exists('WP_Error', false)) {
+    /**
+     * Minimal WordPress transport error shim for unit tests.
+     */
+    final class WP_Error
+    {
+        public function __construct(private string $code = '', private string $message = '')
+        {
+        }
+
+        public function get_error_code(): string
+        {
+            return $this->code;
+        }
+
+        public function get_error_message(): string
+        {
+            return $this->message;
+        }
+    }
+}
+
 if (! class_exists('WC_Integration', false)) {
     /**
      * Minimal WooCommerce settings API shim for unit tests.

@@ -119,6 +119,23 @@ final class PluginLog
     }
 
     /**
+     * Build standard outbound request diagnostics when the caller does not have a raw WP response yet.
+     *
+     * @param string|array<string, mixed>|null $requestBody Raw JSON string, or associative body (redacted)
+     *
+     * @return array{method:string, url:string, headers:array<string,string>, body:array|string}
+     */
+    public static function requestFromOutbound(string $method, string $url, array $requestHeaders, string|array|null $requestBody): array
+    {
+        return [
+            'method' => $method,
+            'url' => $url,
+            'headers' => self::redactOutgoingRequestHeaders($requestHeaders),
+            'body' => self::normalizeRequestBodyForLog($requestBody),
+        ];
+    }
+
+    /**
      * @param array<string, mixed>|null $decodedJson
      */
     public static function importFailureContext(

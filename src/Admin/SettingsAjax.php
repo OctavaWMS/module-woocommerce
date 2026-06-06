@@ -194,6 +194,7 @@ class SettingsAjax
         if (! isset($settings['DeliveryServices']) || ! is_array($settings['DeliveryServices'])) {
             $settings['DeliveryServices'] = [];
         }
+        $settings['DeliveryServices'] = self::normalizeDeliveryServicesSettings($settings['DeliveryServices']);
         if (! isset($settings['DeliveryServices']['options']) || ! is_array($settings['DeliveryServices']['options'])) {
             $settings['DeliveryServices']['options'] = [];
         }
@@ -201,6 +202,23 @@ class SettingsAjax
         $settings['DeliveryServices']['options']['carrierMapping'] = $carrierMapping;
 
         return $settings;
+    }
+
+    /**
+     * @param array<string, mixed> $deliveryServices
+     *
+     * @return array<string, mixed>
+     */
+    private static function normalizeDeliveryServicesSettings(array $deliveryServices): array
+    {
+        $nested = $deliveryServices['DeliveryServices'] ?? null;
+        if (is_array($nested) && ! array_key_exists('active', $deliveryServices) && array_key_exists('active', $nested)) {
+            $deliveryServices['active'] = $nested['active'];
+        }
+
+        unset($deliveryServices['DeliveryServices']);
+
+        return $deliveryServices;
     }
 
     /**

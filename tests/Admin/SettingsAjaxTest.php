@@ -180,6 +180,62 @@ final class SettingsAjaxTest extends TestCase
         self::assertSame(['BOX', 'Locker'], $normalized[0]['lockerMarkers'] ?? null);
     }
 
+    public function testSaveCarrierMappingNormalizesNestedDeliveryServicesActiveFlag(): void
+    {
+        $payload = [
+            [
+                'courierMetaKey' => 'courierID',
+                'courierMetaValue' => '18',
+                'wooDeliveryType' => '',
+                'type' => 'address',
+                'deliveryService' => 23,
+                'rate' => null,
+            ],
+        ];
+
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::once())
+            ->method('getIntegrationSource')
+            ->with(77)
+            ->willReturn([
+                'settings' => [
+                    'DeliveryServices' => [
+                        'options' => [
+                            'sender' => 19227,
+                        ],
+                        'DeliveryServices' => [
+                            'active' => true,
+                        ],
+                    ],
+                ],
+            ]);
+        $api->expects(self::once())
+            ->method('patchIntegrationSource')
+            ->with(
+                77,
+                self::callback(static function (array $body) use ($payload): bool {
+                    $deliveryServices = $body['settings']['DeliveryServices'] ?? null;
+
+                    return is_array($deliveryServices)
+                        && ($deliveryServices['active'] ?? null) === true
+                        && ! array_key_exists('DeliveryServices', $deliveryServices)
+                        && ($deliveryServices['options']['sender'] ?? null) === 19227
+                        && ($deliveryServices['options']['carrierMapping'] ?? null) === $payload;
+                })
+            )
+            ->willReturn([
+                'ok' => true,
+                'status' => 200,
+                'data' => [],
+                'raw' => '',
+                'response_headers' => [],
+            ]);
+
+        $result = (new SettingsAjax($api))->saveCarrierMappingForSource(77, $payload);
+
+        self::assertTrue($result['ok']);
+    }
+
     public function testSaveCarrierMappingReturnsBackendDetailOnPatchFailure(): void
     {
         $api = $this->createMock(BackendApiClient::class);

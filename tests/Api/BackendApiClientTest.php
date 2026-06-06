@@ -670,6 +670,83 @@ final class BackendApiClientTest extends TestCase
         self::assertSame('Invalid or missing Bearer token', $result['message'] ?? null);
     }
 
+    public function testPatchIntegrationSourceFailureLogsRequestAndResponseDiagnostics(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'api_key' => 'secret-token',
+                    'label_endpoint' => 'https://pro.oawms.com/apps/woocommerce/api/label',
+                ];
+            }
+            if ($name === Options::LEGACY_LABEL_ENDPOINT) {
+                return '';
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+
+        $spy = new class () {
+            /** @var list<array{0: string, 1: string, 2: array<string, mixed>}> */
+            public array $entries = [];
+
+            public function log(string $level, string $message, array $context = []): void
+            {
+                $this->entries[] = [$level, $message, $context];
+            }
+        };
+        Functions\when('wc_get_logger')->justReturn($spy);
+
+        Functions\when('wp_remote_request')->alias(static function () {
+            return new \WP_Error(
+                'http_request_failed',
+                'cURL error 28: Operation timed out after 45001 milliseconds with 0 bytes received'
+            );
+        });
+
+        $client = new BackendApiClient();
+        $result = $client->patchIntegrationSource(13260, [
+            'settings' => [
+                'auth' => null,
+                'DeliveryServices' => [
+                    'options' => [
+                        'carrierMapping' => [
+                            [
+                                'courierMetaKey' => 'courierID',
+                                'courierMetaValue' => '18',
+                                'wooDeliveryType' => '',
+                                'deliveryService' => 23,
+                                'type' => 'address',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        self::assertFalse($result['ok']);
+        self::assertCount(1, $spy->entries);
+        self::assertSame('warning', $spy->entries[0][0]);
+
+        $parts = explode(' | ', $spy->entries[0][1], 2);
+        self::assertCount(2, $parts);
+        $ctx = json_decode($parts[1], true);
+        self::assertIsArray($ctx);
+        self::assertSame('patch_integration_source_failed', $ctx['note'] ?? null);
+        self::assertSame(13260, $ctx['source_id'] ?? null);
+        self::assertSame('PATCH', $ctx['request']['method'] ?? null);
+        self::assertStringEndsWith('/api/integrations/sources/13260', (string) ($ctx['request']['url'] ?? ''));
+        self::assertSame('Bearer sec…token', $ctx['request']['headers']['Authorization'] ?? null);
+        self::assertSame(
+            'courierID',
+            $ctx['request']['body']['settings']['DeliveryServices']['options']['carrierMapping'][0]['courierMetaKey'] ?? null
+        );
+        self::assertSame('[redacted]', $ctx['request']['body']['settings']['auth'] ?? null);
+        self::assertSame(0, $ctx['response']['http_status'] ?? null);
+        self::assertStringContainsString('cURL error 28', (string) ($ctx['response']['body'] ?? ''));
+    }
+
     public function testRefreshBearerTokenReturnsTrueOnSuccessfulConnect(): void
     {
         $integrationSettings = [

@@ -24,7 +24,7 @@ class BackendApiClient
      *
      * Retries once after a 401 by calling refreshBearerToken().
      *
-     * @return array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>}
+     * @return array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>, request: array{method:string, url:string, headers:array<string,string>, body:array|string}}
      */
     public function request(string $method, string $path, ?array $jsonBody = null, bool $retried = false): array
     {
@@ -53,6 +53,7 @@ class BackendApiClient
             $args['body'] = wp_json_encode($jsonBody);
         }
 
+        $requestLog = PluginLog::requestFromOutbound((string) $args['method'], $url, $headers, $jsonBody);
         $response = wp_remote_request($url, $args);
         if ($response instanceof WP_Error) {
             return [
@@ -61,6 +62,7 @@ class BackendApiClient
                 'data' => null,
                 'raw' => $response->get_error_message(),
                 'response_headers' => [],
+                'request' => $requestLog,
             ];
         }
 
@@ -81,6 +83,7 @@ class BackendApiClient
             'data' => is_array($data) ? $data : null,
             'raw' => $raw,
             'response_headers' => $flatHdr,
+            'request' => $requestLog,
         ];
     }
 
@@ -1514,7 +1517,7 @@ class BackendApiClient
      *
      * @param array<string, mixed> $body
      *
-     * @return array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>}
+     * @return array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>, request?: array{method:string, url:string, headers:array<string,string>, body:array|string}}
      */
     public function patchIntegrationSource(int $sourceId, array $body): array
     {
@@ -1537,6 +1540,7 @@ class BackendApiClient
                     [
                         'note' => 'patch_integration_source_failed',
                         'source_id' => $sourceId,
+                        'request' => $result['request'],
                     ],
                     PluginLog::responseFromFetched(
                         $result['status'],
