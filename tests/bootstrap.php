@@ -139,6 +139,9 @@ if (! class_exists('WC_Order', false)) {
         /** @var array<string, mixed> */
         public array $updatedMeta = [];
 
+        /** @var list<string> */
+        public array $orderNotes = [];
+
         public function update_meta_data(string $key, mixed $value): void
         {
             $this->updatedMeta[$key] = $value;
@@ -172,6 +175,11 @@ if (! class_exists('WC_Order', false)) {
         public function get_items(): array
         {
             return [];
+        }
+
+        public function add_order_note(string $note): void
+        {
+            $this->orderNotes[] = $note;
         }
 
         public int $saveCallCount = 0;

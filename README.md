@@ -164,18 +164,30 @@ On the order edit screen (classic `shop_order` or HPOS), a meta box **OctavaWMS 
 
 You can still use **Order actions → Generate shipping label → Update** as before.
 
+## Order list bulk label actions
+
+On the WooCommerce orders list (classic `shop_order` and HPOS), select orders and use the native **Bulk actions** dropdown:
+
+- **Create labels** generates labels for selected orders that do not already have one. Existing labels are skipped and reported in the admin notice.
+- **Print labels** resolves printable selected orders and asks OctavaWMS to build one merged labels PDF through the backend bulk-label import service.
+- **Create and print labels** creates missing labels first, then prints every printable selected order, including orders that were already labeled.
+
+Bulk create does **not** import missing orders into OctavaWMS automatically; orders without a backend shipment are reported as failed so other selected orders can continue.
+
 ## API endpoints used (reference)
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/products/order` | Check if an order exists in OctavaWMS (`extId` filter). |
-| `GET` | `/api/delivery-services/requests` | List delivery requests / shipments for `extId` (and related filters). |
+| `GET` | `/api/delivery-services/requests` | List delivery requests / shipments by backend order id, then `clientExtId` fallback. |
 | `GET` | `/api/delivery-services/requests/{id}` | Single delivery request (shipment) for the order panel and label pipeline. |
 | `GET` | `/api/delivery-services/delivery-request-service` | `action=tasks` — resolve existing preprocessing **task** and **queue** ids for a delivery request. |
 | `POST` | `/api/delivery-services/preprocessing-queue` | Create sender-scoped queue when none exists (`name`, optional `sender` id only — **not** `deliveryRequest`; ties to shipments only via **preprocessing-task**). |
 | `POST` / `PATCH` | `/api/delivery-services/preprocessing-task` | Create or update preprocessing task (`state: measured`, dimensions, `queue`); may return PDF/HTML synchronously or a task id for polling. |
 | `PATCH` | `/api/delivery-services/requests/{id}` | Update shipment fields (e.g. service point, carrier, locality, EAV) from **Edit shipment**. |
 | `POST` | `/api/integrations/import` | Push the WooCommerce order into OctavaWMS (uses **source id** from Connect). |
+| `POST` | `/api/integrations/import` | Build one merged labels PDF for bulk print (`handler: delivery-services`, `ImportLabelsService`, `sourceData.shipments[]` delivery request ids). |
+| `GET` | `/api/integrations/import/{id}` | Poll bulk label import status when the merged PDF is not returned synchronously. |
 | `GET` | `/api/integrations/sources/{id}` | Load integration source `settings` (including `DeliveryServices.options.carrierMapping` for the carrier matrix). |
 | `PATCH` | `/api/integrations/sources/{id}` | Persist `settings` after **Save mapping** in the integration screen. |
 | `POST` | `/apps/woocommerce/api/label` | Request a label PDF/JSON for `externalOrderId` (resolved host via **API base override**, label-endpoint host, or **`https://pro.oawms.com`** default). |
@@ -230,7 +242,6 @@ Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notab
 
 ## What is **not** in this plugin (vs a full Shopify app)
 
-- Bulk label actions on the order list
 - In-admin service point and parcel/place management blocks
 - Storefront or checkout customisation, post-thank-you rate pickers, or theme popups
 - Shopify Functions (delivery “hide / rename” rules) — not applicable to Woo

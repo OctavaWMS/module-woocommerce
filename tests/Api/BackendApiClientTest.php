@@ -670,6 +670,107 @@ final class BackendApiClientTest extends TestCase
         self::assertSame('Invalid or missing Bearer token', $result['message'] ?? null);
     }
 
+    public function testImportBulkLabelsBuildsDeliveryServicesPayload(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'secret'];
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+
+        $captured = null;
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) use (&$captured) {
+            $captured = ['url' => $url, 'args' => $args];
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['id' => 99, 'fileUrl' => 'https://files.example/labels.pdf', 'state' => 'confirmed'], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $result = $client->importBulkLabels([50560, 50561], 123, true);
+
+        self::assertTrue($result['ok']);
+        self::assertSame(99, $result['import_id']);
+        self::assertSame('https://files.example/labels.pdf', $result['file_url']);
+        self::assertIsArray($captured);
+        self::assertStringContainsString('/api/integrations/import', (string) $captured['url']);
+        $payload = json_decode((string) ($captured['args']['body'] ?? ''), true);
+        self::assertIsArray($payload);
+        self::assertSame('delivery-services', $payload['handler']);
+        self::assertNull($payload['extId']);
+        self::assertSame(123, $payload['sourceData']['sender']);
+        self::assertFalse($payload['sourceData']['async']);
+        self::assertTrue($payload['sourceData']['asyncMode']['Orderadmin\\DeliveryServices\\Service\\ImportLabelsService']);
+        self::assertSame([50560, 50561], $payload['sourceData']['shipments']);
+    }
+
+    public function testImportBulkLabelsReturnsFailureMessage(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'secret'];
+            }
+
+            return $default;
+        });
+        Functions\when('wp_json_encode')->alias('json_encode');
+        Functions\when('wp_remote_request')->alias(static fn () => [
+            'response' => ['code' => 422],
+            'body' => '{"errorMessage":"sender is required"}',
+        ]);
+
+        $client = new BackendApiClient();
+        $result = $client->importBulkLabels(['50560'], 123, true);
+
+        self::assertFalse($result['ok']);
+        self::assertSame(422, $result['status'] ?? null);
+        self::assertSame('sender is required', $result['message'] ?? null);
+    }
+
+    public function testGetImportStatusExtractsLoadResultUrlAndError(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'secret'];
+            }
+
+            return $default;
+        });
+
+        $calls = 0;
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$calls) {
+            self::assertStringContainsString('/api/integrations/import/77', $url);
+            ++$calls;
+            if ($calls === 1) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => '{"id":77,"state":"confirmed","loadResult":{"url":"https://files.example/ready.pdf"}}',
+                ];
+            }
+
+            return [
+                'response' => ['code' => 200],
+                'body' => '{"id":77,"state":"error","loadResult":{"error":"labels failed"}}',
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $ready = $client->getImportStatus(77);
+        self::assertTrue($ready['ok']);
+        self::assertSame('confirmed', $ready['state']);
+        self::assertSame('https://files.example/ready.pdf', $ready['file_url']);
+
+        $error = $client->getImportStatus(77);
+        self::assertTrue($error['ok']);
+        self::assertSame('error', $error['state']);
+        self::assertSame('labels failed', $error['message'] ?? null);
+    }
+
     public function testPatchIntegrationSourceFailureLogsRequestAndResponseDiagnostics(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
@@ -1069,7 +1170,7 @@ final class BackendApiClientTest extends TestCase
         self::assertCount(1, $urls);
     }
 
-    public function testFindShipmentsForConnectorFallsBackToExtIdThenEmbedded(): void
+    public function testFindShipmentsForConnectorFallsBackToClientExtIdThenEmbedded(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
             if ($name === 'woocommerce_octavawms_settings') {
@@ -1088,7 +1189,7 @@ final class BackendApiClientTest extends TestCase
                     'body' => json_encode(['_embedded' => []], JSON_THROW_ON_ERROR),
                 ];
             }
-            if (str_contains($url, 'filter[0][field]=extId') || str_contains($url, 'filter%5B0%5D%5Bfield%5D=extId')) {
+            if (str_contains($url, 'filter[0][field]=clientExtId') || str_contains($url, 'filter%5B0%5D%5Bfield%5D=clientExtId')) {
                 return [
                     'response' => ['code' => 200],
                     'body' => json_encode(['_embedded' => []], JSON_THROW_ON_ERROR),

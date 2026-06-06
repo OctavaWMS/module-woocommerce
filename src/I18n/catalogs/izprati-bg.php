@@ -47,4 +47,9 @@ return [
         'Поръчката е в Изпрати.БГ; очаква се пратка (заявка за доставка).',
     'This order is not in OctavaWMS yet. Upload it to create shipments and labels.' =>
         'Поръчката все още не е в Изпрати.БГ. Качете я за създаване на пратки и товарителници.',
+
+    // Native WooCommerce bulk actions
+    'Create labels' => 'Създай товарителници',
+    'Print labels' => 'Принтирай товарителници',
+    'Create and print labels' => 'Създай и принтирай товарителници',
 ];

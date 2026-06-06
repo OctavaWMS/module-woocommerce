@@ -461,12 +461,20 @@ class BackendApiClient
     /**
      * @return list<array<string, mixed>>
      */
-    public function findShipmentsByExtId(string $extId): array
+    public function findShipmentsByClientExtId(string $clientExtId): array
     {
-        $query = $this->buildListQuery($extId, 'extId', 25, 1);
+        $query = $this->buildListQuery($clientExtId, 'clientExtId', 25, 1);
         $result = $this->request('GET', '/api/delivery-services/requests?' . $query, null);
 
         return $this->parseShipmentsFromDeliveryRequestsResponseBody($result['ok'] ? $result['data'] : null);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function findShipmentsByExtId(string $extId): array
+    {
+        return $this->findShipmentsByClientExtId($extId);
     }
 
     /**
@@ -486,7 +494,7 @@ class BackendApiClient
     }
 
     /**
-     * Resolve shipments like Shopify getShipmentsForOrder: by backend order id, then by extId candidates, then embedded deliveryRequest on the order entity.
+     * Resolve shipments like Shopify getShipmentsForOrder: by backend order id, then by clientExtId candidates, then embedded deliveryRequest on the order entity.
      *
      * @param array<string, mixed>|null $backendOrder First order from Octava when found by extId lookup
      * @param list<string>               $extIdCandidates Tried in order when the by-order list is empty
@@ -518,7 +526,7 @@ class BackendApiClient
             if ($t === '') {
                 continue;
             }
-            $byExt = $this->findShipmentsByExtId($t);
+            $byExt = $this->findShipmentsByClientExtId($t);
             if ($byExt !== []) {
                 return $byExt;
             }
@@ -1075,6 +1083,134 @@ class BackendApiClient
     }
 
     /**
+     * Request one merged labels file through the backend bulk-label import service.
+     *
+     * @param list<int|string> $shipmentIds Delivery request ids in print order.
+     *
+     * @return array{ok: bool, import_id: int|null, file_url: string|null, state: string|null, message?: string, status?: int, data?: mixed}
+     */
+    public function importBulkLabels(array $shipmentIds, int $senderId, bool $sync = true): array
+    {
+        $shipments = [];
+        foreach ($shipmentIds as $shipmentId) {
+            if (! is_numeric($shipmentId)) {
+                continue;
+            }
+            $id = (int) $shipmentId;
+            if ($id <= 0) {
+                continue;
+            }
+            $shipments[] = $id;
+        }
+
+        if ($shipments === []) {
+            return ['ok' => false, 'import_id' => null, 'file_url' => null, 'state' => null, 'message' => 'No printable labels selected.'];
+        }
+
+        if ($senderId <= 0) {
+            return ['ok' => false, 'import_id' => null, 'file_url' => null, 'state' => null, 'message' => 'Sender is required for bulk label printing.'];
+        }
+
+        $sourceData = [
+            'sender' => $senderId,
+            'shipments' => $shipments,
+            'asyncMode' => [
+                'Orderadmin\\DeliveryServices\\Service\\ImportLabelsService' => true,
+            ],
+        ];
+        if ($sync) {
+            $sourceData['async'] = false;
+        }
+
+        $payload = [
+            'handler' => 'delivery-services',
+            'extId' => null,
+            'sourceData' => $sourceData,
+        ];
+
+        $result = $this->request('POST', '/api/integrations/import', $payload);
+        if ($result['ok'] && is_array($result['data'])) {
+            return [
+                'ok' => true,
+                'import_id' => self::extractImportId($result['data']),
+                'file_url' => self::extractImportFileUrl($result['data']),
+                'state' => self::extractImportState($result['data']),
+                'data' => $result['data'],
+            ];
+        }
+
+        $msg = 'Bulk label import failed.';
+        if (is_array($result['data'])) {
+            $msg = PluginLog::userMessageFromApiJson($result['data'], $msg);
+        } elseif ($result['raw'] !== '') {
+            $msg = mb_substr($result['raw'], 0, 500);
+        } else {
+            $msg = sprintf('HTTP %d', $result['status']);
+        }
+
+        return [
+            'ok' => false,
+            'import_id' => null,
+            'file_url' => null,
+            'state' => null,
+            'message' => $msg,
+            'status' => $result['status'],
+            'data' => $result['data'],
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, import_id: int|null, file_url: string|null, state: string|null, message?: string, status?: int, data?: mixed}
+     */
+    public function getImportStatus(int $importId): array
+    {
+        if ($importId <= 0) {
+            return ['ok' => false, 'import_id' => null, 'file_url' => null, 'state' => null, 'message' => 'Invalid import id.'];
+        }
+
+        $result = $this->request('GET', '/api/integrations/import/' . $importId, null);
+        if ($result['ok'] && is_array($result['data'])) {
+            $state = self::extractImportState($result['data']);
+            $message = null;
+            if ($state === 'error') {
+                $message = self::extractImportErrorMessage($result['data']) ?? 'Import processing failed.';
+            }
+
+            $out = [
+                'ok' => true,
+                'import_id' => self::extractImportId($result['data']) ?? $importId,
+                'file_url' => self::extractImportFileUrl($result['data']),
+                'state' => $state,
+                'data' => $result['data'],
+            ];
+            if ($message !== null) {
+                $out['message'] = $message;
+            }
+
+            return $out;
+        }
+
+        $msg = 'Could not fetch import status.';
+        if (is_array($result['data'])) {
+            $msg = PluginLog::userMessageFromApiJson($result['data'], $msg);
+        } elseif ($result['raw'] !== '') {
+            $msg = mb_substr($result['raw'], 0, 500);
+        } else {
+            $msg = sprintf('HTTP %d', $result['status']);
+        }
+
+        return [
+            'ok' => false,
+            'import_id' => $importId,
+            'file_url' => null,
+            'state' => null,
+            'message' => $msg,
+            'status' => $result['status'],
+            'data' => $result['data'],
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $payload
      *
      * @return array{bearer_token_configured: bool, request: array{method:string, url:string, headers:array<string,string>, body:array|string}}
@@ -1104,6 +1240,93 @@ class BackendApiClient
                 'body' => $bodyForLog,
             ],
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function extractImportId(array $data): ?int
+    {
+        foreach ([['id'], ['importId'], ['import', 'id']] as $path) {
+            $value = self::valueAtPath($data, $path);
+            if (is_numeric($value)) {
+                $id = (int) $value;
+
+                return $id > 0 ? $id : null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function extractImportState(array $data): ?string
+    {
+        foreach (['state', 'status'] as $key) {
+            if (isset($data[$key]) && is_scalar($data[$key])) {
+                $state = trim((string) $data[$key]);
+                if ($state !== '') {
+                    return $state;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function extractImportFileUrl(array $data): ?string
+    {
+        foreach ([['fileUrl'], ['file', 'url'], ['_links', 'file', 'href'], ['loadResult', 'url']] as $path) {
+            $value = self::valueAtPath($data, $path);
+            if (is_scalar($value)) {
+                $url = trim((string) $value);
+                if ($url !== '') {
+                    return $url;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function extractImportErrorMessage(array $data): ?string
+    {
+        foreach ([['loadResult', 'error'], ['errorMessage'], ['error'], ['message']] as $path) {
+            $value = self::valueAtPath($data, $path);
+            if (is_scalar($value)) {
+                $message = trim((string) $value);
+                if ($message !== '') {
+                    return $message;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param list<string> $path
+     */
+    private static function valueAtPath(array $data, array $path): mixed
+    {
+        $value = $data;
+        foreach ($path as $segment) {
+            if (! is_array($value) || ! array_key_exists($segment, $value)) {
+                return null;
+            }
+            $value = $value[$segment];
+        }
+
+        return $value;
     }
 
     /**
