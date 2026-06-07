@@ -53,6 +53,8 @@ return [
     // Checkout delivery method
     'Calculated carrier delivery rates from OctavaWMS.' =>
         'Изчислени тарифи за доставка от Изпрати.БГ.',
+    'Choose a pickup point before placing the order.' =>
+        'Изберете пункт за получаване преди завършване на поръчката.',
 
     // Native WooCommerce bulk actions
     'Create labels' => 'Създай товарителници',

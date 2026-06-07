@@ -25,6 +25,7 @@ return array (
   'Cannot remove a place that still has items.' => 'Не може да се премахне място, което все още съдържа позиции.',
   'Cash on delivery' => 'Наложен платеж',
   'Choose a delivery carrier.' => 'Изберете куриер за доставка.',
+  'Choose a pickup point before placing the order.' => 'Изберете пункт за получаване преди завършване на поръчката.',
   'Choose a pickup point from the list.' => 'Изберете пункт за получаване от списъка.',
   'Connected. Your credentials are saved.' => 'Свързани сте. Данните за достъп са записани.',
   'Connected to OctavaWMS' => 'Свързано с OctavaWMS',

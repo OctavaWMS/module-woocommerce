@@ -113,10 +113,9 @@ final class CheckoutCalculator
 
         $postcode = isset($destination['postcode']) && is_string($destination['postcode']) ? trim($destination['postcode']) : '';
         $country = isset($destination['country']) && is_string($destination['country']) ? trim($destination['country']) : '';
+        $checkoutDebug = $this->isDebugRequested($destination);
 
         $payload = [
-            'debug' => true,
-            'clearCache' => true,
             'sender' => $sender,
             'to' => [
                 'postcode' => $postcode,
@@ -127,6 +126,10 @@ final class CheckoutCalculator
             'payment' => 0,
             'timeout' => 30,
         ];
+        if ($checkoutDebug) {
+            $payload['debug'] = true;
+            $payload['clearCache'] = true;
+        }
 
         $deliveryServices = $this->deliveryServiceIds($options);
         if ($deliveryServices !== []) {
@@ -137,6 +140,7 @@ final class CheckoutCalculator
             'city' => isset($destination['city']) && is_string($destination['city']) ? trim($destination['city']) : '',
             'postcode' => $postcode,
             'country' => $country,
+            'debug' => $checkoutDebug,
             'localityId' => $this->resolveLocalityIdByPostcode(
                 $postcode,
                 $country,
@@ -292,15 +296,19 @@ final class CheckoutCalculator
             return null;
         }
 
-        $result = $this->apiClient->fetchLocalitiesByPostcode($postcode, 1);
-        $items = $result['items'];
-        if ($items === []) {
+        $result = $this->apiClient->fetchDeliveryServicePostcodesByExtId($postcode, 1);
+        $postcodes = $result['items'];
+        if ($postcodes === []) {
             return null;
         }
 
         $bestId = null;
         $bestScore = -1;
-        foreach ($items as $row) {
+        foreach ($postcodes as $postcodeRow) {
+            $row = $this->localityFromDeliveryServicePostcode($postcodeRow);
+            if ($row === null) {
+                continue;
+            }
             $id = $this->intValue($row['id'] ?? null);
             if ($id <= 0) {
                 continue;
@@ -321,7 +329,7 @@ final class CheckoutCalculator
             if ($city !== '' && $this->localityNameMatches($row, $city)) {
                 $score += 2;
             }
-            if (count($items) === 1) {
+            if (count($postcodes) === 1) {
                 $score += 1;
             }
 
@@ -332,6 +340,62 @@ final class CheckoutCalculator
         }
 
         return $bestId;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>|null
+     */
+    private function localityFromDeliveryServicePostcode(array $row): ?array
+    {
+        foreach ([['locality'], ['_embedded', 'locality']] as $path) {
+            $value = $row;
+            foreach ($path as $segment) {
+                if (! is_array($value) || ! array_key_exists($segment, $value)) {
+                    $value = null;
+                    break;
+                }
+                $value = $value[$segment];
+            }
+            if (is_array($value)) {
+                return $value + [
+                    'postcode' => $this->deliveryServicePostcodeExtId($row),
+                ];
+            }
+            if (is_numeric($value)) {
+                return [
+                    'id' => (int) $value,
+                    'postcode' => $this->deliveryServicePostcodeExtId($row),
+                ];
+            }
+        }
+        $embedded = $row['_embedded'] ?? null;
+        if (is_array($embedded) && isset($embedded['localities']) && is_array($embedded['localities'])) {
+            foreach ($embedded['localities'] as $locality) {
+                if (is_array($locality)) {
+                    return $locality + [
+                        'postcode' => $this->deliveryServicePostcodeExtId($row),
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function deliveryServicePostcodeExtId(array $row): string
+    {
+        foreach (['extId', 'ext_id', 'postcode', 'postalCode', 'postal_code', 'zip'] as $key) {
+            if (isset($row[$key]) && is_string($row[$key])) {
+                return trim($row[$key]);
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -617,6 +681,7 @@ final class CheckoutCalculator
             'destination_state' => isset($destination['state']) && is_string($destination['state']) ? trim($destination['state']) : '',
             'destination_postcode' => isset($destination['postcode']) && is_string($destination['postcode']) ? trim($destination['postcode']) : '',
             'destination_country' => isset($destination['country']) && is_string($destination['country']) ? trim($destination['country']) : '',
+            'checkout_debug' => $this->isDebugRequested($destination),
             'package_weight_grams' => $this->packageWeightGrams($package),
             'package_cost' => $this->packageCost($package),
         ];
@@ -658,6 +723,34 @@ final class CheckoutCalculator
      */
     private function logCalculator(string $level, string $reason, array $context): void
     {
+        if (($context['checkout_debug'] ?? false) !== true) {
+            return;
+        }
+
         PluginLog::log($level, 'checkout_calculator', ['reason' => $reason] + $context);
+    }
+
+    /**
+     * @param array<string, mixed> $destination
+     */
+    private function isDebugRequested(array $destination): bool
+    {
+        foreach (['address_2', 'address2', 'addressLine2', 'address_line_2'] as $key) {
+            if (isset($destination[$key]) && is_string($destination[$key]) && trim($destination[$key]) === 'DEBUG') {
+                return true;
+            }
+        }
+
+        foreach (['shipping_address_2', 'billing_address_2'] as $key) {
+            if (! isset($_POST[$key])) {
+                continue;
+            }
+            $value = function_exists('wp_unslash') ? wp_unslash($_POST[$key]) : $_POST[$key];
+            if (is_string($value) && trim($value) === 'DEBUG') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

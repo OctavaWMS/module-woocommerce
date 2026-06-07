@@ -75,6 +75,9 @@ msgstr "Наложен платеж"
 msgid "Choose a delivery carrier."
 msgstr "Изберете куриер за доставка."
 
+msgid "Choose a pickup point before placing the order."
+msgstr "Изберете пункт за получаване преди завършване на поръчката."
+
 msgid "Choose a pickup point from the list."
 msgstr "Изберете пункт за получаване от списъка."
 
@@ -428,4 +431,3 @@ msgstr "— Избери —"
 
 msgid "…"
 msgstr "…"
-

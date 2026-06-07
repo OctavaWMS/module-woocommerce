@@ -60,17 +60,22 @@ final class CheckoutCalculatorTest extends TestCase
                 ];
             }
 
-            public function fetchLocalitiesByPostcode(string $postcode, int $page = 1): array
+            public function fetchDeliveryServicePostcodesByExtId(string $extId, int $page = 1): array
             {
-                Assert::assertSame('9000', $postcode);
+                Assert::assertSame('9000', $extId);
                 Assert::assertSame(1, $page);
 
                 return [
                     'items' => [[
-                        'id' => 900,
-                        'name' => 'Varna',
-                        'postcode' => '9000',
-                        'country' => ['code' => 'BG'],
+                        'id' => 44,
+                        'extId' => '9000',
+                        '_embedded' => [
+                            'locality' => [
+                                'id' => 900,
+                                'name' => 'Varna',
+                                'country' => ['code' => 'BG'],
+                            ],
+                        ],
                     ]],
                     'total_pages' => 1,
                 ];
@@ -143,8 +148,6 @@ final class CheckoutCalculatorTest extends TestCase
         ]);
 
         self::assertSame([
-            'debug' => true,
-            'clearCache' => true,
             'sender' => 77,
             'to' => ['postcode' => '9000', 'country' => 'BG'],
             'weight' => 2500.0,
@@ -169,6 +172,7 @@ final class CheckoutCalculatorTest extends TestCase
         self::assertSame('address', $rates[2]['methodKind']);
         self::assertSame('Speedy - ДО АДРЕС', $rates[2]['title']);
         self::assertSame(900, \OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
+        self::assertFalse(\OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['debug'] ?? true);
     }
 
     public function testAutoSetsSenderWhenSourceHasNoneAndAccountHasOne(): void
@@ -219,7 +223,7 @@ final class CheckoutCalculatorTest extends TestCase
                 ];
             }
 
-            public function fetchLocalitiesByPostcode(string $postcode, int $page = 1): array
+            public function fetchDeliveryServicePostcodesByExtId(string $postcode, int $page = 1): array
             {
                 unset($postcode, $page);
 
@@ -260,7 +264,7 @@ final class CheckoutCalculatorTest extends TestCase
 
         $calculator = new CheckoutCalculator($api);
         self::assertSame([], $calculator->calculatePackage([
-            'destination' => ['city' => 'Varna', 'country' => 'BG', 'postcode' => '9000'],
+            'destination' => ['city' => 'Varna', 'country' => 'BG', 'postcode' => '9000', 'address_2' => 'DEBUG'],
         ]));
         self::assertTrue(
             (bool) array_filter(
@@ -303,7 +307,7 @@ final class CheckoutCalculatorTest extends TestCase
                 ];
             }
 
-            public function fetchLocalitiesByPostcode(string $postcode, int $page = 1): array
+            public function fetchDeliveryServicePostcodesByExtId(string $postcode, int $page = 1): array
             {
                 unset($postcode, $page);
 
@@ -327,7 +331,7 @@ final class CheckoutCalculatorTest extends TestCase
 
         $calculator = new CheckoutCalculator($api);
         self::assertSame([], $calculator->calculatePackage([
-            'destination' => ['city' => 'Varna', 'country' => 'BG', 'postcode' => '9000'],
+            'destination' => ['city' => 'Varna', 'country' => 'BG', 'postcode' => '9000', 'address_2' => 'DEBUG'],
         ]));
         self::assertCount(1, $logged);
         self::assertSame('warning', $logged[0]['level']);
@@ -360,7 +364,7 @@ final class CheckoutCalculatorTest extends TestCase
                 ];
             }
 
-            public function fetchLocalitiesByPostcode(string $postcode, int $page = 1): array
+            public function fetchDeliveryServicePostcodesByExtId(string $postcode, int $page = 1): array
             {
                 unset($postcode, $page);
 
@@ -398,8 +402,60 @@ final class CheckoutCalculatorTest extends TestCase
             ],
         ]));
 
+        self::assertArrayNotHasKey('debug', $api->lastBody ?? []);
+        self::assertArrayNotHasKey('clearCache', $api->lastBody ?? []);
+        self::assertSame(10.0, $api->lastBody['weight'] ?? null);
+    }
+
+    public function testDebugAddressLineEnablesCalculatorDebugPayload(): void
+    {
+        $api = new class () extends BackendApiClient {
+            /** @var array<string, mixed>|null */
+            public ?array $lastBody = null;
+
+            public function getIntegrationSource(int $sourceId): ?array
+            {
+                unset($sourceId);
+
+                return [
+                    'settings' => [
+                        'DeliveryServices' => [
+                            'options' => ['sender' => 77],
+                        ],
+                    ],
+                ];
+            }
+
+            public function fetchDeliveryServicePostcodesByExtId(string $postcode, int $page = 1): array
+            {
+                unset($postcode, $page);
+
+                return ['items' => [], 'total_pages' => 1];
+            }
+
+            public function request(string $method, string $path, ?array $jsonBody = null, bool $retried = false): array
+            {
+                unset($method, $path, $retried);
+                $this->lastBody = $jsonBody;
+
+                return [
+                    'ok' => true,
+                    'status' => 200,
+                    'data' => ['rates' => []],
+                    'raw' => '{"rates":[]}',
+                    'response_headers' => [],
+                    'request' => ['method' => 'POST', 'url' => '', 'headers' => [], 'body' => []],
+                ];
+            }
+        };
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['country' => 'BG', 'postcode' => '9002', 'address_2' => 'DEBUG'],
+        ]));
+
         self::assertTrue($api->lastBody['debug'] ?? null);
         self::assertTrue($api->lastBody['clearCache'] ?? null);
-        self::assertSame(10.0, $api->lastBody['weight'] ?? null);
+        self::assertTrue(\OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['debug'] ?? false);
     }
 }

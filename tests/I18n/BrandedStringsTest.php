@@ -16,6 +16,12 @@ final class BrandedStringsTest extends TestCase
         self::assertSame('Изпрати.БГ', $out);
     }
 
+    public function testIzpratiCatalogOverridesCheckoutPickupValidation(): void
+    {
+        $out = BrandedStrings::overrideForBrand(UiBranding::PACK_IZPRATI, 'Choose a pickup point before placing the order.');
+        self::assertSame('Изберете пункт за получаване преди завършване на поръчката.', $out);
+    }
+
     public function testUnknownPackReturnsNull(): void
     {
         self::assertNull(BrandedStrings::overrideForBrand(null, 'OctavaWMS Connector'));

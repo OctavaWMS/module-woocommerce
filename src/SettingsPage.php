@@ -6,6 +6,7 @@ namespace OctavaWMS\WooCommerce;
 
 use OctavaWMS\WooCommerce\Admin\SettingsAjax;
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
+use OctavaWMS\WooCommerce\Checkout\CodVisibilityRules;
 
 class SettingsPage extends \WC_Integration
 {
@@ -132,6 +133,7 @@ class SettingsPage extends \WC_Integration
         $beforeImportAsync = Options::isImportAsyncEnabled();
         parent::process_admin_options();
         $postedCarrierMapping = $this->savePostedCarrierMappingJson();
+        $this->savePostedCodVisibilityRulesJson();
 
         if (! is_array($this->settings)) {
             $this->init_settings();
@@ -168,6 +170,37 @@ class SettingsPage extends \WC_Integration
                 add_settings_error('general', 'octavawms_import_async_sync', $result['message'], 'error');
             }
         }
+    }
+
+    private function savePostedCodVisibilityRulesJson(): void
+    {
+        $postKey = 'woocommerce_' . $this->id . '_' . Options::COD_VISIBILITY_RULES_JSON;
+        if (! isset($_POST[$postKey])) {
+            return;
+        }
+
+        $raw = function_exists('wp_unslash')
+            ? wp_unslash((string) $_POST[$postKey])
+            : (string) $_POST[$postKey];
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
+            $this->addAdminError(__('Cash on delivery rules must be a JSON array.', 'octavawms'));
+
+            return;
+        }
+
+        $normalized = CodVisibilityRules::validateAndNormalizeRows($decoded);
+        if ($normalized === null) {
+            $this->addAdminError(__('Invalid cash on delivery rule(s). Check delivery service, delivery type, rate, and action.', 'octavawms'));
+
+            return;
+        }
+
+        $json = function_exists('wp_json_encode')
+            ? (string) wp_json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : (string) json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        Options::saveCodVisibilityRulesJson($json);
+        $this->settings[Options::COD_VISIBILITY_RULES_JSON] = $json;
     }
 
     /**
@@ -294,6 +327,7 @@ class SettingsPage extends \WC_Integration
         echo $this->getConnectDescriptionHtml();
         parent::admin_options();
         echo $this->getCarrierMatrixSectionHtml();
+        echo $this->getCodVisibilityRulesSectionHtml();
     }
 
     private function getCarrierMatrixSectionHtml(): string
@@ -350,6 +384,54 @@ class SettingsPage extends \WC_Integration
                 <label for="octavawms-matrix-json" class="screen-reader-text"><?php esc_html_e('JSON', 'octavawms'); ?></label>
                 <textarea id="octavawms-matrix-json" rows="16" class="large-text code" style="width:100%;font-family:monospace;"></textarea>
             </div>
+        </div>
+        <hr>
+        <?php
+
+        return (string) ob_get_clean();
+    }
+
+    private function getCodVisibilityRulesSectionHtml(): string
+    {
+        if (! current_user_can('manage_woocommerce')) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div id="octavawms-cod-rules-root" class="octavawms-cod-rules" style="margin:1.25em 0 2em;max-width:1280px;">
+            <h2 style="font-size:1.1em;margin-bottom:0.5em;">
+                <?php esc_html_e('Cash on delivery rules', 'octavawms'); ?>
+            </h2>
+            <p class="description" style="max-width:960px;">
+                <?php esc_html_e(
+                    'Hide or allow Cash on delivery for OctavaWMS checkout shipments by delivery service, delivery type, or exact rate. More specific rules override broader ones.',
+                    'octavawms'
+                ); ?>
+            </p>
+            <input type="hidden"
+                   id="octavawms-cod-rules-json"
+                   name="woocommerce_<?php echo esc_attr($this->id); ?>_<?php echo esc_attr(Options::COD_VISIBILITY_RULES_JSON); ?>"
+                   value="<?php echo esc_attr(Options::getCodVisibilityRulesJson()); ?>">
+            <p id="octavawms-cod-rules-message" class="description" style="min-height:1.25em;color:#b32d2d;" aria-live="polite"></p>
+            <table class="widefat striped" id="octavawms-cod-rules-table" style="margin-top:0.5em;">
+                <thead>
+                    <tr>
+                        <th style="width:84px;"><?php esc_html_e('Enabled', 'octavawms'); ?></th>
+                        <th><?php esc_html_e('Action', 'octavawms'); ?></th>
+                        <th><?php esc_html_e('Delivery service', 'octavawms'); ?></th>
+                        <th><?php esc_html_e('Delivery type', 'octavawms'); ?></th>
+                        <th><?php esc_html_e('Rate', 'octavawms'); ?></th>
+                        <th style="width:48px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="octavawms-cod-rules-tbody"></tbody>
+            </table>
+            <p style="margin:0.75em 0 0;text-align:right;">
+                <button type="button" class="button" id="octavawms-cod-rules-add-row">
+                    <?php esc_html_e('Add COD rule', 'octavawms'); ?>
+                </button>
+            </p>
         </div>
         <hr>
         <?php

@@ -75,6 +75,9 @@ msgstr "Cash on delivery"
 msgid "Choose a delivery carrier."
 msgstr "Choose a delivery carrier."
 
+msgid "Choose a pickup point before placing the order."
+msgstr "Choose a pickup point before placing the order."
+
 msgid "Choose a pickup point from the list."
 msgstr "Choose a pickup point from the list."
 
@@ -428,4 +431,3 @@ msgstr "— Choose —"
 
 msgid "…"
 msgstr "…"
-

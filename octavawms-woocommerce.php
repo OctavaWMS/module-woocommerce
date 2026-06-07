@@ -95,6 +95,7 @@ $octavawms_bootstrap_woocommerce = static function (): void {
     if (class_exists(\WC_Shipping_Method::class, false)) {
         (new \OctavaWMS\WooCommerce\Checkout\CheckoutDeliveryService($apiClient))->register();
     }
+    (new \OctavaWMS\WooCommerce\Checkout\CodVisibilityRules())->register();
 };
 
 // Run after WooCommerce is ready. `woocommerce_loaded` can fire before this plugin's file loads

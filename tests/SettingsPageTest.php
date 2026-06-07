@@ -148,6 +148,48 @@ final class SettingsPageTest extends TestCase
         self::assertSame(23, $decoded[0]['deliveryService'] ?? null);
     }
 
+    public function testProcessAdminOptionsStoresCodVisibilityRulesLocally(): void
+    {
+        $this->stored['woocommerce_octavawms_settings'] = [
+            'api_key' => 'token',
+            'source_id' => '0',
+            'sync_new_orders' => 'yes',
+            'sync_order_updates' => 'yes',
+            'import_async' => 'yes',
+        ];
+
+        $page = new SettingsPage();
+
+        $_POST = [
+            'woocommerce_octavawms_api_key' => 'token',
+            'woocommerce_octavawms_sync_new_orders' => '1',
+            'woocommerce_octavawms_sync_order_updates' => '1',
+            'woocommerce_octavawms_import_async' => '1',
+            'woocommerce_octavawms_cod_visibility_rules_json' => json_encode([
+                [
+                    'enabled' => true,
+                    'mode' => 'exclude',
+                    'deliveryService' => 5,
+                    'deliveryType' => 'locker',
+                    'rate' => 12,
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ];
+
+        $page->process_admin_options();
+
+        $settings = $this->stored['woocommerce_octavawms_settings'] ?? [];
+        self::assertIsArray($settings);
+        self::assertIsString($settings[Options::COD_VISIBILITY_RULES_JSON] ?? null);
+
+        $decoded = json_decode((string) $settings[Options::COD_VISIBILITY_RULES_JSON], true);
+        self::assertSame('cod', $decoded[0]['payment_handle'] ?? null);
+        self::assertSame('exclude', $decoded[0]['mode'] ?? null);
+        self::assertSame('self_service_point', $decoded[0]['match']['delivery_type'] ?? null);
+        self::assertSame('5', $decoded[0]['match']['delivery_service_id'] ?? null);
+        self::assertSame('12', $decoded[0]['match']['rate_id'] ?? null);
+    }
+
     public function testProcessAdminOptionsKeepsLocalCarrierMappingWhenRemotePatchFails(): void
     {
         $this->stored['woocommerce_octavawms_settings'] = [
@@ -244,5 +286,23 @@ final class SettingsPageTest extends TestCase
         self::assertIsInt($tablePosition);
         self::assertIsInt($addRowPosition);
         self::assertGreaterThan($tablePosition, $addRowPosition);
+    }
+
+    public function testCodRulesSectionRendersSettingsMatrix(): void
+    {
+        $this->stored['woocommerce_octavawms_settings'] = [
+            Options::COD_VISIBILITY_RULES_JSON => '[]',
+        ];
+
+        $page = new SettingsPage();
+        $method = new \ReflectionMethod($page, 'getCodVisibilityRulesSectionHtml');
+        $method->setAccessible(true);
+
+        $html = $method->invoke($page);
+
+        self::assertIsString($html);
+        self::assertStringContainsString('Cash on delivery rules', $html);
+        self::assertStringContainsString('id="octavawms-cod-rules-table"', $html);
+        self::assertStringContainsString('woocommerce_octavawms_cod_visibility_rules_json', $html);
     }
 }

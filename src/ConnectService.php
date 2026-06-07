@@ -115,6 +115,19 @@ class ConnectService
                 'anyRate' => __('— Any / none —', 'octavawms'),
             ],
         ]);
+        wp_localize_script('octavawms-admin-settings-matrix', 'octavawmsCodRules', [
+            'initialRows' => Options::getCodVisibilityRules(),
+            'strings' => [
+                'invalidRules' => __('Invalid cash on delivery rules.', 'octavawms'),
+                'hideCod' => __('Hide COD', 'octavawms'),
+                'allowCod' => __('Allow COD', 'octavawms'),
+                'anyType' => __('Any', 'octavawms'),
+                'address' => __('Address', 'octavawms'),
+                'office' => __('Office', 'octavawms'),
+                'locker' => __('Locker', 'octavawms'),
+                'officeLocker' => __('Office or locker', 'octavawms'),
+            ],
+        ]);
         wp_enqueue_script('octavawms-admin-settings-matrix');
     }
 

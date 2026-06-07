@@ -1226,7 +1226,11 @@ final class BackendApiClientTest extends TestCase
 
             return [
                 'response' => ['code' => 200],
-                'body' => json_encode(['_embedded' => ['servicePoints' => [['id' => 1, 'name' => 'A']]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+                'body' => json_encode(['_embedded' => ['servicePoints' => [
+                    ['id' => 1, 'name' => 'A'],
+                    ['id' => 2, 'name' => 'B'],
+                    ['id' => 3, 'name' => 'C'],
+                ]], 'page_count' => 1], JSON_THROW_ON_ERROR),
             ];
         });
 
@@ -1237,11 +1241,22 @@ final class BackendApiClientTest extends TestCase
             'servicePointType' => 'service_point',
             'search' => 'foo',
             'page' => 1,
+            'lat' => 43.20751,
+            'lng' => 27.89995,
+            'sort' => 'distance',
+            'browserGeolocationEnabled' => true,
+            'perPage' => 2,
         ]);
         self::assertStringContainsString('/api/delivery-services/service-points?', $captured);
+        self::assertStringContainsString('perPage=2', $captured);
         self::assertStringContainsString('search=', $captured);
-        self::assertCount(1, $r['items']);
+        self::assertStringContainsString('lat=43.20751', $captured);
+        self::assertStringContainsString('lng=27.89995', $captured);
+        self::assertStringContainsString('sort=distance', $captured);
+        self::assertStringContainsString('browserGeolocationEnabled=true', $captured);
+        self::assertCount(2, $r['items']);
         self::assertSame(1, $r['items'][0]['id']);
+        self::assertSame(2, $r['items'][1]['id']);
     }
 
     public function testFetchDeliveryServicesPageBuildsQuery(): void
@@ -1357,6 +1372,47 @@ final class BackendApiClientTest extends TestCase
         self::assertStringContainsString('filter[1][value]=9002', $captured);
         self::assertCount(1, $r['items']);
         self::assertSame(900, $r['items'][0]['id']);
+    }
+
+    public function testFetchDeliveryServicePostcodesByExtIdUsesPostcodeEndpoint(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode([
+                    '_embedded' => [
+                        'postcodes' => [[
+                            'id' => 44,
+                            'extId' => '9002',
+                            '_embedded' => [
+                                'locality' => ['id' => 900, 'name' => 'Варна'],
+                            ],
+                        ]],
+                    ],
+                    'page_count' => 1,
+                ], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->fetchDeliveryServicePostcodesByExtId('9002');
+        self::assertStringContainsString('/api/delivery-services/postcodes?', $captured);
+        self::assertStringContainsString('filter[0][field]=extId', $captured);
+        self::assertStringContainsString('filter[0][value]=9002', $captured);
+        self::assertCount(1, $r['items']);
+        self::assertSame('9002', $r['items'][0]['extId']);
+        self::assertSame(900, $r['items'][0]['_embedded']['locality']['id']);
     }
 
     public function testGetPanelLoginRefreshTokenFallbackToStoredWhenBearerUnavailable(): void

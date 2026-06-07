@@ -259,4 +259,22 @@ final class OptionsTest extends TestCase
         self::assertSame('Speedy', $rows[0]['courierMetaValue'] ?? null);
     }
 
+    public function testCodVisibilityRulesDecodeLocalJson(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    Options::COD_VISIBILITY_RULES_JSON => '[{"payment_handle":"cod","mode":"exclude","match":{"delivery_service_id":"5","delivery_type":"service_point"}}]',
+                ];
+            }
+
+            return $default;
+        });
+
+        $rows = Options::getCodVisibilityRules();
+
+        self::assertCount(1, $rows);
+        self::assertSame('cod', $rows[0]['payment_handle'] ?? null);
+        self::assertSame('exclude', $rows[0]['mode'] ?? null);
+    }
 }

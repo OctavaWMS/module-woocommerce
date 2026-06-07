@@ -624,7 +624,7 @@ class BackendApiClient
     }
 
     /**
-     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     * @return array{items: list<array<string, mixed>>, total_pages: int, request?: array<string, mixed>, response?: array<string, mixed>}
      */
     public function fetchServicePoints(array $params): array
     {
@@ -635,6 +635,10 @@ class BackendApiClient
         $page = isset($params['page']) && is_int($params['page']) && $params['page'] > 0 ? $params['page'] : 1;
         $perPageRaw = isset($params['perPage']) && is_int($params['perPage']) ? $params['perPage'] : 250;
         $perPage = max(1, min(500, $perPageRaw));
+        $lat = isset($params['lat']) && is_numeric($params['lat']) ? (float) $params['lat'] : null;
+        $lng = isset($params['lng']) && is_numeric($params['lng']) ? (float) $params['lng'] : null;
+        $sort = isset($params['sort']) && is_string($params['sort']) ? trim($params['sort']) : '';
+        $browserGeolocationEnabled = ($params['browserGeolocationEnabled'] ?? null) === true;
 
         $parts = [];
         $idx = 0;
@@ -665,10 +669,29 @@ class BackendApiClient
             $term = str_ends_with($search, ':*') ? $search : $search . ':*';
             $parts[] = 'search=' . rawurlencode($term);
         }
+        if ($lat !== null && $lng !== null) {
+            $parts[] = 'lat=' . rawurlencode(number_format($lat, 5, '.', ''));
+            $parts[] = 'lng=' . rawurlencode(number_format($lng, 5, '.', ''));
+            if ($sort !== '') {
+                $parts[] = 'sort=' . rawurlencode($sort);
+            }
+            if ($browserGeolocationEnabled) {
+                $parts[] = 'browserGeolocationEnabled=true';
+            }
+        }
         $query = implode('&', $parts);
         $result = $this->request('GET', '/api/delivery-services/service-points?' . $query, null);
+        $log = [
+            'request' => is_array($result['request'] ?? null) ? $result['request'] : [],
+            'response' => PluginLog::responseFromFetched(
+                (int) ($result['status'] ?? 0),
+                is_array($result['response_headers'] ?? null) ? $result['response_headers'] : [],
+                (string) ($result['raw'] ?? ''),
+                is_array($result['data'] ?? null) ? $result['data'] : null
+            )['response'],
+        ];
         if (! $result['ok'] || ! is_array($result['data'])) {
-            return ['items' => [], 'total_pages' => 1];
+            return ['items' => [], 'total_pages' => 1] + $log;
         }
         $data = $result['data'];
         $embedded = $data['_embedded'] ?? null;
@@ -680,12 +703,13 @@ class BackendApiClient
                 }
             }
         }
+        $items = array_slice($items, 0, $perPage);
         $totalPages = 1;
         if (isset($data['page_count']) && is_numeric($data['page_count'])) {
             $totalPages = max(1, (int) $data['page_count']);
         }
 
-        return ['items' => $items, 'total_pages' => $totalPages];
+        return ['items' => $items, 'total_pages' => $totalPages] + $log;
     }
 
     /**
@@ -929,6 +953,80 @@ class BackendApiClient
         }
 
         return $this->parseLocalitiesCollection($result['data']);
+    }
+
+    /**
+     * GET /api/delivery-services/postcodes filtered by external postcode id.
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchDeliveryServicePostcodesByExtId(string $extId, int $page = 1): array
+    {
+        $extId = trim($extId);
+        if ($extId === '') {
+            return ['items' => [], 'total_pages' => 1];
+        }
+
+        $page = max(1, $page);
+        $parts = [
+            'perPage=25',
+            'page=' . $page,
+            'filter[0][type]=eq',
+            'filter[0][field]=extId',
+            'filter[0][value]=' . rawurlencode($extId),
+        ];
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/delivery-services/postcodes?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+
+        return $this->parseDeliveryServicePostcodesCollection($result['data']);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    private function parseDeliveryServicePostcodesCollection(array $data): array
+    {
+        $embedded = $data['_embedded'] ?? null;
+        $items = [];
+        if (is_array($embedded)) {
+            foreach (['postcodes', 'deliveryServicePostcodes', 'delivery_service_postcodes'] as $key) {
+                if (isset($embedded[$key]) && is_array($embedded[$key])) {
+                    foreach ($embedded[$key] as $row) {
+                        if (is_array($row)) {
+                            $items[] = $row;
+                        }
+                    }
+
+                    break;
+                }
+            }
+            if ($items === []) {
+                foreach ($embedded as $rows) {
+                    if (! is_array($rows)) {
+                        continue;
+                    }
+                    foreach ($rows as $row) {
+                        if (is_array($row)) {
+                            $items[] = $row;
+                        }
+                    }
+                    if ($items !== []) {
+                        break;
+                    }
+                }
+            }
+        }
+        $totalPages = 1;
+        if (isset($data['page_count']) && is_numeric($data['page_count'])) {
+            $totalPages = max(1, (int) $data['page_count']);
+        }
+
+        return ['items' => $items, 'total_pages' => $totalPages];
     }
 
     /**
