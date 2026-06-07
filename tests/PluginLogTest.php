@@ -119,11 +119,13 @@ final class PluginLogTest extends TestCase
         $data = [
             'message' => 'fail',
             'apiKey' => 'secret-key',
+            'raw' => ['carrier' => 'verbose'],
             'nested' => ['access_token' => 'tok', 'ok' => true],
         ];
         $out = PluginLog::redactApiResponseDataForLog($data);
         self::assertIsArray($out);
         self::assertSame('sec…t-key', $out['apiKey'] ?? null);
+        self::assertSame('[omitted from logs]', $out['raw'] ?? null);
         self::assertSame('***tok', is_array($out['nested'] ?? null) ? $out['nested']['access_token'] : null);
         self::assertTrue((bool) (is_array($out['nested'] ?? null) ? $out['nested']['ok'] : false));
     }
@@ -163,13 +165,13 @@ final class PluginLogTest extends TestCase
 
         $wpResponse = [
             'response' => ['code' => 500],
-            'body' => '{"status":"error","message":"fail"}',
+            'body' => '{"status":"error","message":"fail","raw":{"carrier":"verbose"}}',
             'headers' => $flatHeaders,
         ];
 
         $ex = PluginLog::httpExchange(
             'POST',
-            'https://alpha.example/connect',
+            'https://api.example/connect',
             ['Accept' => 'application/json', 'Authorization' => 'Bearer x'],
             '{"siteUrl":"https://shop.test"}',
             $wpResponse
@@ -180,6 +182,24 @@ final class PluginLogTest extends TestCase
         self::assertSame(500, $ex['response']['http_status'] ?? 0);
         self::assertIsArray($ex['response']['json'] ?? null);
         self::assertSame('error', is_array($ex['response']['json'] ?? null) ? ($ex['response']['json']['status'] ?? '') : '');
+        self::assertSame('[decoded JSON omitted from raw log body; see response.json]', $ex['response']['body'] ?? null);
+        self::assertSame('[omitted from logs]', is_array($ex['response']['json'] ?? null) ? ($ex['response']['json']['raw'] ?? '') : '');
         self::assertSame('Bearer ***x', $ex['request']['headers']['Authorization'] ?? '');
+    }
+
+    public function testResponseFromFetchedOmitsDecodedRawBodyAndClearsRawKeys(): void
+    {
+        $out = PluginLog::responseFromFetched(
+            201,
+            ['content-type' => 'application/json'],
+            '{"rates":[{"id":1,"raw":{"carrier":"verbose"}}]}',
+            ['rates' => [['id' => 1, 'raw' => ['carrier' => 'verbose']]]]
+        );
+
+        self::assertSame('[decoded JSON omitted from raw log body; see response.json]', $out['response']['body'] ?? null);
+        self::assertSame(
+            '[omitted from logs]',
+            is_array($out['response']['json']['rates'][0] ?? null) ? ($out['response']['json']['rates'][0]['raw'] ?? '') : ''
+        );
     }
 }

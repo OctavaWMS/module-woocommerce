@@ -21,7 +21,7 @@ class LabelMetaBox
     {
         add_meta_box(
             'octavawms-label',
-            UiBranding::integrationTitle(),
+            UiBranding::appActionLabel(__('Create shipping label', 'octavawms')),
             [$this, 'renderLabelMetaBox'],
             ['shop_order', 'woocommerce_page_wc-orders'],
             'normal',

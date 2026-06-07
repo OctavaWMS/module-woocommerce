@@ -1,0 +1,102 @@
+.octavawms-checkout-delivery {
+    border: 1px solid #d8dee8;
+    border-radius: 6px;
+    margin: 12px 0 18px;
+    padding: 12px;
+    background: #fff;
+}
+
+.octavawms-shipping-loading #shipping_method,
+.octavawms-shipping-loading .woocommerce-shipping-methods,
+.octavawms-shipping-loading .octavawms-checkout-delivery {
+    cursor: wait;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.octavawms-shipping-loading-notice {
+    border: 1px solid #d8dee8;
+    border-radius: 6px;
+    color: #4b5563;
+    display: none;
+    font-size: 13px;
+    margin: 8px 0 12px;
+    padding: 10px 12px;
+}
+
+.octavawms-disabled-by-shipping {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.octavawms-shipping-rate-logo {
+    align-items: center;
+    display: inline-flex;
+    height: 22px;
+    justify-content: center;
+    margin-right: 8px;
+    vertical-align: middle;
+    width: 22px;
+}
+
+.octavawms-shipping-rate-logo img {
+    display: block;
+    max-height: 22px;
+    max-width: 22px;
+}
+
+.octavawms-delivery-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.octavawms-point-search {
+    box-sizing: border-box;
+    margin: 0 0 10px;
+    width: 100%;
+}
+
+.octavawms-point-list {
+    display: grid;
+    gap: 8px;
+    max-height: 280px;
+    overflow: auto;
+}
+
+.octavawms-point {
+    appearance: none;
+    background: #fff;
+    border: 1px solid #d8dee8;
+    border-radius: 6px;
+    color: #1f2937;
+    cursor: pointer;
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    text-align: left;
+    width: 100%;
+}
+
+.octavawms-point:hover,
+.octavawms-point.is-selected {
+    border-color: #2563eb;
+}
+
+.octavawms-point-name {
+    font-weight: 600;
+}
+
+.octavawms-point-address,
+.octavawms-point-empty,
+.octavawms-point-loading,
+.octavawms-delivery-summary {
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.octavawms-point-selected {
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 3px;
+}

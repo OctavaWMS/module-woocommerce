@@ -25,11 +25,14 @@ High-level connect and API behaviour are summarised in the root [README.md](../.
 | Order admin UI | `src/Admin/LabelMetaBox.php`, `src/Admin/LabelAjax.php`, `src/AdminLabelActions.php` |
 | Settings + connect | `src/SettingsPage.php`, `src/ConnectService.php` |
 | Integration settings AJAX (carrier matrix, rates, WC meta key suggestions) | `src/Admin/SettingsAjax.php` (`wp_ajax_octavawms_carrier_matrix`) |
+| Classic checkout delivery | `src/Checkout/*`, `assets/js/checkout-delivery.js`, `assets/css/checkout-delivery.css` |
 | Woo REST key discovery + HMAC | `src/WooRestCredentials.php` |
 | Options + defaults | `src/Options.php` |
 | Auto-import hooks | `src/OrderSyncService.php` |
 | Logging / user-facing errors | `src/PluginLog.php` |
 | Tenant copy (gettext catalogs) | `src/I18n/BrandedStrings.php`, `src/I18n/catalogs/*.php` |
+
+Classic checkout delivery behavior is documented in [WooCommerce checkout delivery](checkout-delivery.md): calculator payload, carrier-logo rate labels, pickup-point search constraints, and the shipping-item meta keys consumed by `integration-woocommerce`.
 
 ### Carrier meta mapping (admin)
 

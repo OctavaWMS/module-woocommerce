@@ -157,12 +157,7 @@ class AdminLabelActions
 
     private function appPrefixedBulkActionLabel(string $actionLabel): string
     {
-        return sprintf(
-            /* translators: 1: application/integration name, 2: bulk action label. */
-            __('%1$s - %2$s', 'octavawms'),
-            UiBranding::integrationTitle(),
-            $actionLabel
-        );
+        return UiBranding::appActionLabel($actionLabel);
     }
 
     /**

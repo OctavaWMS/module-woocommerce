@@ -44,7 +44,9 @@ final class UiBrandingTest extends TestCase
         });
 
         self::assertNull(UiBranding::currentBrandPack());
+        self::assertSame('OctavaWMS', UiBranding::appName());
         self::assertSame('OctavaWMS Connector', UiBranding::integrationTitle());
+        self::assertSame('OctavaWMS: Create shipping label', UiBranding::appActionLabel('Create shipping label'));
         self::assertSame('Shipment', UiBranding::shipmentHeadingWord());
     }
 
@@ -62,7 +64,9 @@ final class UiBrandingTest extends TestCase
         });
 
         self::assertSame(UiBranding::PACK_IZPRATI, UiBranding::currentBrandPack());
-        self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::integrationTitle());
+        self::assertSame('Изпрати.БГ', UiBranding::appName());
+        self::assertSame('Изпрати.БГ', UiBranding::integrationTitle());
+        self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::appActionLabel(__('Create shipping label', 'octavawms')));
         self::assertSame('Пратка', UiBranding::shipmentHeadingWord());
     }
 
@@ -83,6 +87,6 @@ final class UiBrandingTest extends TestCase
         });
 
         self::assertSame(UiBranding::PACK_IZPRATI, UiBranding::currentBrandPack());
-        self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::integrationTitle());
+        self::assertSame('Изпрати.БГ', UiBranding::integrationTitle());
     }
 }

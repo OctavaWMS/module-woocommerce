@@ -11,9 +11,11 @@ declare(strict_types=1);
 
 return [
     // Integration identity
-    'OctavaWMS Connector' => 'Изпрати.БГ: Създай товарителница',
+    'OctavaWMS' => 'Изпрати.БГ',
+    'OctavaWMS Connector' => 'Изпрати.БГ',
     'Shipment' => 'Пратка',
     'Shipping labels and parcel boxes' => 'Товарителница и кутии за пратки',
+    'Create shipping label' => 'Създай товарителница',
 
     // Settings page — connection area
     'Connected to OctavaWMS' => 'Свързано с Изпрати.БГ',
@@ -47,6 +49,10 @@ return [
         'Поръчката е в Изпрати.БГ; очаква се пратка (заявка за доставка).',
     'This order is not in OctavaWMS yet. Upload it to create shipments and labels.' =>
         'Поръчката все още не е в Изпрати.БГ. Качете я за създаване на пратки и товарителници.',
+
+    // Checkout delivery method
+    'Calculated carrier delivery rates from OctavaWMS.' =>
+        'Изчислени тарифи за доставка от Изпрати.БГ.',
 
     // Native WooCommerce bulk actions
     'Create labels' => 'Създай товарителници',

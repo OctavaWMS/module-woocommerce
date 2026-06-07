@@ -82,15 +82,15 @@ final class PluginLog
         $raw = (string) wp_remote_retrieve_body($wpResult);
         $status = (int) wp_remote_retrieve_response_code($wpResult);
 
+        $decoded = json_decode($raw, true);
         $out['response'] = [
             'http_status' => $status,
             'headers' => self::redactResponseHeadersForLog(
                 self::flattenWpResponseHeaders(wp_remote_retrieve_headers($wpResult))
             ),
-            'body' => self::truncate($raw, 6000),
+            'body' => is_array($decoded) ? '[decoded JSON omitted from raw log body; see response.json]' : self::truncate($raw, 6000),
         ];
 
-        $decoded = json_decode($raw, true);
         if (is_array($decoded)) {
             $out['response']['json'] = self::redactApiResponseDataForLog($decoded);
         }
@@ -108,7 +108,7 @@ final class PluginLog
         $block = [
             'http_status' => $httpStatus,
             'headers' => self::redactResponseHeadersForLog(self::truncateHeaderValues($responseHeaders)),
-            'body' => self::truncate($rawBody, 6000),
+            'body' => $decodedJson !== null ? '[decoded JSON omitted from raw log body; see response.json]' : self::truncate($rawBody, 6000),
         ];
 
         if ($decodedJson !== null) {
@@ -237,6 +237,10 @@ final class PluginLog
         $out = [];
         foreach ($data as $k => $v) {
             $key = (string) $k;
+            if (strtolower($key) === 'raw') {
+                $out[$key] = '[omitted from logs]';
+                continue;
+            }
             if (self::isSensitiveKey($key)) {
                 if (is_string($v)) {
                     $out[$key] = self::tokenMaskedPreview($v);

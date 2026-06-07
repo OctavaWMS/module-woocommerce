@@ -13,7 +13,7 @@ final class BrandedStringsTest extends TestCase
     public function testIzpratiCatalogOverridesIntegrationTitle(): void
     {
         $out = BrandedStrings::overrideForBrand(UiBranding::PACK_IZPRATI, 'OctavaWMS Connector');
-        self::assertSame('Изпрати.БГ: Създай товарителница', $out);
+        self::assertSame('Изпрати.БГ', $out);
     }
 
     public function testUnknownPackReturnsNull(): void

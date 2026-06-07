@@ -1330,6 +1330,35 @@ final class BackendApiClientTest extends TestCase
         self::assertCount(1, $r['items']);
     }
 
+    public function testFetchLocalitiesByPostcodeUsesPostcodeFilter(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['localities' => [['id' => 900, 'name' => 'Варна', 'postcode' => '9002']]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->fetchLocalitiesByPostcode('9002');
+        self::assertStringContainsString('/api/locations/localities?', $captured);
+        self::assertStringContainsString('filter[1][field]=postcode', $captured);
+        self::assertStringContainsString('filter[1][value]=9002', $captured);
+        self::assertCount(1, $r['items']);
+        self::assertSame(900, $r['items'][0]['id']);
+    }
+
     public function testGetPanelLoginRefreshTokenFallbackToStoredWhenBearerUnavailable(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {

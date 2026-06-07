@@ -79,10 +79,10 @@ final class AdminLabelActionsTest extends TestCase
     {
         $bulkActions = $this->actions($this->createMock(LabelService::class))->addBulkLabelActions([]);
 
-        self::assertSame('OctavaWMS Connector - Create labels', $bulkActions['octavawms_bulk_create_labels'] ?? null);
-        self::assertSame('OctavaWMS Connector - Print labels', $bulkActions['octavawms_bulk_print_labels'] ?? null);
+        self::assertSame('OctavaWMS: Create labels', $bulkActions['octavawms_bulk_create_labels'] ?? null);
+        self::assertSame('OctavaWMS: Print labels', $bulkActions['octavawms_bulk_print_labels'] ?? null);
         self::assertSame(
-            'OctavaWMS Connector - Create and print labels',
+            'OctavaWMS: Create and print labels',
             $bulkActions['octavawms_bulk_create_print_labels'] ?? null
         );
     }

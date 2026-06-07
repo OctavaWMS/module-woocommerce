@@ -12,9 +12,24 @@ final class UiBranding
 {
     public const PACK_IZPRATI = 'izprati';
 
+    public static function appName(): string
+    {
+        return __('OctavaWMS', 'octavawms');
+    }
+
     public static function integrationTitle(): string
     {
         return __('OctavaWMS Connector', 'octavawms');
+    }
+
+    public static function appActionLabel(string $actionLabel): string
+    {
+        return sprintf(
+            /* translators: 1: application name, 2: action label. */
+            __('%1$s: %2$s', 'octavawms'),
+            self::appName(),
+            $actionLabel
+        );
     }
 
     public static function shipmentHeadingWord(): string

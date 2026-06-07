@@ -739,6 +739,131 @@ class BackendApiClient
     }
 
     /**
+     * GET /api/delivery-services/senders — active senders for the authenticated account.
+     *
+     * @return array{
+     *   items: list<array<string, mixed>>,
+     *   has_more: bool,
+     *   ok: bool,
+     *   message: string,
+     *   diagnostics: array<string, mixed>
+     * }
+     */
+    public function fetchActiveSendersPreview(int $limit = 2): array
+    {
+        $limit = max(1, min(10, $limit));
+        $parts = [
+            'page=1',
+            'perPage=' . $limit,
+            'filter[0][type]=eq',
+            'filter[0][field]=state',
+            'filter[0][value]=active',
+        ];
+        $query = implode('&', $parts);
+        $path = '/api/delivery-services/senders?' . $query;
+        $result = $this->request('GET', $path, null);
+        $diagnostics = $this->sendersPreviewDiagnostics($path, $result);
+
+        if (! ($result['ok'] ?? false) || ! is_array($result['data'] ?? null)) {
+            return [
+                'items' => [],
+                'has_more' => false,
+                'ok' => false,
+                'message' => PluginLog::userMessageFromApiJson(
+                    is_array($result['data'] ?? null) ? $result['data'] : null,
+                    (string) ($result['raw'] ?? 'Senders request failed.')
+                ),
+                'diagnostics' => $diagnostics + ['parse_note' => 'senders_api_error'],
+            ];
+        }
+
+        $parsed = $this->parseSendersCollection($result['data'], $limit);
+        if ($parsed['items'] === []) {
+            $diagnostics['embedded_keys'] = $parsed['embedded_keys'];
+            $diagnostics['parse_note'] = 'no_active_senders_in_response';
+            $diagnostics['total_items'] = $parsed['total_items'];
+            $diagnostics['page_count'] = $parsed['page_count'];
+        }
+
+        return [
+            'items' => $parsed['items'],
+            'has_more' => $parsed['has_more'],
+            'ok' => true,
+            'message' => '',
+            'diagnostics' => $diagnostics,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     *
+     * @return array<string, mixed>
+     */
+    private function sendersPreviewDiagnostics(string $path, array $result): array
+    {
+        return [
+            'api_base_url' => $this->getBaseUrl(),
+            'bearer_token_configured' => Options::getApiKey() !== '',
+            'request' => is_array($result['request'] ?? null) ? $result['request'] : PluginLog::requestFromOutbound(
+                'GET',
+                rtrim($this->getBaseUrl(), '/') . $path,
+                ['Accept' => 'application/json'],
+                null
+            ),
+        ] + PluginLog::responseFromFetched(
+            (int) ($result['status'] ?? 0),
+            is_array($result['response_headers'] ?? null) ? $result['response_headers'] : [],
+            (string) ($result['raw'] ?? ''),
+            is_array($result['data'] ?? null) ? $result['data'] : null
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{
+     *   items: list<array<string, mixed>>,
+     *   has_more: bool,
+     *   embedded_keys: list<string>,
+     *   total_items: int|null,
+     *   page_count: int|null
+     * }
+     */
+    private function parseSendersCollection(array $data, int $limit): array
+    {
+        $embedded = $data['_embedded'] ?? null;
+        $items = [];
+        $embeddedKeys = is_array($embedded) ? array_values(array_map('strval', array_keys($embedded))) : [];
+        if (is_array($embedded)) {
+            foreach (['senders', 'sender'] as $key) {
+                if (! isset($embedded[$key]) || ! is_array($embedded[$key])) {
+                    continue;
+                }
+                foreach ($embedded[$key] as $row) {
+                    if (is_array($row)) {
+                        $items[] = $row;
+                    }
+                }
+                break;
+            }
+        }
+
+        $pageCount = isset($data['page_count']) && is_numeric($data['page_count']) ? (int) $data['page_count'] : null;
+        $totalItems = isset($data['total_items']) && is_numeric($data['total_items']) ? (int) $data['total_items'] : null;
+        $hasMore = count($items) >= $limit
+            || ($pageCount !== null && $pageCount > 1)
+            || ($totalItems !== null && $totalItems > count($items));
+
+        return [
+            'items' => $items,
+            'has_more' => $hasMore,
+            'embedded_keys' => $embeddedKeys,
+            'total_items' => $totalItems,
+            'page_count' => $pageCount,
+        ];
+    }
+
+    /**
      * GET /api/locations/localities (admin search, aligned with Shopify app.edit-shipment).
      *
      * @return array{items: list<array<string, mixed>>, total_pages: int}
@@ -770,7 +895,49 @@ class BackendApiClient
         if (! $result['ok'] || ! is_array($result['data'])) {
             return ['items' => [], 'total_pages' => 1];
         }
-        $data = $result['data'];
+
+        return $this->parseLocalitiesCollection($result['data']);
+    }
+
+    /**
+     * GET /api/locations/localities filtered by active postcode.
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchLocalitiesByPostcode(string $postcode, int $page = 1): array
+    {
+        $postcode = trim($postcode);
+        if ($postcode === '') {
+            return ['items' => [], 'total_pages' => 1];
+        }
+
+        $page = max(1, $page);
+        $parts = [
+            'per_page=25',
+            'page=' . $page,
+            'filter[0][type]=eq',
+            'filter[0][field]=state',
+            'filter[0][value]=active',
+            'filter[1][type]=eq',
+            'filter[1][field]=postcode',
+            'filter[1][value]=' . rawurlencode($postcode),
+        ];
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/locations/localities?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+
+        return $this->parseLocalitiesCollection($result['data']);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    private function parseLocalitiesCollection(array $data): array
+    {
         $embedded = $data['_embedded'] ?? null;
         $items = [];
         if (is_array($embedded) && isset($embedded['localities']) && is_array($embedded['localities'])) {

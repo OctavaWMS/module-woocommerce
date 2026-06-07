@@ -205,6 +205,26 @@ class SettingsAjax
     }
 
     /**
+     * @param array<string, mixed> $settings
+     *
+     * @return array<string, mixed>
+     */
+    public static function mergeSenderIntoSettings(array $settings, int $senderId): array
+    {
+        if (! isset($settings['DeliveryServices']) || ! is_array($settings['DeliveryServices'])) {
+            $settings['DeliveryServices'] = [];
+        }
+        $settings['DeliveryServices'] = self::normalizeDeliveryServicesSettings($settings['DeliveryServices']);
+        if (! isset($settings['DeliveryServices']['options']) || ! is_array($settings['DeliveryServices']['options'])) {
+            $settings['DeliveryServices']['options'] = [];
+        }
+
+        $settings['DeliveryServices']['options']['sender'] = $senderId;
+
+        return $settings;
+    }
+
+    /**
      * @param array<string, mixed> $deliveryServices
      *
      * @return array<string, mixed>

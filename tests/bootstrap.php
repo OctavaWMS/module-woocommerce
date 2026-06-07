@@ -93,6 +93,54 @@ if (! class_exists('WC_Integration', false)) {
     }
 }
 
+if (! class_exists('WC_Shipping_Method', false)) {
+    /**
+     * Minimal WooCommerce shipping method shim for unit tests.
+     */
+    class WC_Shipping_Method
+    {
+        public string $id = '';
+
+        public int $instance_id = 0;
+
+        public string $method_title = '';
+
+        public string $method_description = '';
+
+        /** @var list<string> */
+        public array $supports = [];
+
+        public string $enabled = 'yes';
+
+        public string $title = '';
+
+        /** @var list<array<string, mixed>> */
+        public array $rates = [];
+
+        public function add_rate(array $args): void
+        {
+            $this->rates[] = $args;
+        }
+    }
+}
+
+if (! class_exists('WC_Order_Item_Shipping', false)) {
+    /**
+     * Minimal WooCommerce shipping item shim for unit tests.
+     */
+    final class WC_Order_Item_Shipping
+    {
+        /** @var array<string, mixed> */
+        public array $meta = [];
+
+        public function add_meta_data(string $key, mixed $value, bool $unique = false): void
+        {
+            unset($unique);
+            $this->meta[$key] = $value;
+        }
+    }
+}
+
 if (! class_exists('WC_Order', false)) {
     /**
      * Minimal stub for unit tests (WooCommerce is not loaded in PHPUnit).
@@ -190,6 +238,37 @@ if (! class_exists('WC_Order', false)) {
 
             return true;
         }
+    }
+}
+
+if (! function_exists('WC')) {
+    function WC()
+    {
+        if (! isset($GLOBALS['octavawms_test_wc'])) {
+            $GLOBALS['octavawms_test_wc'] = new class () {
+                public object $session;
+
+                public function __construct()
+                {
+                    $this->session = new class () {
+                        /** @var array<string, mixed> */
+                        private array $data = [];
+
+                        public function get(string $key, mixed $default = null): mixed
+                        {
+                            return $this->data[$key] ?? $default;
+                        }
+
+                        public function set(string $key, mixed $value): void
+                        {
+                            $this->data[$key] = $value;
+                        }
+                    };
+                }
+            };
+        }
+
+        return $GLOBALS['octavawms_test_wc'];
     }
 }
 

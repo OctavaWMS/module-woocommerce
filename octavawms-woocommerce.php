@@ -91,6 +91,10 @@ $octavawms_bootstrap_woocommerce = static function (): void {
     $labelAjax = new \OctavaWMS\WooCommerce\Admin\LabelAjax($apiClient, $labelService, $labelMetaBox);
     $adminActions = new \OctavaWMS\WooCommerce\AdminLabelActions($labelService, $labelMetaBox, $labelAjax, $apiClient);
     $adminActions->register();
+
+    if (class_exists(\WC_Shipping_Method::class, false)) {
+        (new \OctavaWMS\WooCommerce\Checkout\CheckoutDeliveryService($apiClient))->register();
+    }
 };
 
 // Run after WooCommerce is ready. `woocommerce_loaded` can fire before this plugin's file loads

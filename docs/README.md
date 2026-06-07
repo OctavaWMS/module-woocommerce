@@ -6,11 +6,13 @@ WordPress + WooCommerce plugin package: **`octavawms/module-woocommerce`**.
 
 - `guides/`
   - [Module overview](guides/module-overview.md) — what this repo is, layout vs `integration-woocommerce`, quality gates, distribution zip
+  - [WooCommerce checkout delivery](guides/checkout-delivery.md) — classic checkout shipping method, calculator payload, pickup-point search, order meta import contract
   - `clickup-workflow.md` — **repository / Cursor only** (ClickUp list, tag, `CU-` commits). **Not** included in the merchant zip built by [`scripts/build-plugin-zip.sh`](../scripts/build-plugin-zip.sh); use **[AGENTS.md](../AGENTS.md)** and **[`.cursor/rules/`](../.cursor/rules/)** for the same workflow.
 
 ## Quick links
 
 - **[Module overview](guides/module-overview.md)** — architecture and file map
+- **[WooCommerce checkout delivery](guides/checkout-delivery.md)** — OctavaWMS rates, carrier logos, pickup-point search, persisted meta
 - **Root [README.md](../README.md)** — installation, connect, carrier meta mapping, API table, order panel, filters, i18n / branding
   - [Carrier meta mapping](../README.md#carrier-meta-mapping-woocommerce--octavawms) — map `courierName` / `courierID` / `delivery_type` order meta to OctavaWMS delivery service + pickup type
 
