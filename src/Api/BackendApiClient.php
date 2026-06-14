@@ -956,6 +956,39 @@ class BackendApiClient
     }
 
     /**
+     * GET /api/locations/localities filtered by active city name.
+     *
+     * @return array{items: list<array<string, mixed>>, total_pages: int}
+     */
+    public function fetchLocalitiesByCityName(string $city, int $page = 1, int $perPage = 2): array
+    {
+        $city = trim($city);
+        if ($city === '') {
+            return ['items' => [], 'total_pages' => 1];
+        }
+
+        $page = max(1, $page);
+        $perPage = max(1, min(25, $perPage));
+        $parts = [
+            'per_page=' . $perPage,
+            'page=' . $page,
+            'filter[0][type]=dfindby',
+            'filter[0][field]=name',
+            'filter[0][value]=' . rawurlencode($city),
+            'filter[1][type]=eq',
+            'filter[1][field]=state',
+            'filter[1][value]=active',
+        ];
+        $query = implode('&', $parts);
+        $result = $this->request('GET', '/api/locations/localities?' . $query, null);
+        if (! $result['ok'] || ! is_array($result['data'])) {
+            return ['items' => [], 'total_pages' => 1];
+        }
+
+        return $this->parseLocalitiesCollection($result['data']);
+    }
+
+    /**
      * GET /api/delivery-services/postcodes filtered by external postcode id.
      *
      * @return array{items: list<array<string, mixed>>, total_pages: int}

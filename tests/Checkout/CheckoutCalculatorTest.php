@@ -230,6 +230,13 @@ final class CheckoutCalculatorTest extends TestCase
                 return ['items' => [], 'total_pages' => 1];
             }
 
+            public function fetchLocalitiesByCityName(string $city, int $page = 1, int $perPage = 2): array
+            {
+                unset($city, $page, $perPage);
+
+                return ['items' => [], 'total_pages' => 1];
+            }
+
             public function patchIntegrationSource(int $sourceId, array $body): array
             {
                 Assert::assertSame(123, $sourceId);
@@ -314,6 +321,13 @@ final class CheckoutCalculatorTest extends TestCase
                 return ['items' => [], 'total_pages' => 1];
             }
 
+            public function fetchLocalitiesByCityName(string $city, int $page = 1, int $perPage = 2): array
+            {
+                unset($city, $page, $perPage);
+
+                return ['items' => [], 'total_pages' => 1];
+            }
+
             public function request(string $method, string $path, ?array $jsonBody = null, bool $retried = false): array
             {
                 unset($retried);
@@ -343,6 +357,116 @@ final class CheckoutCalculatorTest extends TestCase
         self::assertStringContainsString('"clearCache":true', $logged[0]['message']);
         self::assertStringContainsString('"sender":77', $logged[0]['message']);
         self::assertStringContainsString('"response":{"http_status":200', $logged[0]['message']);
+    }
+
+    public function testCityOnlyDestinationResolvesLocalityWhenCityLookupHasOneResult(): void
+    {
+        $api = $this->calculatorApiForLocalityResolution([], [[
+            'id' => 901,
+            'name' => 'Varna',
+            'country' => ['code' => 'BG'],
+        ]]);
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['city' => 'Varna', 'country' => 'BG'],
+        ]));
+
+        self::assertSame(0, $api->postcodeLookups);
+        self::assertSame(1, $api->cityLookups);
+        self::assertSame(901, \OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
+    }
+
+    public function testPostcodeLookupMissFallsBackToSingleCityResult(): void
+    {
+        $api = $this->calculatorApiForLocalityResolution([], [[
+            'id' => 902,
+            'name' => 'Varna',
+            '_embedded' => ['country' => ['code' => 'BG']],
+        ]]);
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['city' => 'Varna', 'country' => 'BG', 'postcode' => '9999'],
+        ]));
+
+        self::assertSame(1, $api->postcodeLookups);
+        self::assertSame(1, $api->cityLookups);
+        self::assertSame(902, \OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
+    }
+
+    public function testCityFallbackDoesNotUseMultipleMatches(): void
+    {
+        $api = $this->calculatorApiForLocalityResolution([], [
+            ['id' => 901, 'name' => 'Varna'],
+            ['id' => 902, 'name' => 'Varna'],
+        ]);
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['city' => 'Varna', 'country' => 'BG'],
+        ]));
+
+        self::assertSame(1, $api->cityLookups);
+        self::assertNull(\OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
+    }
+
+    public function testCityFallbackDoesNotUseEmptyMatches(): void
+    {
+        $api = $this->calculatorApiForLocalityResolution([], []);
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['city' => 'Varna', 'country' => 'BG'],
+        ]));
+
+        self::assertSame(1, $api->cityLookups);
+        self::assertNull(\OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
+    }
+
+    public function testCityFallbackRejectsCountryMismatch(): void
+    {
+        $api = $this->calculatorApiForLocalityResolution([], [[
+            'id' => 901,
+            'name' => 'Varna',
+            'country' => ['code' => 'RO'],
+        ]]);
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['city' => 'Varna', 'country' => 'BG'],
+        ]));
+
+        self::assertSame(1, $api->cityLookups);
+        self::assertNull(\OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
+    }
+
+    public function testPostcodeResolutionWinsOverCityFallback(): void
+    {
+        $api = $this->calculatorApiForLocalityResolution([[
+            'id' => 44,
+            'extId' => '9000',
+            '_embedded' => [
+                'locality' => [
+                    'id' => 900,
+                    'name' => 'Varna',
+                    'country' => ['code' => 'BG'],
+                ],
+            ],
+        ]], [[
+            'id' => 901,
+            'name' => 'Varna',
+            'country' => ['code' => 'BG'],
+        ]]);
+
+        $calculator = new CheckoutCalculator($api);
+        self::assertSame([], $calculator->calculatePackage([
+            'destination' => ['city' => 'Varna', 'country' => 'BG', 'postcode' => '9000'],
+        ]));
+
+        self::assertSame(1, $api->postcodeLookups);
+        self::assertSame(0, $api->cityLookups);
+        self::assertSame(900, \OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['localityId'] ?? null);
     }
 
     public function testUsesSmallFallbackWeightWhenProductsHaveNoWeight(): void
@@ -457,5 +581,86 @@ final class CheckoutCalculatorTest extends TestCase
         self::assertTrue($api->lastBody['debug'] ?? null);
         self::assertTrue($api->lastBody['clearCache'] ?? null);
         self::assertTrue(\OctavaWMS\WooCommerce\Checkout\CheckoutSession::context()['debug'] ?? false);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $postcodes
+     * @param list<array<string, mixed>> $localities
+     */
+    private function calculatorApiForLocalityResolution(array $postcodes, array $localities)
+    {
+        return new class ($postcodes, $localities) extends BackendApiClient {
+            /** @var list<array<string, mixed>> */
+            private array $postcodes;
+
+            /** @var list<array<string, mixed>> */
+            private array $localities;
+
+            public int $postcodeLookups = 0;
+
+            public int $cityLookups = 0;
+
+            /** @var array<string, mixed>|null */
+            public ?array $lastBody = null;
+
+            /**
+             * @param list<array<string, mixed>> $postcodes
+             * @param list<array<string, mixed>> $localities
+             */
+            public function __construct(array $postcodes, array $localities)
+            {
+                $this->postcodes = $postcodes;
+                $this->localities = $localities;
+            }
+
+            public function getIntegrationSource(int $sourceId): ?array
+            {
+                Assert::assertSame(123, $sourceId);
+
+                return [
+                    'settings' => [
+                        'DeliveryServices' => [
+                            'options' => ['sender' => 77],
+                        ],
+                    ],
+                ];
+            }
+
+            public function fetchDeliveryServicePostcodesByExtId(string $postcode, int $page = 1): array
+            {
+                Assert::assertSame(1, $page);
+                Assert::assertNotSame('', $postcode);
+                $this->postcodeLookups++;
+
+                return ['items' => $this->postcodes, 'total_pages' => 1];
+            }
+
+            public function fetchLocalitiesByCityName(string $city, int $page = 1, int $perPage = 2): array
+            {
+                Assert::assertSame('Varna', $city);
+                Assert::assertSame(1, $page);
+                Assert::assertSame(2, $perPage);
+                $this->cityLookups++;
+
+                return ['items' => $this->localities, 'total_pages' => 1];
+            }
+
+            public function request(string $method, string $path, ?array $jsonBody = null, bool $retried = false): array
+            {
+                unset($retried);
+                Assert::assertSame('POST', $method);
+                Assert::assertSame('/api/delivery-services/calculator', $path);
+                $this->lastBody = $jsonBody;
+
+                return [
+                    'ok' => true,
+                    'status' => 200,
+                    'data' => ['rates' => []],
+                    'raw' => '{"rates":[]}',
+                    'response_headers' => [],
+                    'request' => ['method' => 'POST', 'url' => '', 'headers' => [], 'body' => []],
+                ];
+            }
+        };
     }
 }

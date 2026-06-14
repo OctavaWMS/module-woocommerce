@@ -1374,6 +1374,39 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(900, $r['items'][0]['id']);
     }
 
+    public function testFetchLocalitiesByCityNameUsesDfindbyNameFilter(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = '';
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured = $url;
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['localities' => [['id' => 900, 'name' => 'Варна']]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $r = $client->fetchLocalitiesByCityName('Варна');
+        self::assertStringContainsString('/api/locations/localities?', $captured);
+        self::assertStringContainsString('per_page=2', $captured);
+        self::assertStringContainsString('filter[0][type]=dfindby', $captured);
+        self::assertStringContainsString('filter[0][field]=name', $captured);
+        self::assertStringContainsString('filter[0][value]=%D0%92%D0%B0%D1%80%D0%BD%D0%B0', $captured);
+        self::assertStringContainsString('filter[1][field]=state', $captured);
+        self::assertStringContainsString('filter[1][value]=active', $captured);
+        self::assertCount(1, $r['items']);
+        self::assertSame(900, $r['items'][0]['id']);
+    }
+
     public function testFetchDeliveryServicePostcodesByExtIdUsesPostcodeEndpoint(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
