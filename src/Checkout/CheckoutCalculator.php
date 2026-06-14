@@ -292,12 +292,31 @@ final class CheckoutCalculator
 
     private function resolveLocalityIdByPostcode(string $postcode, string $country, string $city): ?int
     {
-        if ($postcode === '') {
-            return null;
+        if ($postcode !== '') {
+            $result = $this->apiClient->fetchDeliveryServicePostcodesByExtId($postcode, 1);
+            $bestId = $this->resolveLocalityIdFromDeliveryServicePostcodes(
+                $result['items'],
+                $postcode,
+                $country,
+                $city
+            );
+            if ($bestId !== null) {
+                return $bestId;
+            }
         }
 
-        $result = $this->apiClient->fetchDeliveryServicePostcodesByExtId($postcode, 1);
-        $postcodes = $result['items'];
+        return $this->resolveLocalityIdByCity($city, $country);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $postcodes
+     */
+    private function resolveLocalityIdFromDeliveryServicePostcodes(
+        array $postcodes,
+        string $postcode,
+        string $country,
+        string $city
+    ): ?int {
         if ($postcodes === []) {
             return null;
         }
@@ -340,6 +359,32 @@ final class CheckoutCalculator
         }
 
         return $bestId;
+    }
+
+    private function resolveLocalityIdByCity(string $city, string $country): ?int
+    {
+        if ($city === '') {
+            return null;
+        }
+
+        $result = $this->apiClient->fetchLocalitiesByCityName($city, 1, 2);
+        $localities = $result['items'];
+        if (count($localities) !== 1) {
+            return null;
+        }
+
+        $locality = $localities[0];
+        $id = $this->intValue($locality['id'] ?? null);
+        if ($id <= 0) {
+            return null;
+        }
+
+        $rowCountry = $this->localityCountryCode($locality);
+        if ($country !== '' && $rowCountry !== '' && strcasecmp($rowCountry, $country) !== 0) {
+            return null;
+        }
+
+        return $id;
     }
 
     /**
