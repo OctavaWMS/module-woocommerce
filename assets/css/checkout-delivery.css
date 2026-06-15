@@ -57,12 +57,7 @@
     flex: 0 0 auto;
     gap: 2px;
     line-height: 1;
-    text-decoration: none;
     white-space: nowrap;
-}
-
-.octavawms-izprati-attribution:hover {
-    color: #111827;
 }
 
 .octavawms-powered-by-prefix {

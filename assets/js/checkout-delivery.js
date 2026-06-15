@@ -197,15 +197,14 @@
     function createIzpratiAttributionHtml() {
         var prefix = String(strings.poweredByPrefix || 'Работи с ');
         var mark = String(strings.poweredByMarkWord || 'ИЗПРАТИ.БГ');
-        var url = String(strings.attributionUrl || 'https://izprati.bg');
-        return '<a class="octavawms-izprati-attribution" href="' + escapeAttribute(url) + '" target="_blank" rel="noopener noreferrer">' +
+        return '<span class="octavawms-izprati-attribution">' +
             '<span class="octavawms-powered-by-prefix">' + escapeHtml(prefix) + '</span>' +
             '<span class="octavawms-izprati-word">' + escapeHtml(mark) + '</span>' +
             '<svg class="octavawms-izprati-plane" viewBox="0 0 68 16" width="68" height="16" aria-hidden="true" focusable="false">' +
             '<svg x="0" y="1" width="68" height="14" viewBox="0 0 364.61 75.81" preserveAspectRatio="xMidYMid meet">' +
             '<path d="' + IZPRATI_PLANE_PATH_LARGE + '" fill="#d42d27"></path>' +
             '<path d="' + IZPRATI_PLANE_PATH_SMALL + '" fill="#ab2924"></path>' +
-            '</svg></svg></a>';
+            '</svg></svg></span>';
     }
 
     function renderPoints($panel, rateId, response, search) {

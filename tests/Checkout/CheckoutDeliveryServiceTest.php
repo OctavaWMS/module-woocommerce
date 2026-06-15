@@ -60,6 +60,7 @@ final class CheckoutDeliveryServiceTest extends TestCase
         self::assertTrue($localized['showIzpratiAttribution'] ?? false);
         self::assertSame('Работи с ', $localized['strings']['poweredByPrefix'] ?? null);
         self::assertSame('ИЗПРАТИ.БГ', $localized['strings']['poweredByMarkWord'] ?? null);
+        self::assertArrayNotHasKey('attributionUrl', $localized['strings']);
     }
 
     public function testValidationRequiresPickupPointForOfficeRate(): void

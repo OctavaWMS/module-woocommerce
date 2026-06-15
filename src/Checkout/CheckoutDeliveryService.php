@@ -101,7 +101,6 @@ final class CheckoutDeliveryService
                 'shippingTitle' => __('Shipping', 'octavawms'),
                 'poweredByPrefix' => __('Работи с ', 'octavawms'),
                 'poweredByMarkWord' => __('ИЗПРАТИ.БГ', 'octavawms'),
-                'attributionUrl' => __('https://izprati.bg', 'octavawms'),
                 'choosePickup' => __('Choose pickup point', 'octavawms'),
                 'searchPickup' => __('Search pickup point', 'octavawms'),
                 'loadingShipping' => __('Loading shipping options...', 'octavawms'),
