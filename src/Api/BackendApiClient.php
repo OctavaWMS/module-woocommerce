@@ -10,6 +10,10 @@ use WP_Error;
 
 class BackendApiClient
 {
+    private const DUPLICATE_IMPORT_ERROR_CODE = 'duplicate_import_active';
+
+    private const DUPLICATE_IMPORT_MESSAGE = 'Import is already queued or running.';
+
     public const LABEL_PATH = '/apps/woocommerce/api/label';
 
     public const OAUTH_PATH = '/oauth';
@@ -1319,7 +1323,7 @@ class BackendApiClient
     }
 
     /**
-     * @return array{ok: true, data?: mixed}|array{ok: false, message: string, status?: int, raw_excerpt?: string, data?: mixed}
+     * @return array{ok: true, data?: mixed, duplicate?: bool, message?: string, status?: int}|array{ok: false, message: string, status?: int, raw_excerpt?: string, data?: mixed}
      */
     public function importOrder(string $extId, int $sourceId): array
     {
@@ -1352,6 +1356,16 @@ class BackendApiClient
             $msg = sprintf('HTTP %d', $result['status']);
         }
 
+        if ($this->isDuplicateImportResponse($result, $msg)) {
+            return [
+                'ok' => true,
+                'duplicate' => true,
+                'message' => self::DUPLICATE_IMPORT_MESSAGE,
+                'status' => $result['status'],
+                'data' => is_array($result['data']) ? $result['data'] : null,
+            ];
+        }
+
         $rawExcerpt = PluginLog::truncate((string) $result['raw'], 4000);
         $diag = $this->importOutboundRequestDiagnostics($payload);
 
@@ -1378,6 +1392,39 @@ class BackendApiClient
             'raw_excerpt' => $rawExcerpt,
             'data' => $result['data'],
         ];
+    }
+
+    /**
+     * @param array{ok: bool, status: int, data: mixed, raw: string, response_headers: array<string, string>, request: array<string, mixed>} $result
+     */
+    private function isDuplicateImportResponse(array $result, string $message): bool
+    {
+        $status = (int) ($result['status'] ?? 0);
+        if (! in_array($status, [400, 409], true)) {
+            return false;
+        }
+
+        $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+        $errors = $data['errors'] ?? [];
+        if (is_array($errors)) {
+            foreach ($errors as $error) {
+                if (is_array($error)
+                    && ($error['code'] ?? null) === self::DUPLICATE_IMPORT_ERROR_CODE
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        $text = strtolower($message);
+        foreach (['detail', 'errorMessage', 'error', 'message'] as $key) {
+            if (isset($data[$key]) && is_scalar($data[$key])) {
+                $text .= ' ' . strtolower((string) $data[$key]);
+            }
+        }
+
+        return str_contains($text, self::DUPLICATE_IMPORT_ERROR_CODE)
+            || str_contains($text, 'imports in progress');
     }
 
     /**

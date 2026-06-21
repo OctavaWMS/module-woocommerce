@@ -670,6 +670,55 @@ final class BackendApiClientTest extends TestCase
         self::assertSame('Invalid or missing Bearer token', $result['message'] ?? null);
     }
 
+    public function testImportOrderTreatsDuplicateImportProblemAsAccepted(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'secret'];
+            }
+
+            return $default;
+        });
+
+        $spy = new class () {
+            /** @var list<array{0: string, 1: string, 2: array<string, mixed>}> */
+            public array $entries = [];
+
+            public function log(string $level, string $message, array $context = []): void
+            {
+                $this->entries[] = [$level, $message, $context];
+            }
+        };
+        Functions\when('wc_get_logger')->justReturn($spy);
+
+        Functions\when('wp_remote_request')->alias(static function () {
+            return [
+                'response' => ['code' => 400],
+                'body' => json_encode([
+                    'type' => 'https://api-tools.getlaminas.org/documentation/api-problem',
+                    'title' => 'Bad Request',
+                    'status' => 400,
+                    'detail' => 'There is an another 1 imports in progress',
+                    'errors' => [
+                        [
+                            'code' => 'duplicate_import_active',
+                            'message' => 'There is an another 1 imports in progress',
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $result = $client->importOrder('ext-dup', 5);
+
+        self::assertTrue($result['ok']);
+        self::assertTrue($result['duplicate'] ?? false);
+        self::assertSame(400, $result['status'] ?? null);
+        self::assertSame('Import is already queued or running.', $result['message'] ?? null);
+        self::assertSame([], $spy->entries);
+    }
+
     public function testImportBulkLabelsBuildsDeliveryServicesPayload(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {

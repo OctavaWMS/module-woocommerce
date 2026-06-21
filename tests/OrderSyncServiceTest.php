@@ -222,6 +222,36 @@ final class OrderSyncServiceTest extends TestCase
         self::assertSame(1, $order->saveCallCount);
     }
 
+    public function testQueuedImportLogsDuplicateAsNotice(): void
+    {
+        $spy = new class () {
+            /** @var list<array{0: string, 1: string, 2: array<string, mixed>}> */
+            public array $entries = [];
+
+            public function log(string $level, string $message, array $context = []): void
+            {
+                $this->entries[] = [$level, $message, $context];
+            }
+        };
+        Functions\when('wc_get_logger')->justReturn($spy);
+
+        $api = $this->createMock(BackendApiClient::class);
+        $api->method('importOrder')->willReturn([
+            'ok' => true,
+            'duplicate' => true,
+            'message' => 'Import is already queued or running.',
+        ]);
+        $api->expects(self::never())->method('extractFirstOrderFromCollectionJson');
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(201, $api);
+        $service->runQueuedImport(201);
+
+        self::assertCount(1, $spy->entries);
+        self::assertSame('notice', $spy->entries[0][0]);
+        self::assertStringContainsString('order_auto_sync', $spy->entries[0][1]);
+        self::assertStringContainsString('already queued', $spy->entries[0][1]);
+    }
+
     public function testOnOrderUpdateUsesTransientToDebounce(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {

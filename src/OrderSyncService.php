@@ -221,6 +221,16 @@ final class OrderSyncService
         $extId = WooOrderExtId::importFilterExtId($order);
         $result = $this->apiClient->importOrder($extId, Options::getSourceId());
 
+        if (! empty($result['duplicate'])) {
+            PluginLog::log('notice', 'order_auto_sync', [
+                'order_id' => $orderId,
+                'ext_id' => $extId,
+                'message' => (string) ($result['message'] ?? 'import already queued or running'),
+            ]);
+
+            return;
+        }
+
         if (! $result['ok']) {
             PluginLog::log('error', 'order_auto_sync', [
                 'order_id' => $orderId,

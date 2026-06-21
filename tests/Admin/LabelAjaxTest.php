@@ -215,6 +215,57 @@ final class LabelAjaxTest extends TestCase
         $ajax->handleAjaxOrderStatus();
     }
 
+    public function testHandleAjaxUploadOrderTreatsDuplicateImportAsSuccess(): void
+    {
+        $_POST = ['order_id' => '42', 'nonce' => 'nonce-value'];
+        $_REQUEST = $_POST;
+        $order = new \WC_Order(42, 'wc_order_testkey99');
+        $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (): \WC_Order => $order;
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('absint')->alias(static fn ($v): int => abs((int) $v));
+        Functions\when('wp_unslash')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(true);
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['source_id' => '7'];
+            }
+
+            return $default;
+        });
+
+        Functions\expect('wp_send_json_success')
+            ->once()
+            ->andReturnUsing(static function (array $payload): void {
+                self::assertFalse($payload['imported']);
+                self::assertTrue($payload['duplicate']);
+                self::assertSame('Import is already queued or running.', $payload['message']);
+                throw new \RuntimeException('wp_send_json_success');
+            });
+
+        $api = new class extends BackendApiClient {
+            public function importOrder(string $extId, int $sourceId): array
+            {
+                \PHPUnit\Framework\Assert::assertSame('42', $extId);
+                \PHPUnit\Framework\Assert::assertSame(7, $sourceId);
+
+                return [
+                    'ok' => true,
+                    'duplicate' => true,
+                    'message' => 'Import is already queued or running.',
+                ];
+            }
+        };
+        $labelService = $this->getMockBuilder(LabelService::class)->disableOriginalConstructor()->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('wp_send_json_success');
+
+        $ajax->handleAjaxUploadOrder();
+    }
+
     public function testBuildShipmentDetailPayloadMapsDeliveryServiceStatusForPendingError(): void
     {
         $api = new BackendApiClient();

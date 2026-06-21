@@ -256,6 +256,14 @@ class LabelAjax
             wp_send_json_error(['message' => $result['message'] ?? __('Upload failed.', 'octavawms')], 502);
         }
 
+        if (! empty($result['duplicate'])) {
+            wp_send_json_success([
+                'imported' => false,
+                'duplicate' => true,
+                'message' => $result['message'] ?? __('Import is already queued or running.', 'octavawms'),
+            ]);
+        }
+
         $data = $result['data'] ?? null;
         if (is_array($data)) {
             $entity = $this->apiClient->extractFirstOrderFromCollectionJson($data);
