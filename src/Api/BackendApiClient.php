@@ -1323,7 +1323,7 @@ class BackendApiClient
     }
 
     /**
-     * @return array{ok: true, data?: mixed, duplicate?: bool, message?: string, status?: int}|array{ok: false, message: string, status?: int, raw_excerpt?: string, data?: mixed}
+     * @return array{ok: true, data?: mixed, duplicate?: bool, message?: string, status?: int, import_id?: int|null, state?: string|null, async?: bool}|array{ok: false, message: string, status?: int, raw_excerpt?: string, data?: mixed, import_id?: int|null, state?: string|null, async?: bool}
      */
     public function importOrder(string $extId, int $sourceId): array
     {
@@ -1331,7 +1331,28 @@ class BackendApiClient
             return ['ok' => false, 'message' => 'OctavaWMS source is not configured. Connect the plugin under WooCommerce → Settings → Integrations.'];
         }
 
-        $importAsync = Options::isImportAsyncEnabled();
+        return $this->importOrderWithAsyncMode($extId, $sourceId, Options::isImportAsyncEnabled());
+    }
+
+    /**
+     * Manual Upload order action: process immediately on the backend instead of queueing another async import.
+     *
+     * @return array{ok: true, data?: mixed, duplicate?: bool, message?: string, status?: int, import_id?: int|null, state?: string|null, async?: bool}|array{ok: false, message: string, status?: int, raw_excerpt?: string, data?: mixed, import_id?: int|null, state?: string|null, async?: bool}
+     */
+    public function importOrderSynchronously(string $extId, int $sourceId): array
+    {
+        return $this->importOrderWithAsyncMode($extId, $sourceId, false);
+    }
+
+    /**
+     * @return array{ok: true, data?: mixed, duplicate?: bool, message?: string, status?: int, import_id?: int|null, state?: string|null, async?: bool}|array{ok: false, message: string, status?: int, raw_excerpt?: string, data?: mixed, import_id?: int|null, state?: string|null, async?: bool}
+     */
+    private function importOrderWithAsyncMode(string $extId, int $sourceId, bool $importAsync): array
+    {
+        if ($sourceId <= 0) {
+            return ['ok' => false, 'message' => 'OctavaWMS source is not configured. Connect the plugin under WooCommerce → Settings → Integrations.'];
+        }
+
         $payload = [
             'extId' => '',
             'sourceData' => [
@@ -1344,7 +1365,15 @@ class BackendApiClient
 
         $result = $this->request('POST', '/api/integrations/import', $payload);
         if ($result['ok']) {
-            return ['ok' => true, 'data' => $result['data']];
+            $data = is_array($result['data']) ? $result['data'] : [];
+
+            return [
+                'ok' => true,
+                'data' => $result['data'],
+                'import_id' => $data !== [] ? self::extractImportId($data) : null,
+                'state' => $data !== [] ? self::extractImportState($data) : null,
+                'async' => $importAsync,
+            ];
         }
 
         $msg = 'Import failed.';
@@ -1363,6 +1392,9 @@ class BackendApiClient
                 'message' => self::DUPLICATE_IMPORT_MESSAGE,
                 'status' => $result['status'],
                 'data' => is_array($result['data']) ? $result['data'] : null,
+                'import_id' => is_array($result['data']) ? self::extractImportId($result['data']) : null,
+                'state' => is_array($result['data']) ? self::extractImportState($result['data']) : null,
+                'async' => $importAsync,
             ];
         }
 
@@ -1391,6 +1423,9 @@ class BackendApiClient
             'status' => $result['status'],
             'raw_excerpt' => $rawExcerpt,
             'data' => $result['data'],
+            'import_id' => is_array($result['data']) ? self::extractImportId($result['data']) : null,
+            'state' => is_array($result['data']) ? self::extractImportState($result['data']) : null,
+            'async' => $importAsync,
         ];
     }
 

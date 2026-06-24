@@ -523,13 +523,16 @@ final class BackendApiClientTest extends TestCase
 
             return [
                 'response' => ['code' => 200],
-                'body' => '{"ok":true}',
+                'body' => '{"id":33,"state":"pending"}',
             ];
         });
 
         $client = new BackendApiClient();
         $result = $client->importOrder('order-key-1', 7);
         self::assertTrue($result['ok']);
+        self::assertSame(33, $result['import_id'] ?? null);
+        self::assertSame('pending', $result['state'] ?? null);
+        self::assertTrue($result['async'] ?? false);
         self::assertIsArray($captured);
         self::assertStringContainsString('/api/integrations/import', (string) $captured['url']);
         $data = json_decode((string) ($captured['args']['body'] ?? ''), true);
@@ -563,9 +566,46 @@ final class BackendApiClientTest extends TestCase
         $client = new BackendApiClient();
         $result = $client->importOrder('x', 3);
         self::assertTrue($result['ok']);
+        self::assertFalse($result['async'] ?? true);
         self::assertIsArray($captured);
         $data = json_decode((string) ($captured['args']['body'] ?? ''), true);
         self::assertIsArray($data);
+        self::assertFalse($data['sourceData']['async']);
+        self::assertFalse($data['sourceData']['asyncMode']['Orderadmin\\Products\\Entity\\AbstractOrder']);
+    }
+
+    public function testImportOrderSynchronouslyPayloadAsyncFalseWhenSettingEnabled(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'secret', 'import_async' => 'yes'];
+            }
+
+            return $default;
+        });
+
+        $captured = null;
+        Functions\when('wp_remote_request')->alias(static function (string $url, array $args = []) use (&$captured) {
+            $captured = ['url' => $url, 'args' => $args];
+
+            return [
+                'response' => ['code' => 200],
+                'body' => '{"id":44,"state":"confirmed"}',
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $result = $client->importOrderSynchronously('manual-order', 9);
+        self::assertTrue($result['ok']);
+        self::assertSame(44, $result['import_id'] ?? null);
+        self::assertSame('confirmed', $result['state'] ?? null);
+        self::assertFalse($result['async'] ?? true);
+        self::assertIsArray($captured);
+        self::assertStringContainsString('/api/integrations/import', (string) $captured['url']);
+        $data = json_decode((string) ($captured['args']['body'] ?? ''), true);
+        self::assertIsArray($data);
+        self::assertSame(9, $data['source']);
+        self::assertSame('manual-order', $data['sourceData']['filters']['extId']);
         self::assertFalse($data['sourceData']['async']);
         self::assertFalse($data['sourceData']['asyncMode']['Orderadmin\\Products\\Entity\\AbstractOrder']);
     }

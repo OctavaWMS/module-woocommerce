@@ -50,6 +50,7 @@ class LabelAjax
     {
         add_action('wp_ajax_octavawms_order_status', [$this, 'handleAjaxOrderStatus']);
         add_action('wp_ajax_octavawms_upload_order', [$this, 'handleAjaxUploadOrder']);
+        add_action('wp_ajax_octavawms_import_status', [$this, 'handleAjaxImportStatus']);
         add_action('wp_ajax_octavawms_generate_label', [$this, 'handleAjaxGenerateLabel']);
         add_action('wp_ajax_octavawms_cancel_label', [$this, 'handleAjaxCancelLabel']);
         add_action('wp_ajax_octavawms_shipment_detail', [$this, 'handleAjaxShipmentDetail']);
@@ -251,7 +252,7 @@ class LabelAjax
 
         $extId = WooOrderExtId::importFilterExtId($order);
 
-        $result = $this->apiClient->importOrder($extId, $sourceId);
+        $result = $this->apiClient->importOrderSynchronously($extId, $sourceId);
         if (! $result['ok']) {
             wp_send_json_error(['message' => $result['message'] ?? __('Upload failed.', 'octavawms')], 502);
         }
@@ -259,7 +260,11 @@ class LabelAjax
         if (! empty($result['duplicate'])) {
             wp_send_json_success([
                 'imported' => false,
+                'queued' => true,
                 'duplicate' => true,
+                'async' => (bool) ($result['async'] ?? Options::isImportAsyncEnabled()),
+                'import_id' => self::importResultId($result),
+                'state' => self::importResultState($result),
                 'message' => $result['message'] ?? __('Import is already queued or running.', 'octavawms'),
             ]);
         }
@@ -270,7 +275,94 @@ class LabelAjax
             $this->maybePersistCanonicalExtIdFromEntity($order, $entity);
         }
 
-        wp_send_json_success(['imported' => true]);
+        $state = self::importResultState($result);
+        $importId = self::importResultId($result);
+        $isAsync = (bool) ($result['async'] ?? Options::isImportAsyncEnabled());
+        $queued = ($importId !== null || $state !== null)
+            && self::importStateIsActive($state);
+
+        wp_send_json_success([
+            'imported' => ! $queued,
+            'queued' => $queued,
+            'duplicate' => false,
+            'async' => $isAsync,
+            'import_id' => $importId,
+            'state' => $state,
+            'message' => $queued
+                ? __('Import queued in OctavaWMS.', 'octavawms')
+                : __('Order synced', 'octavawms'),
+        ]);
+    }
+
+    public function handleAjaxImportStatus(): void
+    {
+        $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
+        if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
+            wp_send_json_error(['message' => __('Invalid order.', 'octavawms')], 403);
+        }
+
+        check_ajax_referer('octavawms_import_status_' . (string) $orderId, 'nonce');
+
+        $order = wc_get_order($orderId);
+        if (! $order instanceof WC_Order) {
+            wp_send_json_error(['message' => __('Order not found.', 'octavawms')], 404);
+        }
+
+        $importId = isset($_POST['import_id']) ? absint(wp_unslash($_POST['import_id'])) : 0;
+        if ($importId <= 0) {
+            wp_send_json_error(['message' => __('Invalid import.', 'octavawms')], 400);
+        }
+
+        $result = $this->apiClient->getImportStatus($importId);
+        if (! $result['ok']) {
+            wp_send_json_error(['message' => $result['message'] ?? __('Could not fetch import status.', 'octavawms')], 502);
+        }
+
+        wp_send_json_success([
+            'import_id' => (int) ($result['import_id'] ?? $importId),
+            'state' => isset($result['state']) && is_string($result['state']) ? $result['state'] : null,
+            'message' => isset($result['message']) && is_string($result['message']) ? $result['message'] : '',
+            'file_url' => isset($result['file_url']) && is_string($result['file_url']) ? $result['file_url'] : null,
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     */
+    private static function importResultId(array $result): ?int
+    {
+        if (! isset($result['import_id']) || ! is_numeric($result['import_id'])) {
+            return null;
+        }
+        $id = (int) $result['import_id'];
+
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     */
+    private static function importResultState(array $result): ?string
+    {
+        if (! isset($result['state']) || ! is_scalar($result['state'])) {
+            return null;
+        }
+        $state = trim((string) $result['state']);
+
+        return $state !== '' ? $state : null;
+    }
+
+    private static function importStateIsActive(?string $state): bool
+    {
+        if ($state === null) {
+            return true;
+        }
+        $normalized = strtolower(trim($state));
+        if ($normalized === '') {
+            return true;
+        }
+
+        return in_array($normalized, ['pending', 'handling', 'warning'], true);
     }
 
     /**

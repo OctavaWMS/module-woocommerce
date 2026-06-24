@@ -10,6 +10,7 @@
   let lastOrderPanelPayload = null;
   /** @type {{ id?: unknown, state?: string, error_message?: string }|null} */
   let panelShipment = null;
+  const importPollDelaysMs = [1200, 2000, 3000, 5000, 8000, 10000];
 
   var carrierFirstPageGen = 0;
   /** @type {unknown} */
@@ -705,6 +706,184 @@
       '</button>' +
       requeueBtn +
       '</div></div></div></div>';
+  }
+
+  function importStateFrom(data) {
+    return data && data.state != null ? String(data.state).trim().toLowerCase() : '';
+  }
+
+  function importIdFrom(data) {
+    return data && data.import_id != null ? parseInt(String(data.import_id), 10) || 0 : 0;
+  }
+
+  function importStateIsFailed(state) {
+    return /^(error|cancelled|canceled|deleted)$/.test(String(state || '').toLowerCase());
+  }
+
+  function importStateIsConfirmed(state) {
+    return String(state || '').toLowerCase() === 'confirmed';
+  }
+
+  function importStateIsActive(state) {
+    const s = String(state || '').toLowerCase();
+    return !s || /^(pending|handling|warning)$/.test(s);
+  }
+
+  function importReferenceText(importId) {
+    const tpl = String(cfg.strings.importReference || 'Import #%s');
+    return tpl.replace('%s', String(importId));
+  }
+
+  function renderImportProgress(data, message, tone) {
+    const payload = data && typeof data === 'object' ? data : {};
+    const importId = importIdFrom(payload);
+    const state = importStateFrom(payload);
+    const noticeTone = tone === 'success' ? 'success' : tone === 'error' ? 'error' : 'info';
+    const busy = noticeTone === 'info';
+    let meta = '';
+    if (importId > 0 || state) {
+      const pieces = [];
+      if (importId > 0) {
+        pieces.push(esc(importReferenceText(importId)));
+      }
+      if (state) {
+        pieces.push(statusPillHtml(state));
+      }
+      meta = '<p class="octavawms-muted octavawms-muted--tight">' + pieces.join(' ') + '</p>';
+    }
+    root.innerHTML =
+      '<div class="octavawms-connect-page">' +
+      toolbarHtml('') +
+      '<div class="octavawms-connect-section">' +
+      '<div class="octavawms-connect-section-body">' +
+      '<p class="octavawms-notice octavawms-notice--' +
+      noticeTone +
+      '">' +
+      (busy ? '<span class="octavawms-spinner"></span> ' : '') +
+      esc(message || cfg.strings.importProcessing || cfg.strings.loading) +
+      '</p>' +
+      meta +
+      '<div class="octavawms-actions-row">' +
+      '<button type="button" class="button" data-octavawms-action="refresh-status">' +
+      esc(cfg.strings.refreshStatus) +
+      '</button></div></div></div></div>';
+  }
+
+  function postImportStatus(importId) {
+    const body = new URLSearchParams();
+    body.set('action', 'octavawms_import_status');
+    body.set('nonce', String(cfg.importStatusNonce || ''));
+    body.set('order_id', String(cfg.orderId));
+    body.set('import_id', String(importId));
+    return fetch(cfg.ajaxUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      credentials: 'same-origin',
+    }).then(function (r) {
+      return r.json();
+    });
+  }
+
+  function renderUploadWaiting() {
+    root.innerHTML =
+      '<div class="octavawms-connect-page">' +
+      '<div class="octavawms-connect-section-body">' +
+      '<span class="octavawms-spinner"></span> ' +
+      esc(cfg.strings.uploading) +
+      '</div></div>';
+  }
+
+  function pollImportStatus(importId, attempt, waitUntilFinished) {
+    postImportStatus(importId)
+      .then(function (j) {
+        if (!j || !j.success) {
+          renderImportProgress(
+            { import_id: importId },
+            (j && j.data && j.data.message) || cfg.strings.error,
+            'error'
+          );
+          return;
+        }
+
+        const data = j.data || { import_id: importId };
+        const state = importStateFrom(data);
+        if (importStateIsConfirmed(state)) {
+          if (waitUntilFinished) {
+            fetchStatus();
+          } else {
+            renderImportProgress(data, cfg.strings.importConfirmed, 'success');
+            window.setTimeout(fetchStatus, 700);
+          }
+          return;
+        }
+        if (importStateIsFailed(state)) {
+          renderImportProgress(data, data.message || cfg.strings.importFailed || cfg.strings.error, 'error');
+          return;
+        }
+
+        if (waitUntilFinished) {
+          renderUploadWaiting();
+        } else {
+          renderImportProgress(
+            data,
+            state === 'handling' ? cfg.strings.importProcessing : cfg.strings.importQueued,
+            'info'
+          );
+        }
+
+        if (attempt >= importPollDelaysMs.length) {
+          renderImportProgress(data, cfg.strings.importStillProcessing || cfg.strings.importProcessing, 'info');
+          return;
+        }
+
+        window.setTimeout(function () {
+          pollImportStatus(importId, attempt + 1, waitUntilFinished);
+        }, importPollDelaysMs[attempt]);
+      })
+      .catch(function () {
+        renderImportProgress({ import_id: importId }, cfg.strings.error, 'error');
+      });
+  }
+
+  function handleUploadResponse(data) {
+    const payload = data && typeof data === 'object' ? data : {};
+    const importId = importIdFrom(payload);
+    const state = importStateFrom(payload);
+    const queued = !!payload.queued || !!payload.duplicate || (!!payload.async && importId > 0 && importStateIsActive(state));
+
+    if (importStateIsConfirmed(state)) {
+      renderImportProgress(payload, cfg.strings.importConfirmed, 'success');
+      window.setTimeout(fetchStatus, 700);
+      return;
+    }
+
+    if (!queued && importId <= 0) {
+      fetchStatus();
+      return;
+    }
+
+    if (payload.async === false && importId > 0 && importStateIsActive(state)) {
+      renderUploadWaiting();
+      window.setTimeout(function () {
+        pollImportStatus(importId, 0, true);
+      }, importPollDelaysMs[0]);
+      return;
+    }
+
+    renderImportProgress(
+      payload,
+      payload.duplicate
+        ? payload.message || cfg.strings.importDuplicate
+        : payload.message || (state === 'handling' ? cfg.strings.importProcessing : cfg.strings.importQueued),
+      'info'
+    );
+
+    if (importId > 0) {
+      window.setTimeout(function () {
+        pollImportStatus(importId, 0, false);
+      }, importPollDelaysMs[0]);
+    }
   }
 
   function connectorPost(action, fields) {
@@ -2088,7 +2267,7 @@
           renderError((j && j.data && j.data.message) || cfg.strings.error);
           return;
         }
-        fetchStatus();
+        handleUploadResponse(j.data || {});
       })
       .catch(function () {
         renderError(cfg.strings.error);

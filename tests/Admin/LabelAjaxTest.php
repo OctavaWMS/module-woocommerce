@@ -245,7 +245,7 @@ final class LabelAjaxTest extends TestCase
             });
 
         $api = new class extends BackendApiClient {
-            public function importOrder(string $extId, int $sourceId): array
+            public function importOrderSynchronously(string $extId, int $sourceId): array
             {
                 \PHPUnit\Framework\Assert::assertSame('42', $extId);
                 \PHPUnit\Framework\Assert::assertSame(7, $sourceId);
@@ -254,6 +254,7 @@ final class LabelAjaxTest extends TestCase
                     'ok' => true,
                     'duplicate' => true,
                     'message' => 'Import is already queued or running.',
+                    'async' => false,
                 ];
             }
         };
@@ -264,6 +265,131 @@ final class LabelAjaxTest extends TestCase
         $this->expectExceptionMessage('wp_send_json_success');
 
         $ajax->handleAjaxUploadOrder();
+    }
+
+    public function testHandleAjaxUploadOrderReturnsQueuedImportMetadata(): void
+    {
+        $_POST = ['order_id' => '42', 'nonce' => 'nonce-value'];
+        $_REQUEST = $_POST;
+        $order = new \WC_Order(42, 'wc_order_testkey99');
+        $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (): \WC_Order => $order;
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('absint')->alias(static fn ($v): int => abs((int) $v));
+        Functions\when('wp_unslash')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(true);
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'source_id' => '7',
+                    'import_async' => 'yes',
+                ];
+            }
+
+            return $default;
+        });
+
+        Functions\expect('wp_send_json_success')
+            ->once()
+            ->andReturnUsing(static function (array $payload): void {
+                self::assertFalse($payload['imported']);
+                self::assertTrue($payload['queued']);
+                self::assertFalse($payload['duplicate']);
+                self::assertFalse($payload['async']);
+                self::assertSame(99, $payload['import_id']);
+                self::assertSame('pending', $payload['state']);
+                throw new \RuntimeException('wp_send_json_success');
+            });
+
+        $api = new class extends BackendApiClient {
+            public function importOrderSynchronously(string $extId, int $sourceId): array
+            {
+                \PHPUnit\Framework\Assert::assertSame('42', $extId);
+                \PHPUnit\Framework\Assert::assertSame(7, $sourceId);
+
+                return [
+                    'ok' => true,
+                    'data' => ['id' => 99, 'state' => 'pending'],
+                    'import_id' => 99,
+                    'state' => 'pending',
+                    'async' => false,
+                ];
+            }
+        };
+        $labelService = $this->getMockBuilder(LabelService::class)->disableOriginalConstructor()->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('wp_send_json_success');
+
+        $ajax->handleAjaxUploadOrder();
+    }
+
+    public function testHandleAjaxImportStatusReturnsPollingStates(): void
+    {
+        $order = new \WC_Order(42, 'wc_order_testkey99');
+        $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (): \WC_Order => $order;
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('absint')->alias(static fn ($v): int => abs((int) $v));
+        Functions\when('wp_unslash')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(true);
+
+        $sent = [];
+        Functions\when('wp_send_json_success')->alias(static function (array $payload) use (&$sent): void {
+            $sent[] = $payload;
+            throw new \RuntimeException('wp_send_json_success');
+        });
+
+        $api = new class extends BackendApiClient {
+            public function getImportStatus(int $importId): array
+            {
+                $states = [
+                    101 => ['state' => 'pending', 'message' => ''],
+                    102 => ['state' => 'handling', 'message' => ''],
+                    103 => ['state' => 'confirmed', 'message' => ''],
+                    104 => ['state' => 'error', 'message' => 'import failed'],
+                ];
+
+                return [
+                    'ok' => true,
+                    'import_id' => $importId,
+                    'file_url' => null,
+                    'state' => $states[$importId]['state'],
+                    'message' => $states[$importId]['message'],
+                ];
+            }
+        };
+        $labelService = $this->getMockBuilder(LabelService::class)->disableOriginalConstructor()->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        foreach ([101, 102, 103, 104] as $importId) {
+            $_POST = [
+                'order_id' => '42',
+                'nonce' => 'nonce-value',
+                'import_id' => (string) $importId,
+            ];
+            $_REQUEST = $_POST;
+
+            try {
+                $ajax->handleAjaxImportStatus();
+                self::fail('Expected wp_send_json_success to stop execution.');
+            } catch (\RuntimeException $e) {
+                self::assertSame('wp_send_json_success', $e->getMessage());
+            }
+        }
+
+        self::assertSame(
+            [
+                ['import_id' => 101, 'state' => 'pending', 'message' => '', 'file_url' => null],
+                ['import_id' => 102, 'state' => 'handling', 'message' => '', 'file_url' => null],
+                ['import_id' => 103, 'state' => 'confirmed', 'message' => '', 'file_url' => null],
+                ['import_id' => 104, 'state' => 'error', 'message' => 'import failed', 'file_url' => null],
+            ],
+            $sent
+        );
     }
 
     public function testBuildShipmentDetailPayloadMapsDeliveryServiceStatusForPendingError(): void

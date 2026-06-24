@@ -203,7 +203,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.3',
+            '1.9.4',
             true
         );
 
@@ -227,6 +227,7 @@ CSS;
             'panelLoginNonce' => wp_create_nonce(ConnectService::PANEL_LOGIN_NONCE_ACTION),
             'statusNonce' => wp_create_nonce('octavawms_order_status_' . (string) $orderId),
             'uploadNonce' => wp_create_nonce('octavawms_upload_order_' . (string) $orderId),
+            'importStatusNonce' => wp_create_nonce('octavawms_import_status_' . (string) $orderId),
             'generateLabelNonce' => wp_create_nonce('octavawms_generate_label_' . (string) $orderId),
             'cancelLabelNonce' => wp_create_nonce('octavawms_cancel_label_' . (string) $orderId),
             'connectorNonce' => wp_create_nonce('octavawms_connector_' . (string) $orderId),
@@ -240,6 +241,13 @@ CSS;
                 'uploadOrder' => __('Upload order', 'octavawms'),
                 'uploading' => __('Uploading…', 'octavawms'),
                 'orderSynced' => __('Order synced', 'octavawms'),
+                'importQueued' => __('Import queued in OctavaWMS.', 'octavawms'),
+                'importProcessing' => __('Import is processing in OctavaWMS.', 'octavawms'),
+                'importDuplicate' => __('Import is already queued or running.', 'octavawms'),
+                'importConfirmed' => __('Import finished. Refreshing order status…', 'octavawms'),
+                'importFailed' => __('Import failed.', 'octavawms'),
+                'importStillProcessing' => __('Import is still processing in OctavaWMS.', 'octavawms'),
+                'importReference' => __('Import #%s', 'octavawms'),
                 'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'octavawms'),
                 'shipment' => UiBranding::shipmentHeadingWord(),
                 'labelReady' => __('Label Ready', 'octavawms'),
