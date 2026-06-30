@@ -57,7 +57,10 @@ final class OrderSyncService
             return;
         }
 
-        $this->doImport((int) $orderId);
+        $id = (int) $orderId;
+        $this->importedThisRequest[$id] = true;
+
+        $this->doImport($id);
     }
 
     /**
@@ -185,22 +188,96 @@ final class OrderSyncService
         $args = [$orderId];
 
         if (function_exists('as_enqueue_async_action')) {
-            as_enqueue_async_action(self::IMPORT_ORDER_ACTION, $args, self::IMPORT_ORDER_ACTION_GROUP);
+            if ($this->hasRunningActionSchedulerImport($args)) {
+                return true;
+            }
 
-            return true;
+            $this->unschedulePendingActionSchedulerImports($args);
+
+            $actionId = as_enqueue_async_action(
+                self::IMPORT_ORDER_ACTION,
+                $args,
+                self::IMPORT_ORDER_ACTION_GROUP,
+                true
+            );
+
+            if (is_numeric($actionId) && (int) $actionId > 0) {
+                return true;
+            }
+
+            return $this->hasPendingOrRunningActionSchedulerImport($args);
         }
 
         if (! function_exists('wp_schedule_single_event')) {
             return false;
         }
 
-        if (function_exists('wp_next_scheduled') && wp_next_scheduled(self::IMPORT_ORDER_ACTION, $args) !== false) {
-            return true;
+        if (function_exists('wp_clear_scheduled_hook')) {
+            wp_clear_scheduled_hook(self::IMPORT_ORDER_ACTION, $args);
         }
 
         $scheduled = wp_schedule_single_event(time() + 1, self::IMPORT_ORDER_ACTION, $args);
 
         return $scheduled !== false && ! $scheduled instanceof \WP_Error;
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private function hasRunningActionSchedulerImport(array $args): bool
+    {
+        if (! function_exists('as_get_scheduled_actions') || ! class_exists('ActionScheduler_Store')) {
+            return false;
+        }
+
+        try {
+            $actions = as_get_scheduled_actions([
+                'hook' => self::IMPORT_ORDER_ACTION,
+                'args' => $args,
+                'group' => self::IMPORT_ORDER_ACTION_GROUP,
+                'status' => \ActionScheduler_Store::STATUS_RUNNING,
+                'per_page' => 1,
+            ], 'ids');
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return is_array($actions) && $actions !== [];
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private function hasPendingOrRunningActionSchedulerImport(array $args): bool
+    {
+        if (! function_exists('as_has_scheduled_action')) {
+            return false;
+        }
+
+        try {
+            return (bool) as_has_scheduled_action(
+                self::IMPORT_ORDER_ACTION,
+                $args,
+                self::IMPORT_ORDER_ACTION_GROUP
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @param array<int, mixed> $args
+     */
+    private function unschedulePendingActionSchedulerImports(array $args): void
+    {
+        if (! function_exists('as_unschedule_all_actions')) {
+            return;
+        }
+
+        try {
+            as_unschedule_all_actions(self::IMPORT_ORDER_ACTION, $args, self::IMPORT_ORDER_ACTION_GROUP);
+        } catch (\Throwable) {
+        }
     }
 
     private function doImport(int $orderId): void

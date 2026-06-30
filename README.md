@@ -148,9 +148,11 @@ After Connect (so **source id** and **Bearer** are present), the plugin can push
 
 - **New orders:** `woocommerce_checkout_order_processed` and `woocommerce_new_order` run the same import path. Only one import runs per order per HTTP request if both hooks fire.
 - **Updates:** `woocommerce_update_order` and `woocommerce_order_status_changed` run when **Auto-sync order updates** is on. The same debouncing applies.
-- **Async import:** when **Async import** is enabled, the hook schedules a local WooCommerce Action Scheduler job (`octavawms_import_order`) before calling OctavaWMS. WordPress cron is used as a fallback; only when no scheduler is available does the hook call `/api/integrations/import` inline. Turning async off keeps the old inline HTTP import.
+- **Async import:** when **Async import** is enabled, the hook schedules a local WooCommerce Action Scheduler job (`octavawms_import_order`) before calling OctavaWMS. Before scheduling a fresh job, the plugin cancels old pending jobs for the same order and leaves an already running job alone, so each order has at most one live local import. WordPress cron is used as a fallback; only when no scheduler is available does the hook call `/api/integrations/import` inline. Turning async off keeps the old inline HTTP import.
 
 Turn either option off under **WooCommerce → Settings → Integrations → OctavaWMS Connector** (checkboxes in the Advanced section). If import fails, check **WooCommerce → Status → Logs** for entries from source **`octavawms`** with subsystem **`order_auto_sync`**.
+
+If a site already has a large `octavawms_import_order` backlog, follow the operator runbook in [`docs/guides/action-scheduler-cleanup.md`](docs/guides/action-scheduler-cleanup.md) before re-enabling automatic sync.
 
 ## Order edit — OctavaWMS panel
 

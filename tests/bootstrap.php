@@ -8,6 +8,14 @@ if (! defined('ABSPATH')) {
     define('ABSPATH', '/tmp/wordpress/');
 }
 
+if (! defined('OBJECT')) {
+    define('OBJECT', 'OBJECT');
+}
+
+if (! defined('ARRAY_A')) {
+    define('ARRAY_A', 'ARRAY_A');
+}
+
 if (! class_exists('WP_Error', false)) {
     /**
      * Minimal WordPress transport error shim for unit tests.
@@ -27,6 +35,18 @@ if (! class_exists('WP_Error', false)) {
         {
             return $this->message;
         }
+    }
+}
+
+if (! class_exists('ActionScheduler_Store', false)) {
+    /**
+     * Minimal Action Scheduler status shim for unit tests.
+     */
+    final class ActionScheduler_Store
+    {
+        public const STATUS_PENDING = 'pending';
+
+        public const STATUS_RUNNING = 'in-progress';
     }
 }
 
@@ -235,6 +255,10 @@ if (! class_exists('WC_Order', false)) {
         public function save(): bool
         {
             $this->saveCallCount++;
+            $cb = $GLOBALS['octavawms_test_wc_order_save_callback'] ?? null;
+            if (is_callable($cb)) {
+                $cb($this);
+            }
 
             return true;
         }
@@ -286,6 +310,131 @@ if (! function_exists('wc_get_order')) {
     }
 }
 
+if (! function_exists('octavawms_test_action_scheduler_matches')) {
+    /**
+     * @param array<string, mixed> $action
+     * @param array<int, mixed>|null $args
+     */
+    function octavawms_test_action_scheduler_matches(array $action, string $hook, ?array $args, string $group, mixed $status = null): bool
+    {
+        if (($action['hook'] ?? null) !== $hook || ($action['group'] ?? '') !== $group) {
+            return false;
+        }
+        if ($args !== null && ($action['args'] ?? null) !== $args) {
+            return false;
+        }
+        if ($status === null || $status === '') {
+            return true;
+        }
+
+        $statuses = is_array($status) ? $status : [$status];
+
+        return in_array($action['status'] ?? ActionScheduler_Store::STATUS_PENDING, $statuses, true);
+    }
+}
+
+if (! function_exists('as_get_scheduled_actions')) {
+    /**
+     * Test shim for Action Scheduler action queries.
+     *
+     * @param array<string, mixed> $args
+     */
+    function as_get_scheduled_actions($args = [], $return_format = OBJECT)
+    {
+        $cb = $GLOBALS['octavawms_test_as_get_scheduled_actions_callback'] ?? null;
+        if (is_callable($cb)) {
+            return $cb($args, $return_format);
+        }
+
+        $ids = [];
+        foreach (($GLOBALS['octavawms_test_async_actions'] ?? []) as $idx => $action) {
+            if (! is_array($action)) {
+                continue;
+            }
+            if (! octavawms_test_action_scheduler_matches(
+                $action,
+                (string) ($args['hook'] ?? ''),
+                isset($args['args']) && is_array($args['args']) ? $args['args'] : null,
+                (string) ($args['group'] ?? ''),
+                $args['status'] ?? null
+            )) {
+                continue;
+            }
+            $ids[] = (int) ($action['id'] ?? ($idx + 1));
+            if (isset($args['per_page']) && count($ids) >= (int) $args['per_page']) {
+                break;
+            }
+        }
+
+        return ($return_format === 'ids' || $return_format === 'int') ? $ids : [];
+    }
+}
+
+if (! function_exists('as_has_scheduled_action')) {
+    /**
+     * Test shim for Action Scheduler pending/running lookup.
+     *
+     * @param array<int, mixed>|null $args
+     */
+    function as_has_scheduled_action($hook, $args = null, $group = '')
+    {
+        $cb = $GLOBALS['octavawms_test_as_has_scheduled_action_callback'] ?? null;
+        if (is_callable($cb)) {
+            return $cb($hook, $args, $group);
+        }
+
+        foreach (($GLOBALS['octavawms_test_async_actions'] ?? []) as $action) {
+            if (is_array($action) && octavawms_test_action_scheduler_matches(
+                $action,
+                (string) $hook,
+                is_array($args) ? $args : null,
+                (string) $group,
+                [ActionScheduler_Store::STATUS_PENDING, ActionScheduler_Store::STATUS_RUNNING]
+            )) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if (! function_exists('as_unschedule_all_actions')) {
+    /**
+     * Test shim for cancelling all pending matching Action Scheduler actions.
+     *
+     * @param array<int, mixed> $args
+     */
+    function as_unschedule_all_actions($hook, $args = [], $group = '')
+    {
+        $cb = $GLOBALS['octavawms_test_as_unschedule_all_actions_callback'] ?? null;
+        if (is_callable($cb)) {
+            return $cb($hook, $args, $group);
+        }
+
+        $GLOBALS['octavawms_test_unscheduled_actions'][] = [
+            'hook' => $hook,
+            'args' => $args,
+            'group' => $group,
+        ];
+
+        $remaining = [];
+        foreach (($GLOBALS['octavawms_test_async_actions'] ?? []) as $action) {
+            if (is_array($action) && octavawms_test_action_scheduler_matches(
+                $action,
+                (string) $hook,
+                is_array($args) ? $args : null,
+                (string) $group,
+                ActionScheduler_Store::STATUS_PENDING
+            )) {
+                continue;
+            }
+            $remaining[] = $action;
+        }
+        $GLOBALS['octavawms_test_async_actions'] = $remaining;
+    }
+}
+
 if (! function_exists('as_enqueue_async_action')) {
     /**
      * Test shim for WooCommerce Action Scheduler.
@@ -294,19 +443,28 @@ if (! function_exists('as_enqueue_async_action')) {
      * @param array<int, mixed> $args
      * @param string $group
      */
-    function as_enqueue_async_action($hook, $args = [], $group = '')
+    function as_enqueue_async_action($hook, $args = [], $group = '', $unique = false, $priority = 10)
     {
         $cb = $GLOBALS['octavawms_test_as_enqueue_async_action_callback'] ?? null;
         if (is_callable($cb)) {
-            return $cb($hook, $args, $group);
+            return $cb($hook, $args, $group, $unique, $priority);
         }
 
+        if ($unique && as_has_scheduled_action($hook, $args, $group)) {
+            return 0;
+        }
+
+        $id = count($GLOBALS['octavawms_test_async_actions'] ?? []) + 1;
         $GLOBALS['octavawms_test_async_actions'][] = [
+            'id' => $id,
             'hook' => $hook,
             'args' => $args,
             'group' => $group,
+            'status' => ActionScheduler_Store::STATUS_PENDING,
+            'unique' => (bool) $unique,
+            'priority' => (int) $priority,
         ];
 
-        return count($GLOBALS['octavawms_test_async_actions']);
+        return $id;
     }
 }

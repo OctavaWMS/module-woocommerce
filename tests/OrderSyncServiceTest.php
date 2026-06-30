@@ -24,8 +24,13 @@ final class OrderSyncServiceTest extends TestCase
         $this->hooksAdded = [];
         unset(
             $GLOBALS['octavawms_test_wc_get_order_callback'],
+            $GLOBALS['octavawms_test_wc_order_save_callback'],
             $GLOBALS['octavawms_test_async_actions'],
-            $GLOBALS['octavawms_test_as_enqueue_async_action_callback']
+            $GLOBALS['octavawms_test_unscheduled_actions'],
+            $GLOBALS['octavawms_test_as_enqueue_async_action_callback'],
+            $GLOBALS['octavawms_test_as_get_scheduled_actions_callback'],
+            $GLOBALS['octavawms_test_as_has_scheduled_action_callback'],
+            $GLOBALS['octavawms_test_as_unschedule_all_actions_callback']
         );
 
         Functions\when('add_action')->alias(function (string $hook, $callback, int $priority = 10, int $accepted_args = 1): void {
@@ -57,8 +62,13 @@ final class OrderSyncServiceTest extends TestCase
     {
         unset(
             $GLOBALS['octavawms_test_wc_get_order_callback'],
+            $GLOBALS['octavawms_test_wc_order_save_callback'],
             $GLOBALS['octavawms_test_async_actions'],
-            $GLOBALS['octavawms_test_as_enqueue_async_action_callback']
+            $GLOBALS['octavawms_test_unscheduled_actions'],
+            $GLOBALS['octavawms_test_as_enqueue_async_action_callback'],
+            $GLOBALS['octavawms_test_as_get_scheduled_actions_callback'],
+            $GLOBALS['octavawms_test_as_has_scheduled_action_callback'],
+            $GLOBALS['octavawms_test_as_unschedule_all_actions_callback']
         );
         parent::tearDown();
     }
@@ -95,7 +105,19 @@ final class OrderSyncServiceTest extends TestCase
      */
     private function queuedActions(): array
     {
-        return $GLOBALS['octavawms_test_async_actions'] ?? [];
+        $actions = [];
+        foreach (($GLOBALS['octavawms_test_async_actions'] ?? []) as $action) {
+            if (! is_array($action)) {
+                continue;
+            }
+            $actions[] = [
+                'hook' => (string) ($action['hook'] ?? ''),
+                'args' => is_array($action['args'] ?? null) ? $action['args'] : [],
+                'group' => (string) ($action['group'] ?? ''),
+            ];
+        }
+
+        return $actions;
     }
 
     public function testRegisterAddsWooCommerceActions(): void
@@ -190,6 +212,99 @@ final class OrderSyncServiceTest extends TestCase
         );
     }
 
+    public function testExistingPendingImportActionsAreCancelledBeforeFreshUniqueAction(): void
+    {
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::never())->method('importOrder');
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api);
+        $GLOBALS['octavawms_test_async_actions'] = [
+            [
+                'id' => 1,
+                'hook' => 'octavawms_import_order',
+                'args' => [100],
+                'group' => 'octavawms',
+                'status' => \ActionScheduler_Store::STATUS_PENDING,
+            ],
+            [
+                'id' => 2,
+                'hook' => 'octavawms_import_order',
+                'args' => [100],
+                'group' => 'octavawms',
+                'status' => \ActionScheduler_Store::STATUS_PENDING,
+            ],
+            [
+                'id' => 3,
+                'hook' => 'octavawms_import_order',
+                'args' => [101],
+                'group' => 'octavawms',
+                'status' => \ActionScheduler_Store::STATUS_PENDING,
+            ],
+        ];
+
+        $service->onNewOrder(100);
+
+        self::assertSame(
+            [
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [101],
+                    'group' => 'octavawms',
+                ],
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [100],
+                    'group' => 'octavawms',
+                ],
+            ],
+            $this->queuedActions()
+        );
+        self::assertSame(
+            [
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [100],
+                    'group' => 'octavawms',
+                ],
+            ],
+            $GLOBALS['octavawms_test_unscheduled_actions'] ?? []
+        );
+        $last = end($GLOBALS['octavawms_test_async_actions']);
+        self::assertIsArray($last);
+        self::assertTrue($last['unique'] ?? false);
+    }
+
+    public function testRunningImportActionPreventsNewEnqueue(): void
+    {
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::never())->method('importOrder');
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api);
+        $GLOBALS['octavawms_test_async_actions'] = [
+            [
+                'id' => 1,
+                'hook' => 'octavawms_import_order',
+                'args' => [100],
+                'group' => 'octavawms',
+                'status' => \ActionScheduler_Store::STATUS_RUNNING,
+            ],
+        ];
+
+        $service->onNewOrder(100);
+
+        self::assertSame(
+            [
+                [
+                    'hook' => 'octavawms_import_order',
+                    'args' => [100],
+                    'group' => 'octavawms',
+                ],
+            ],
+            $this->queuedActions()
+        );
+        self::assertSame([], $GLOBALS['octavawms_test_unscheduled_actions'] ?? []);
+    }
+
     public function testOnNewOrderRunsInlineWhenAsyncDisabled(): void
     {
         $api = $this->createMock(BackendApiClient::class);
@@ -203,6 +318,37 @@ final class OrderSyncServiceTest extends TestCase
         $service->onNewOrder(100);
         $service->onCheckoutOrderProcessed(100, []);
 
+        self::assertSame([], $this->queuedActions());
+    }
+
+    public function testActionSchedulerEnqueueFailureFallsBackToInlineImport(): void
+    {
+        $sawUnique = false;
+        $GLOBALS['octavawms_test_as_enqueue_async_action_callback'] = static function (
+            string $hook,
+            array $args,
+            string $group,
+            bool $unique
+        ) use (&$sawUnique): int {
+            self::assertSame('octavawms_import_order', $hook);
+            self::assertSame([100], $args);
+            self::assertSame('octavawms', $group);
+            $sawUnique = $unique;
+
+            return 0;
+        };
+
+        $api = $this->createMock(BackendApiClient::class);
+        $api->expects(self::once())
+            ->method('importOrder')
+            ->with('100', 7)
+            ->willReturn(['ok' => true, 'data' => null]);
+        $api->expects(self::never())->method('extractFirstOrderFromCollectionJson');
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(100, $api);
+        $service->onNewOrder(100);
+
+        self::assertTrue($sawUnique);
         self::assertSame([], $this->queuedActions());
     }
 
@@ -220,6 +366,25 @@ final class OrderSyncServiceTest extends TestCase
 
         self::assertSame(['_octavawms_external_order_id' => 'canonical-from-api'], $order->updatedMeta);
         self::assertSame(1, $order->saveCallCount);
+    }
+
+    public function testQueuedImportDoesNotSelfScheduleWhenOrderSaveTriggersUpdateHook(): void
+    {
+        $api = $this->createMock(BackendApiClient::class);
+        $api->method('importOrder')->willReturn([
+            'ok' => true,
+            'data' => ['_embedded' => ['orders' => [['extId' => 'canonical-from-api']]]],
+        ]);
+        $api->method('extractFirstOrderFromCollectionJson')->willReturn(['extId' => 'canonical-from-api']);
+
+        ['service' => $service] = $this->serviceWithConfiguredOrder(202, $api);
+        $GLOBALS['octavawms_test_wc_order_save_callback'] = static function () use ($service): void {
+            $service->onOrderUpdate(202);
+        };
+
+        $service->runQueuedImport(202);
+
+        self::assertSame([], $this->queuedActions());
     }
 
     public function testQueuedImportLogsDuplicateAsNotice(): void
