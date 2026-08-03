@@ -1348,6 +1348,67 @@ final class BackendApiClientTest extends TestCase
         self::assertSame(2, $r['items'][1]['id']);
     }
 
+    public function testFetchServicePointsUsesExactSearchedLocalityFromSameCountry(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['api_key' => 'token'];
+            }
+
+            return $default;
+        });
+
+        $captured = [];
+        Functions\when('wp_remote_request')->alias(static function (string $url) use (&$captured) {
+            $captured[] = $url;
+            if (str_contains($url, '/api/locations/localities?') && str_contains($url, 'filter%5B0%5D')) {
+                throw new \RuntimeException('Unexpected encoded filter syntax.');
+            }
+            if (str_contains($url, '/api/locations/localities?') && str_contains($url, 'filter[0][field]=id')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['_embedded' => ['localities' => [[
+                        'id' => 900,
+                        'name' => 'Варна',
+                        '_embedded' => ['country' => ['code' => 'BG']],
+                    ]]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+                ];
+            }
+            if (str_contains($url, '/api/locations/localities?')) {
+                return [
+                    'response' => ['code' => 200],
+                    'body' => json_encode(['_embedded' => ['localities' => [
+                        ['id' => 124691, 'name' => 'София', '_embedded' => ['country' => ['code' => 'RU']]],
+                        ['id' => 181286, 'name' => 'София', '_embedded' => ['country' => ['code' => 'BG']]],
+                    ]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+                ];
+            }
+
+            return [
+                'response' => ['code' => 200],
+                'body' => json_encode(['_embedded' => ['servicePoints' => [[
+                    'id' => 42,
+                    'name' => 'СОФИЯ - ТЕСТ',
+                ]]], 'page_count' => 1], JSON_THROW_ON_ERROR),
+            ];
+        });
+
+        $client = new BackendApiClient();
+        $result = $client->fetchServicePoints([
+            'localityId' => 900,
+            'deliveryServiceId' => 20,
+            'servicePointType' => 'service_point',
+            'search' => 'София',
+        ]);
+
+        $servicePointUrl = $captured[count($captured) - 1] ?? '';
+        self::assertStringContainsString('/api/delivery-services/service-points?', $servicePointUrl);
+        self::assertStringContainsString('filter[1][field]=locality', $servicePointUrl);
+        self::assertStringContainsString('filter[1][value]=181286', $servicePointUrl);
+        self::assertStringContainsString('search=%D0%A1%D0%BE%D1%84%D0%B8%D1%8F%3A%2A', $servicePointUrl);
+        self::assertSame(42, $result['items'][0]['id'] ?? null);
+    }
+
     public function testFetchDeliveryServicesPageBuildsQuery(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {
