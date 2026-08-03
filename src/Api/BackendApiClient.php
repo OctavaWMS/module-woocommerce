@@ -644,6 +644,8 @@ class BackendApiClient
         $sort = isset($params['sort']) && is_string($params['sort']) ? trim($params['sort']) : '';
         $browserGeolocationEnabled = ($params['browserGeolocationEnabled'] ?? null) === true;
 
+        $localityId = $this->resolveServicePointSearchLocalityId($search, $localityId);
+
         $parts = [];
         $idx = 0;
         if ($deliveryServiceId !== null) {
@@ -714,6 +716,68 @@ class BackendApiClient
         }
 
         return ['items' => $items, 'total_pages' => $totalPages] + $log;
+    }
+
+    private function resolveServicePointSearchLocalityId(string $search, ?int $fallbackLocalityId): ?int
+    {
+        $search = trim($search);
+        if ($search === '' || $fallbackLocalityId === null) {
+            return $fallbackLocalityId;
+        }
+
+        $currentLocality = $this->fetchLocalitiesPage('', 1, (string) $fallbackLocalityId)['items'][0] ?? null;
+        if (! is_array($currentLocality)) {
+            return $fallbackLocalityId;
+        }
+
+        $countryCode = $this->localityCountryCode($currentLocality);
+        if ($countryCode === '') {
+            return $fallbackLocalityId;
+        }
+
+        $needle = mb_strtolower($search);
+        $matchingIds = [];
+        foreach ($this->fetchLocalitiesPage($search, 1)['items'] as $locality) {
+            if (! is_array($locality)) {
+                continue;
+            }
+            $name = isset($locality['name']) && is_string($locality['name']) ? trim($locality['name']) : '';
+            $id = isset($locality['id']) && is_numeric($locality['id']) ? (int) $locality['id'] : 0;
+            if ($id <= 0 || mb_strtolower($name) !== $needle) {
+                continue;
+            }
+            if (strcasecmp($this->localityCountryCode($locality), $countryCode) !== 0) {
+                continue;
+            }
+
+            $matchingIds[$id] = $id;
+        }
+
+        return count($matchingIds) === 1 ? array_values($matchingIds)[0] : $fallbackLocalityId;
+    }
+
+    /**
+     * @param array<string, mixed> $locality
+     */
+    private function localityCountryCode(array $locality): string
+    {
+        foreach (['countryCode', 'country_code'] as $key) {
+            if (isset($locality[$key]) && is_string($locality[$key])) {
+                return trim($locality[$key]);
+            }
+        }
+
+        $country = $locality['country'] ?? ($locality['_embedded']['country'] ?? null);
+        if (! is_array($country)) {
+            return '';
+        }
+        foreach (['code', 'iso2', 'alpha2'] as $key) {
+            if (isset($country[$key]) && is_string($country[$key])) {
+                return trim($country[$key]);
+            }
+        }
+
+        return '';
     }
 
     /**
