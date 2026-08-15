@@ -18,6 +18,9 @@ For the **WordPress + WooCommerce plugin** in this repository. Cursor-specific a
 - **List:** OctavaWMS → **Modules** (`list_id: 901217643164`).
 - **Tag:** **`module-woocommerce`** on tasks for this repo.
 - **Task URL:** `https://app.clickup.com/t/<id>` (id matches the part after `CU-` in commits).
+- If one request affects this module and another repository/module, create or
+  update separate ClickUp tasks for each owning repository/module. Use the
+  `module-woocommerce` task ID only for commits in this repository.
 - **Pull task → code → PR:** see [`.cursor/rules/clickup-pull-task-sequence.mdc`](.cursor/rules/clickup-pull-task-sequence.mdc). Human-readable detail: [`docs/guides/clickup-workflow.md`](docs/guides/clickup-workflow.md).
 
 ## Docs worth reading

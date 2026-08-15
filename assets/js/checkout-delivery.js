@@ -389,6 +389,9 @@
                 lng: toNumber(item.lng),
                 distanceKm: null
             };
+            if (item.capabilities && typeof item.capabilities === 'object') {
+                normalized.capabilities = item.capabilities;
+            }
             if (currentState.origin && isFiniteNumber(normalized.lat) && isFiniteNumber(normalized.lng)) {
                 normalized.distanceKm = distanceKm(currentState.origin.lat, currentState.origin.lng, normalized.lat, normalized.lng);
             }

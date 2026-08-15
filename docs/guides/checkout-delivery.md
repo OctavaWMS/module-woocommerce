@@ -79,6 +79,8 @@ The pickup selector includes:
 
 Service-point rows may include coordinates as `lat`/`lng`, `geo: "SRID=4326;POINT(lng lat)"`, or `geo: "lng,lat"`. The checkout AJAX response normalizes these to `lat` and `lng` for the browser UI.
 
+Service-point rows may also include backend-normalized `capabilities`. WooCommerce passes this object through to checkout JavaScript without rebuilding payment flags. Payment semantics come from `capabilities.payment.prepaidOnly` and `capabilities.payment.recipientPayment.methods`; `cash=false` alone does not mean prepaid-only, and `card=true` means the point can still accept recipient payment. Location and working-hours hints come from `capabilities.location.environment` and `capabilities.workingHours`. Do not add Woo-specific carrier `raw` checks for these fields.
+
 During Woo checkout recalculation, the shipping block and place-order action are disabled to avoid submitting stale rate or pickup-point data.
 
 ## Izprati attribution

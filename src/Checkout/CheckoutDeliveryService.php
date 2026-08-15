@@ -333,6 +333,10 @@ final class CheckoutDeliveryService
                 'type' => $type,
                 'typeLabel' => $this->servicePointTypeLabel($type),
             ];
+            $capabilities = $this->servicePointCapabilities($item);
+            if ($capabilities !== []) {
+                $row['capabilities'] = $capabilities;
+            }
             $coordinates = $this->servicePointCoordinates($item);
             if ($coordinates !== null) {
                 $row['lat'] = $coordinates['lat'];
@@ -512,6 +516,34 @@ final class CheckoutDeliveryService
             'service_point' => __('Office', 'octavawms'),
             default => '',
         };
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     *
+     * @return array<string, mixed>
+     */
+    private function servicePointCapabilities(array $item): array
+    {
+        $capabilities = $this->nestedArrayFromKeys($item, ['capabilities']);
+        if ($capabilities !== null) {
+            return $capabilities;
+        }
+
+        $eav = $this->nestedArrayFromKeys($item, ['eav']);
+        $eavCapabilities = $eav !== null ? $this->nestedArrayFromKeys($eav, ['capabilities']) : null;
+        if ($eavCapabilities !== null) {
+            return $eavCapabilities;
+        }
+
+        $embedded = $this->nestedArrayFromKeys($item, ['_embedded']);
+        $embeddedEav = $embedded !== null ? $this->nestedArrayFromKeys($embedded, ['eav']) : null;
+        $embeddedCapabilities = $embeddedEav !== null ? $this->nestedArrayFromKeys($embeddedEav, ['capabilities']) : null;
+        if ($embeddedCapabilities !== null) {
+            return $embeddedCapabilities;
+        }
+
+        return [];
     }
 
     /**
