@@ -214,7 +214,7 @@ final class CheckoutDeliveryServiceTest extends TestCase
                 $this->lastParams = $params;
                 $items = [];
                 for ($i = 1; $i <= 5; $i++) {
-                    $items[] = [
+                    $item = [
                         'id' => $i,
                         'name' => 'ВАРНА - ОФИС ' . $i,
                         'rawAddress' => 'гр. ВАРНА ул. ТЕСТ No ' . $i,
@@ -226,6 +226,28 @@ final class CheckoutDeliveryServiceTest extends TestCase
                             ],
                         ],
                     ];
+                    if ($i === 1) {
+                        $item['capabilities'] = [
+                            'payment' => [
+                                'prepaidOnly' => false,
+                                'recipientPayment' => [
+                                    'allowed' => true,
+                                    'methods' => [
+                                        'cash' => false,
+                                        'card' => true,
+                                    ],
+                                ],
+                            ],
+                            'location' => [
+                                'environment' => 'indoor',
+                            ],
+                            'workingHours' => [
+                                'label' => '09:00-18:00',
+                                'alwaysOpen' => false,
+                            ],
+                        ];
+                    }
+                    $items[] = $item;
                 }
 
                 return [
@@ -252,6 +274,27 @@ final class CheckoutDeliveryServiceTest extends TestCase
                 Assert::assertSame('Варна', $payload['items'][0]['city'] ?? null);
                 Assert::assertSame('9000', $payload['items'][0]['postcode'] ?? null);
                 Assert::assertSame('Office', $payload['items'][0]['typeLabel'] ?? null);
+                Assert::assertSame([
+                    'payment' => [
+                        'prepaidOnly' => false,
+                        'recipientPayment' => [
+                            'allowed' => true,
+                            'methods' => [
+                                'cash' => false,
+                                'card' => true,
+                            ],
+                        ],
+                    ],
+                    'location' => [
+                        'environment' => 'indoor',
+                    ],
+                    'workingHours' => [
+                        'label' => '09:00-18:00',
+                        'alwaysOpen' => false,
+                    ],
+                ], $payload['items'][0]['capabilities'] ?? null);
+                Assert::assertArrayNotHasKey('paymentCapabilities', $payload['items'][0]);
+                Assert::assertArrayNotHasKey('cashPaymentAllowed', $payload['items'][0]);
 
                 return true;
             }))
