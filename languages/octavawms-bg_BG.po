@@ -297,6 +297,18 @@ msgstr "Генерирай етикет за доставка отново"
 msgid "Re-import orders when they are updated (debounced)"
 msgstr "Повторно импортиране на поръчки при промяна (забавено)"
 
+msgid "Re-import order"
+msgstr "Импортирай поръчката отново"
+
+msgid "Re-importing…"
+msgstr "Повторно импортиране…"
+
+msgid "COD mismatch: WooCommerce %1$s; OctavaWMS %2$s."
+msgstr "Разлика в наложения платеж: WooCommerce %1$s; OctavaWMS %2$s."
+
+msgid "Re-import the order to update OctavaWMS. Existing carrier labels are not changed."
+msgstr "Импортирайте поръчката отново, за да обновите OctavaWMS. Съществуващите товарителници няма да бъдат променени."
+
 msgid "Recipient locality"
 msgstr "Населено място на получателя"
 

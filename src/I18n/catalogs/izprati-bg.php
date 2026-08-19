@@ -49,6 +49,12 @@ return [
         'Поръчката е в Изпрати.БГ; очаква се пратка (заявка за доставка).',
     'This order is not in OctavaWMS yet. Upload it to create shipments and labels.' =>
         'Поръчката все още не е в Изпрати.БГ. Качете я за създаване на пратки и товарителници.',
+    'Re-import order' => 'Импортирай поръчката отново',
+    'Re-importing…' => 'Повторно импортиране…',
+    'COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.' =>
+        'Разлика в наложения платеж: WooCommerce %1$s; Изпрати.БГ %2$s.',
+    'Re-import the order to update OctavaWMS. Existing carrier labels are not changed.' =>
+        'Импортирайте поръчката отново, за да обновите Изпрати.БГ. Съществуващите товарителници няма да бъдат променени.',
 
     // Checkout delivery method
     'Calculated carrier delivery rates from OctavaWMS.' =>

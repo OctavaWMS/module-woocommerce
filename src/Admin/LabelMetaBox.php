@@ -91,6 +91,7 @@ class LabelMetaBox
 .octavawms-notice--success{border-left-color:#1e8734;background:#edfaef;}
 .octavawms-notice--error{border-left-color:#d63638;background:#fcf0f1;}
 .octavawms-notice--info{border-left-color:#2271b1;background:#f0f6fc;}
+.octavawms-notice--warning{border-left-color:#dba617;background:#fcf9e8;}
 .octavawms-sp-preview{margin:12px 0 0;padding:10px 0 0;border:0;border-top:1px solid #dcdcde;background:transparent;max-width:100%;box-sizing:border-box;}
 .octavawms-sp-preview.is-empty{color:#646970;font-style:italic;}
 .octavawms-sp-preview__head{margin:0 0 6px;font-size:13px;}
@@ -203,7 +204,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.4',
+            '1.9.5',
             true
         );
 
@@ -240,6 +241,10 @@ CSS;
                 'noOrder' => __('This order is not in OctavaWMS yet. Upload it to create shipments and labels.', 'octavawms'),
                 'uploadOrder' => __('Upload order', 'octavawms'),
                 'uploading' => __('Uploading…', 'octavawms'),
+                'reimportOrder' => __('Re-import order', 'octavawms'),
+                'reimporting' => __('Re-importing…', 'octavawms'),
+                'codMismatch' => __('COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.', 'octavawms'),
+                'codMismatchSuggestion' => __('Re-import the order to update OctavaWMS. Existing carrier labels are not changed.', 'octavawms'),
                 'orderSynced' => __('Order synced', 'octavawms'),
                 'importQueued' => __('Import queued in OctavaWMS.', 'octavawms'),
                 'importProcessing' => __('Import is processing in OctavaWMS.', 'octavawms'),

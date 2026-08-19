@@ -159,6 +159,8 @@ class LabelAjax
             }
         }
 
+        $codCheckPayload = self::buildCodCheckPayload($order, is_array($first) ? $first : null);
+
         wp_send_json_success([
             'has_order' => $backendOrder !== null,
             'shipment' => $shipmentPayload,
@@ -172,7 +174,66 @@ class LabelAjax
                 'dim_z' => 100,
             ],
             'cod' => $codPayload,
+            'cod_check' => $codCheckPayload,
         ]);
+    }
+
+    /**
+     * @param array<string, mixed>|null $shipment
+     * @return array<string, mixed>
+     */
+    private static function buildCodCheckPayload(WC_Order $order, ?array $shipment): array
+    {
+        $backendAmount = self::extractEffectiveCodAmount($shipment);
+        if ($backendAmount === null) {
+            return ['available' => false];
+        }
+
+        $expectedAmount = $order->get_payment_method() === 'cod' ? (float) $order->get_total() : 0.0;
+        $expectedAmount = round($expectedAmount, 2);
+        $backendAmount = round($backendAmount, 2);
+        $currency = (string) $order->get_currency();
+
+        return [
+            'available' => true,
+            'matches' => abs($expectedAmount - $backendAmount) < 0.005,
+            'expected_amount' => number_format($expectedAmount, 2, '.', ''),
+            'backend_amount' => number_format($backendAmount, 2, '.', ''),
+            'formatted_expected' => self::formatMoneyForStatus($expectedAmount, $currency),
+            'formatted_backend' => self::formatMoneyForStatus($backendAmount, $currency),
+            'currency' => $currency,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|null $shipment
+     */
+    private static function extractEffectiveCodAmount(?array $shipment): ?float
+    {
+        if ($shipment === null) {
+            return null;
+        }
+
+        foreach (['codOverrideAmount', 'cod_override_amount'] as $key) {
+            if (array_key_exists($key, $shipment) && $shipment[$key] !== null && is_numeric($shipment[$key])) {
+                return (float) $shipment[$key];
+            }
+        }
+
+        return isset($shipment['payment']) && is_numeric($shipment['payment'])
+            ? (float) $shipment['payment']
+            : null;
+    }
+
+    private static function formatMoneyForStatus(float $amount, string $currency): string
+    {
+        return wp_strip_all_tags(
+            html_entity_decode(
+                (string) wc_price((string) $amount, ['currency' => $currency]),
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8'
+            )
+        );
     }
 
     public static function shipmentStateCanHaveBackendLabel(string $state): bool

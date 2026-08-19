@@ -171,7 +171,11 @@ if (! class_exists('WC_Order', false)) {
             private int $id = 42,
             private string $orderKey = 'wc_order_testkey99',
             private string $octavaMetaValue = '',
-            private string $orderNumber = ''
+            private string $orderNumber = '',
+            private string $paymentMethod = '',
+            private string $total = '0',
+            private string $currency = 'EUR',
+            private string $paymentMethodTitle = ''
         ) {
         }
 
@@ -222,22 +226,22 @@ if (! class_exists('WC_Order', false)) {
 
         public function get_payment_method(): string
         {
-            return '';
+            return $this->paymentMethod;
         }
 
         public function get_payment_method_title(): string
         {
-            return '';
+            return $this->paymentMethodTitle;
         }
 
         public function get_total(): string
         {
-            return '0';
+            return $this->total;
         }
 
         public function get_currency(): string
         {
-            return 'EUR';
+            return $this->currency;
         }
 
         public function get_items(): array

@@ -297,6 +297,18 @@ msgstr "Re-generate shipping label"
 msgid "Re-import orders when they are updated (debounced)"
 msgstr "Re-import orders when they are updated (debounced)"
 
+msgid "Re-import order"
+msgstr "Re-import order"
+
+msgid "Re-importing…"
+msgstr "Re-importing…"
+
+msgid "COD mismatch: WooCommerce %1$s; OctavaWMS %2$s."
+msgstr "COD mismatch: WooCommerce %1$s; OctavaWMS %2$s."
+
+msgid "Re-import the order to update OctavaWMS. Existing carrier labels are not changed."
+msgstr "Re-import the order to update OctavaWMS. Existing carrier labels are not changed."
+
 msgid "Recipient locality"
 msgstr "Recipient locality"
 

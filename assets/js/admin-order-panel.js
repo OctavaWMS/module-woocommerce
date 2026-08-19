@@ -913,7 +913,7 @@
     return connectorPost('octavawms_patch_shipment', f);
   }
 
-  function toolbarHtml(leftInnerHtml) {
+  function toolbarHtml(leftInnerHtml, showReimport) {
     if (leftInnerHtml == null) {
       leftInnerHtml = '';
     }
@@ -926,9 +926,31 @@
       '<button type="button" class="button button-small" data-octavawms-action="panel-login">' +
       esc(cfg.strings.loginToPanel || 'Login to the panel') +
       '</button>' +
+      (showReimport
+        ? '<button type="button" class="button button-small" data-octavawms-action="reimport-order">' +
+          esc(cfg.strings.reimportOrder || 'Re-import order') +
+          '</button>'
+        : '') +
       '<button type="button" class="button button-small" data-octavawms-action="refresh-status">' +
       esc(cfg.strings.refreshStatus) +
       '</button></div></div>'
+    );
+  }
+
+  function codMismatchWarningHtml(data) {
+    const check = data && data.cod_check;
+    if (!check || check.available !== true || check.matches !== false) {
+      return '';
+    }
+
+    const mismatch = String(cfg.strings.codMismatch || 'COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.')
+      .replace('%1$s', String(check.formatted_expected || check.expected_amount || ''))
+      .replace('%2$s', String(check.formatted_backend || check.backend_amount || ''));
+    return (
+      '<div class="octavawms-notice octavawms-notice--warning">' +
+      '<strong>' + esc(mismatch) + '</strong><br>' +
+      esc(cfg.strings.codMismatchSuggestion) +
+      '</div>'
     );
   }
 
@@ -1139,7 +1161,11 @@
     if (!shipment || !shipment.id) {
       panelShipment = null;
       spDetail = null;
-      html = '<div class="octavawms-connect-page">' + toolbarHtml() + '<div class="octavawms-connect-grid">';
+      html =
+        '<div class="octavawms-connect-page">' +
+        toolbarHtml('', true) +
+        codMismatchWarningHtml(data) +
+        '<div class="octavawms-connect-grid">';
       html +=
         '<div class="octavawms-slot octavawms-slot--label">' +
         '<section class="octavawms-connect-section">' +
@@ -1169,7 +1195,8 @@
     const labelFirst = labelState !== 'draft';
     html =
       '<div class="octavawms-connect-page">' +
-      toolbarHtml(shipmentMetaRowHtml(data, shipment)) +
+      toolbarHtml(shipmentMetaRowHtml(data, shipment), true) +
+      codMismatchWarningHtml(data) +
       pendingErrorBannerWrapperHtml(panelShipment, null) +
       '<div class="octavawms-connect-grid' +
       (labelFirst ? ' octavawms-connect-grid--label-first' : '') +
@@ -2242,12 +2269,12 @@
       });
   }
 
-  function uploadOrder() {
+  function uploadOrder(isReimport) {
     root.innerHTML =
       '<div class="octavawms-connect-page">' +
       '<div class="octavawms-connect-section-body">' +
       '<span class="octavawms-spinner"></span> ' +
-      esc(cfg.strings.uploading) +
+      esc(isReimport ? cfg.strings.reimporting : cfg.strings.uploading) +
       '</div></div>';
     const body = new URLSearchParams();
     body.set('action', 'octavawms_upload_order');
@@ -2318,6 +2345,11 @@
       if (act === 'refresh-status') {
         e.preventDefault();
         fetchStatus();
+        return;
+      }
+      if (act === 'reimport-order') {
+        e.preventDefault();
+        uploadOrder(true);
         return;
       }
       if (act === 'print-label') {
@@ -2432,7 +2464,7 @@
       }
       if (act === 'upload-order') {
         e.preventDefault();
-        uploadOrder();
+        uploadOrder(false);
         return;
       }
       if (act === 'generate-label') {
