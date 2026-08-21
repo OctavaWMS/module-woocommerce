@@ -220,9 +220,18 @@ class LabelAjax
             }
         }
 
-        return isset($shipment['payment']) && is_numeric($shipment['payment'])
-            ? (float) $shipment['payment']
-            : null;
+        $hasBackendAmount = false;
+        $amount = 0.0;
+        foreach (['payment', 'retailPrice', 'tax'] as $key) {
+            if (! array_key_exists($key, $shipment) || $shipment[$key] === null || ! is_numeric($shipment[$key])) {
+                continue;
+            }
+
+            $hasBackendAmount = true;
+            $amount += (float) $shipment[$key];
+        }
+
+        return $hasBackendAmount ? $amount : null;
     }
 
     private static function formatMoneyForStatus(float $amount, string $currency): string

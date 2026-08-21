@@ -215,7 +215,7 @@ final class LabelAjaxTest extends TestCase
         $ajax->handleAjaxOrderStatus();
     }
 
-    public function testHandleAjaxOrderStatusReportsCodMismatch(): void
+    public function testHandleAjaxOrderStatusIncludesShippingAndTaxInBackendCodAmount(): void
     {
         $_POST = ['order_id' => '42'];
         $_REQUEST = $_POST;
@@ -235,11 +235,11 @@ final class LabelAjaxTest extends TestCase
             ->once()
             ->andReturnUsing(static function (array $payload): void {
                 self::assertTrue($payload['cod_check']['available']);
-                self::assertFalse($payload['cod_check']['matches']);
+                self::assertTrue($payload['cod_check']['matches']);
                 self::assertSame('82.80', $payload['cod_check']['expected_amount']);
-                self::assertSame('122.70', $payload['cod_check']['backend_amount']);
+                self::assertSame('82.80', $payload['cod_check']['backend_amount']);
                 self::assertSame('82.8 BGN', $payload['cod_check']['formatted_expected']);
-                self::assertSame('122.7 BGN', $payload['cod_check']['formatted_backend']);
+                self::assertSame('82.8 BGN', $payload['cod_check']['formatted_backend']);
                 throw new \RuntimeException('wp_send_json_success');
             });
 
@@ -255,7 +255,13 @@ final class LabelAjaxTest extends TestCase
             {
                 unset($backendOrder, $extIdCandidates);
 
-                return [['id' => 777, 'state' => 'pending_queued', 'payment' => '122.70']];
+                return [[
+                    'id' => 777,
+                    'state' => 'pending_queued',
+                    'payment' => '76.65',
+                    'retailPrice' => '4.00',
+                    'tax' => '2.15',
+                ]];
             }
         };
         $labelService = $this->getMockBuilder(LabelService::class)->disableOriginalConstructor()->getMock();
