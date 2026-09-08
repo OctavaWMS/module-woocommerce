@@ -17,6 +17,11 @@ class Options
     /** Default OctavaWMS API host (no trailing slash). */
     public const DEFAULT_API_BASE = 'https://pro.oawms.com';
 
+    /** @var array<string, string> OAuth domains whose API is served on a branded host. */
+    private const OAUTH_DOMAIN_API_BASES = [
+        'izpratibg' => 'https://api.izprati.bg',
+    ];
+
     public static function getLabelEndpoint(): string
     {
         foreach (self::integrationSettingsOptionNames() as $name) {
@@ -60,8 +65,9 @@ class Options
      *
      * Priority:
      *   1. Integration setting **API base URL (override)** (`api_base`) — scheme://host only.
-     *   2. Host from stored `label_endpoint` (after connect / legacy).
-     *   3. {@see DEFAULT_API_BASE}.
+     *   2. Branded host inferred from the stored OAuth domain.
+     *   3. Host from stored `label_endpoint` (after connect / legacy).
+     *   4. {@see DEFAULT_API_BASE}.
      */
     public static function getBaseUrl(): string
     {
@@ -72,6 +78,13 @@ class Options
             : '';
         if ($override !== '') {
             return $override;
+        }
+
+        $oauthDomain = isset($settings['oauth_domain']) && is_string($settings['oauth_domain'])
+            ? strtolower(trim($settings['oauth_domain']))
+            : '';
+        if (isset(self::OAUTH_DOMAIN_API_BASES[$oauthDomain])) {
+            return self::OAUTH_DOMAIN_API_BASES[$oauthDomain];
         }
 
         $labelEndpoint = isset($settings['label_endpoint']) && is_string($settings['label_endpoint']) ? trim($settings['label_endpoint']) : '';

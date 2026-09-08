@@ -56,7 +56,7 @@ If you are self-hosted or were given values by your operator:
 
 | Setting | Description |
 |--------|-------------|
-| **API base URL (override)** | Optional (`WooCommerce → Settings → Integrations → OctavaWMS`). When set — e.g. `https://staging.example.com` — all API, OAuth, connect, and label traffic uses that scheme and host (**highest** priority). When empty: after connect the **host from Label endpoint** is used; otherwise the default **`https://pro.oawms.com`**. |
+| **API base URL (override)** | Optional (`WooCommerce → Settings → Integrations → OctavaWMS`). When set — e.g. `https://staging.example.com` — all API, OAuth, connect, and label traffic uses that scheme and host (**highest** priority). When empty: a known branded OAuth domain selects its branded API host (for example `izpratibg` uses `https://api.izprati.bg`); otherwise the **host from Label endpoint** is used, followed by the default **`https://pro.oawms.com`**. |
 | **Label endpoint URL** | Filled automatically by connect (or historically). Its **host** becomes the API base when no override is set (and when this field has a URL). Labels post to `{host}/apps/woocommerce/api/label` unless overridden by connect response paths. |
 | **API key** | Bearer access token sent as `Authorization: Bearer …` after Connect (or manual paste). When Connect returns OAuth bootstrap fields, the access token is obtained via `POST /oauth` and may be rotated with a new refresh token. |
 | **Auto-sync new orders** | When enabled (default), new orders trigger `POST /api/integrations/import` so OctavaWMS can create them without using **Upload order** in the admin. |
@@ -265,7 +265,7 @@ Tests use **PHPUnit 11** and **Brain Monkey** to stub WordPress functions. Notab
 - All user-visible strings remain **canonical English** wrapped in **`__('…', 'octavawms')`** in PHP so standard WordPress translation files (`languages/octavawms-*.mo`) still apply.
 - For white-label installs, **`I18n\BrandedStrings`** hooks **`gettext`** for domain `octavawms` and replaces msgids listed in **`src/I18n/catalogs/{pack}-bg.php`** (e.g. `izprati-bg.php`). Add a sibling catalog and extend **`BrandedStrings::catalogPaths()`** for new tenants.
 
-Built-in defaults (no filter required): `Options::DEFAULT_API_BASE` (**`https://pro.oawms.com`**) for API base when neither **API base override** nor label-endpoint host applies; optional WooCommerce integration field **`api_base`** overrides that host (`BackendApiClient::LABEL_PATH` is still used relative to that base when connect does not supply a full label URL).
+Built-in defaults (no filter required): a recognized branded OAuth domain selects its branded API host (`izpratibg` → **`https://api.izprati.bg`**); otherwise `Options::DEFAULT_API_BASE` (**`https://pro.oawms.com`**) is used when neither **API base override** nor label-endpoint host applies. The optional WooCommerce integration field **`api_base`** overrides every inferred host (`BackendApiClient::LABEL_PATH` is still used relative to that base when connect does not supply a full label URL).
 
 ## OctavaWMS (cloud) components
 

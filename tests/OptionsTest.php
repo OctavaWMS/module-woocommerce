@@ -105,6 +105,39 @@ final class OptionsTest extends TestCase
         self::assertSame('https://custom.example.org', Options::getBaseUrl());
     }
 
+    public function testGetBaseUrlUsesIzpratiHostForIzpratiOAuthDomain(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'oauth_domain' => 'izpratibg',
+                    'label_endpoint' => 'https://pro.oawms.com/apps/woocommerce/api/label',
+                ];
+            }
+
+            return $default;
+        });
+
+        self::assertSame('https://api.izprati.bg', Options::getBaseUrl());
+    }
+
+    public function testGetBaseUrlKeepsExplicitOverrideForIzpratiOAuthDomain(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [
+                    'api_base' => 'https://staging.example.org',
+                    'oauth_domain' => 'izpratibg',
+                    'label_endpoint' => 'https://pro.oawms.com/apps/woocommerce/api/label',
+                ];
+            }
+
+            return $default;
+        });
+
+        self::assertSame('https://staging.example.org', Options::getBaseUrl());
+    }
+
     public function testDefaultApiBaseConstant(): void
     {
         self::assertSame('https://pro.oawms.com', Options::DEFAULT_API_BASE);
