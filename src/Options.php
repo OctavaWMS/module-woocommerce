@@ -22,6 +22,11 @@ class Options
         'izpratibg' => 'https://api.izprati.bg',
     ];
 
+    /** @var array<string, string> OAuth domains whose host requires a branded legacy client. */
+    private const OAUTH_DOMAIN_CLIENT_IDS = [
+        'izpratibg' => 'izprati',
+    ];
+
     public static function getLabelEndpoint(): string
     {
         foreach (self::integrationSettingsOptionNames() as $name) {
@@ -48,6 +53,13 @@ class Options
         $d = $settings['oauth_domain'] ?? '';
 
         return is_string($d) ? trim($d) : '';
+    }
+
+    public static function getOAuthClientId(): string
+    {
+        $domain = strtolower(self::getOAuthDomain());
+
+        return self::OAUTH_DOMAIN_CLIENT_IDS[$domain] ?? 'orderadmin';
     }
 
     /**

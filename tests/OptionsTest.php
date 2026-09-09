@@ -155,6 +155,20 @@ final class OptionsTest extends TestCase
 
         self::assertSame('', Options::getRefreshToken());
         self::assertSame('', Options::getOAuthDomain());
+        self::assertSame('orderadmin', Options::getOAuthClientId());
+    }
+
+    public function testGetOAuthClientIdUsesIzpratiClientForIzpratiDomain(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['oauth_domain' => 'izpratibg'];
+            }
+
+            return $default;
+        });
+
+        self::assertSame('izprati', Options::getOAuthClientId());
     }
 
     public function testSaveOAuthBootstrapStoresRefreshClearsApiKeyAndLabelEndpoint(): void

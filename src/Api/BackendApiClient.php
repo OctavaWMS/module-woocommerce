@@ -267,7 +267,7 @@ class BackendApiClient
         }
 
         $url = (string) apply_filters('octavawms_oauth_url', rtrim($this->getBaseUrl(), '/') . self::OAUTH_PATH);
-        $clientId = (string) apply_filters('octavawms_oauth_client_id', 'orderadmin');
+        $clientId = (string) apply_filters('octavawms_oauth_client_id', Options::getOAuthClientId());
         /** @var array<string, string> $payload */
         $payload = [
             'grant_type' => 'refresh_token',

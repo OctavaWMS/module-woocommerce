@@ -1083,7 +1083,7 @@ final class BackendApiClientTest extends TestCase
                 $body = json_decode((string) ($args['body'] ?? ''), true);
                 self::assertIsArray($body);
                 self::assertSame('refresh_token', $body['grant_type'] ?? '');
-                self::assertSame('orderadmin', $body['client_id'] ?? '');
+                self::assertSame('izprati', $body['client_id'] ?? '');
                 self::assertSame('rt-test', $body['refresh_token'] ?? '');
                 self::assertSame('izpratibg', $body['domain'] ?? '');
 
