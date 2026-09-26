@@ -184,12 +184,17 @@ class LabelAjax
      */
     private static function buildCodCheckPayload(WC_Order $order, ?array $shipment): array
     {
+        $isCodOrder = $order->get_payment_method() === 'cod';
+        if (! $isCodOrder && ! self::hasExplicitCodAmount($shipment)) {
+            return ['available' => false];
+        }
+
         $backendAmount = self::extractEffectiveCodAmount($shipment);
         if ($backendAmount === null) {
             return ['available' => false];
         }
 
-        $expectedAmount = $order->get_payment_method() === 'cod' ? (float) $order->get_total() : 0.0;
+        $expectedAmount = $isCodOrder ? (float) $order->get_total() : 0.0;
         $expectedAmount = round($expectedAmount, 2);
         $backendAmount = round($backendAmount, 2);
         $currency = (string) $order->get_currency();
@@ -203,6 +208,24 @@ class LabelAjax
             'formatted_backend' => self::formatMoneyForStatus($backendAmount, $currency),
             'currency' => $currency,
         ];
+    }
+
+    /**
+     * @param array<string, mixed>|null $shipment
+     */
+    private static function hasExplicitCodAmount(?array $shipment): bool
+    {
+        if ($shipment === null) {
+            return false;
+        }
+
+        foreach (['codOverrideAmount', 'cod_override_amount'] as $key) {
+            if (array_key_exists($key, $shipment) && $shipment[$key] !== null && is_numeric($shipment[$key])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
