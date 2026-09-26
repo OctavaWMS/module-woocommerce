@@ -227,7 +227,10 @@ class AdminLabelActions
 
         $weightRaw = WooOrderWeights::contentsWeightTotal($order);
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
-        $weightGrams = max(1, (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit)));
+        $weightGrams = max(
+            LabelService::MIN_WEIGHT_GRAMS,
+            (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit))
+        );
 
         $result = $this->labelService->requestLabel(
             $externalOrderId,

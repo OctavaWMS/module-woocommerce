@@ -28,6 +28,25 @@ final class LabelAjaxTest extends TestCase
         self::assertSame('requeue_ending_queued', LabelAjax::PATCH_KIND_REQUEUE_ENDING_QUEUED);
     }
 
+    public function testNormalizePlaceMeasuresRaisesWeightWithoutOverwritingValidDimensions(): void
+    {
+        $method = new \ReflectionMethod(LabelAjax::class, 'normalizePlaceMeasuresForUi');
+        $method->setAccessible(true);
+
+        $row = $method->invoke(null, [
+            'id' => 3353227,
+            'weight' => 1,
+            'dim_x' => 120,
+            'dim_y' => 80,
+            'dim_z' => 60,
+        ]);
+
+        self::assertSame(10.0, $row['weight']);
+        self::assertSame(120.0, $row['dim_x']);
+        self::assertSame(80.0, $row['dim_y']);
+        self::assertSame(60.0, $row['dim_z']);
+    }
+
     public function testHandleAjaxOrderStatusSendsErrorWhenOrderIdMissing(): void
     {
         $_POST = [];

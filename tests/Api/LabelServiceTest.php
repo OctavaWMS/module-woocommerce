@@ -146,6 +146,38 @@ final class LabelServiceTest extends TestCase
         @unlink((string) ($result['label_file'] ?? ''));
     }
 
+    public function testRequestLabelClampsWeightToSafeMinimum(): void
+    {
+        $client = new class extends BackendApiClient {
+            public ?int $capturedWeight = null;
+
+            public function findShipmentsForConnector(?array $backendOrder, array $extIdCandidates): array
+            {
+                return [['id' => 101]];
+            }
+
+            public function findPreprocessingTasksForShipment(int $deliveryRequestId): array
+            {
+                return ['ok' => true, 'task_id' => 202, 'queue_id' => 303];
+            }
+
+            public function createOrUpdatePreprocessingTask(?int $taskId, array $payload, bool $retried = false): array
+            {
+                $weight = $payload['deliveryRequest']['weight'] ?? null;
+                $this->capturedWeight = is_numeric($weight) ? (int) $weight : null;
+
+                return ['ok' => true, 'pdf' => '%PDF', 'content_type' => 'application/pdf', 'task_id' => $taskId];
+            }
+        };
+
+        $service = new LabelService($client);
+        $result = $service->requestLabel('order-min-weight', 1, 100, 100, 100, null, null, []);
+
+        self::assertSame('success', $result['status']);
+        self::assertSame(LabelService::MIN_WEIGHT_GRAMS, $client->capturedWeight);
+        @unlink((string) ($result['label_file'] ?? ''));
+    }
+
     public function testRequestLabelReturnsErrorWhenQueueBootstrapFails(): void
     {
         $client = new class extends BackendApiClient {

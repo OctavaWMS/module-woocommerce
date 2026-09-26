@@ -2125,7 +2125,7 @@
       h +=
         '<td><input type="number" class="octavawms-place-input" aria-label="' +
         esc(cfg.strings.weightG) +
-        '" step="any" value="' +
+        '" min="10" step="1" value="' +
         esc(String(p.weight)) +
         '"' +
         (locked ? ' disabled' : '') +

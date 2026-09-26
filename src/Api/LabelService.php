@@ -9,6 +9,8 @@ use OctavaWMS\WooCommerce\PluginLog;
 
 class LabelService
 {
+    public const MIN_WEIGHT_GRAMS = 10;
+
     public const ORDER_META_LABEL_URL = '_octavawms_label_url';
     public const ORDER_META_LABEL_FILE = '_octavawms_label_file';
 
@@ -129,7 +131,7 @@ class LabelService
             'deliveryRequest' => [
                 'id' => $deliveryRequestId,
                 'sendDate' => date('Y-m-d'),
-                'weight' => max(1, $weightGrams),
+                'weight' => max(self::MIN_WEIGHT_GRAMS, $weightGrams),
                 'dimensions' => [
                     'x' => max(1, $dimX),
                     'y' => max(1, $dimY),
