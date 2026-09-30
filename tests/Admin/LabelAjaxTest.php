@@ -28,6 +28,25 @@ final class LabelAjaxTest extends TestCase
         self::assertSame('requeue_ending_queued', LabelAjax::PATCH_KIND_REQUEUE_ENDING_QUEUED);
     }
 
+    public function testNormalizePlaceMeasuresRaisesWeightWithoutOverwritingValidDimensions(): void
+    {
+        $method = new \ReflectionMethod(LabelAjax::class, 'normalizePlaceMeasuresForUi');
+        $method->setAccessible(true);
+
+        $row = $method->invoke(null, [
+            'id' => 3353227,
+            'weight' => 1,
+            'dim_x' => 120,
+            'dim_y' => 80,
+            'dim_z' => 60,
+        ]);
+
+        self::assertSame(10.0, $row['weight']);
+        self::assertSame(120.0, $row['dim_x']);
+        self::assertSame(80.0, $row['dim_y']);
+        self::assertSame(60.0, $row['dim_z']);
+    }
+
     public function testHandleAjaxOrderStatusSendsErrorWhenOrderIdMissing(): void
     {
         $_POST = [];
@@ -261,6 +280,113 @@ final class LabelAjaxTest extends TestCase
                     'payment' => '76.65',
                     'retailPrice' => '4.00',
                     'tax' => '2.15',
+                ]];
+            }
+        };
+        $labelService = $this->getMockBuilder(LabelService::class)->disableOriginalConstructor()->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('wp_send_json_success');
+
+        $ajax->handleAjaxOrderStatus();
+    }
+
+    public function testHandleAjaxOrderStatusIgnoresShipmentTotalsForPrepaidOrderWithoutCodOverride(): void
+    {
+        $_POST = ['order_id' => '42'];
+        $_REQUEST = $_POST;
+        $order = new \WC_Order(42, 'wc_order_testkey99', '', '', 'bacs', '65.62', 'EUR', 'Direct bank transfer');
+        $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (): \WC_Order => $order;
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('absint')->alias(static fn ($v): int => abs((int) $v));
+        Functions\when('wp_unslash')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(true);
+        Functions\when('get_option')->justReturn('kg');
+
+        Functions\expect('wp_send_json_success')
+            ->once()
+            ->andReturnUsing(static function (array $payload): void {
+                self::assertSame(['available' => false], $payload['cod_check']);
+                throw new \RuntimeException('wp_send_json_success');
+            });
+
+        $api = new class extends BackendApiClient {
+            public function findOrderByExtId(string $extId): ?array
+            {
+                unset($extId);
+
+                return ['id' => 1001, 'extId' => 'wc_order_testkey99'];
+            }
+
+            public function findShipmentsForConnector(?array $backendOrder, array $extIdCandidates): array
+            {
+                unset($backendOrder, $extIdCandidates);
+
+                return [[
+                    'id' => 777,
+                    'state' => 'pending',
+                    'payment' => '0',
+                    'retailPrice' => '1.52',
+                    'tax' => '10.93',
+                ]];
+            }
+        };
+        $labelService = $this->getMockBuilder(LabelService::class)->disableOriginalConstructor()->getMock();
+        $ajax = new LabelAjax($api, $labelService, new LabelMetaBox());
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('wp_send_json_success');
+
+        $ajax->handleAjaxOrderStatus();
+    }
+
+    public function testHandleAjaxOrderStatusKeepsExplicitZeroCodOverrideForPrepaidOrder(): void
+    {
+        $_POST = ['order_id' => '42'];
+        $_REQUEST = $_POST;
+        $order = new \WC_Order(42, 'wc_order_testkey99', '', '', 'bacs', '65.62', 'EUR');
+        $GLOBALS['octavawms_test_wc_get_order_callback'] = static fn (): \WC_Order => $order;
+
+        Functions\when('__')->returnArg(1);
+        Functions\when('absint')->alias(static fn ($v): int => abs((int) $v));
+        Functions\when('wp_unslash')->returnArg(1);
+        Functions\when('current_user_can')->justReturn(true);
+        Functions\when('check_ajax_referer')->justReturn(true);
+        Functions\when('get_option')->justReturn('kg');
+        Functions\when('wc_price')->alias(static fn ($amount): string => (string) $amount . ' EUR');
+        Functions\when('wp_strip_all_tags')->returnArg(1);
+
+        Functions\expect('wp_send_json_success')
+            ->once()
+            ->andReturnUsing(static function (array $payload): void {
+                self::assertTrue($payload['cod_check']['available']);
+                self::assertTrue($payload['cod_check']['matches']);
+                self::assertSame('0.00', $payload['cod_check']['backend_amount']);
+                throw new \RuntimeException('wp_send_json_success');
+            });
+
+        $api = new class extends BackendApiClient {
+            public function findOrderByExtId(string $extId): ?array
+            {
+                unset($extId);
+
+                return ['id' => 1001, 'extId' => 'wc_order_testkey99'];
+            }
+
+            public function findShipmentsForConnector(?array $backendOrder, array $extIdCandidates): array
+            {
+                unset($backendOrder, $extIdCandidates);
+
+                return [[
+                    'id' => 777,
+                    'state' => 'pending',
+                    'payment' => '0',
+                    'retailPrice' => '1.52',
+                    'tax' => '10.93',
+                    'codOverrideAmount' => '0',
                 ]];
             }
         };

@@ -204,7 +204,7 @@ CSS;
             'octavawms-order-panel',
             plugins_url('assets/js/admin-order-panel.js', $pluginMain),
             $scriptDeps,
-            '1.9.5',
+            '1.9.6',
             true
         );
 

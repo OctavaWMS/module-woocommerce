@@ -14,8 +14,6 @@ use WC_Order;
 
 class LabelAjax
 {
-    private const UI_DEFAULT_PLACE_WEIGHT = 1.0;
-
     private const UI_DEFAULT_PLACE_DIMENSION_MM = 100.0;
 
     /** @see shopify-octava-wms MANUAL_STRATEGY */
@@ -137,7 +135,10 @@ class LabelAjax
 
         $weightRaw = WooOrderWeights::contentsWeightTotal($order);
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
-        $defaultGrams = max(1, (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit)));
+        $defaultGrams = max(
+            LabelService::MIN_WEIGHT_GRAMS,
+            (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit))
+        );
 
         $codPayload = ['is_cod' => false];
         if ($order->get_payment_method() === 'cod') {
@@ -184,12 +185,17 @@ class LabelAjax
      */
     private static function buildCodCheckPayload(WC_Order $order, ?array $shipment): array
     {
+        $isCodOrder = $order->get_payment_method() === 'cod';
+        if (! $isCodOrder && ! self::hasExplicitCodAmount($shipment)) {
+            return ['available' => false];
+        }
+
         $backendAmount = self::extractEffectiveCodAmount($shipment);
         if ($backendAmount === null) {
             return ['available' => false];
         }
 
-        $expectedAmount = $order->get_payment_method() === 'cod' ? (float) $order->get_total() : 0.0;
+        $expectedAmount = $isCodOrder ? (float) $order->get_total() : 0.0;
         $expectedAmount = round($expectedAmount, 2);
         $backendAmount = round($backendAmount, 2);
         $currency = (string) $order->get_currency();
@@ -203,6 +209,24 @@ class LabelAjax
             'formatted_backend' => self::formatMoneyForStatus($backendAmount, $currency),
             'currency' => $currency,
         ];
+    }
+
+    /**
+     * @param array<string, mixed>|null $shipment
+     */
+    private static function hasExplicitCodAmount(?array $shipment): bool
+    {
+        if ($shipment === null) {
+            return false;
+        }
+
+        foreach (['codOverrideAmount', 'cod_override_amount'] as $key) {
+            if (array_key_exists($key, $shipment) && $shipment[$key] !== null && is_numeric($shipment[$key])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -860,19 +884,17 @@ class LabelAjax
                 $seen[$pid] = true;
             }
             if ($pid > 0 && $this->placeMeasuresNeedUiDefaults($row)) {
+                $normalized = self::normalizePlaceMeasuresForUi($row);
                 $ur = $this->apiClient->updatePlace($pid, [
-                    'weight' => self::UI_DEFAULT_PLACE_WEIGHT,
+                    'weight' => $normalized['weight'],
                     'dimensions' => [
-                        'x' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
-                        'y' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
-                        'z' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
+                        'x' => $normalized['dim_x'],
+                        'y' => $normalized['dim_y'],
+                        'z' => $normalized['dim_z'],
                     ],
                 ]);
                 if ($ur['ok']) {
-                    $row['weight'] = self::UI_DEFAULT_PLACE_WEIGHT;
-                    $row['dim_x'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
-                    $row['dim_y'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
-                    $row['dim_z'] = self::UI_DEFAULT_PLACE_DIMENSION_MM;
+                    $row = $normalized;
                 }
             }
             $out[] = $row;
@@ -918,7 +940,7 @@ class LabelAjax
         }
 
         $ur = $this->apiClient->updatePlace($placeId, [
-            'weight' => self::UI_DEFAULT_PLACE_WEIGHT,
+            'weight' => LabelService::MIN_WEIGHT_GRAMS,
             'dimensions' => [
                 'x' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
                 'y' => self::UI_DEFAULT_PLACE_DIMENSION_MM,
@@ -959,6 +981,7 @@ class LabelAjax
         }
 
         $weight = isset($_POST['weight']) ? (float) wp_unslash($_POST['weight']) : 0.0;
+        $weight = max((float) LabelService::MIN_WEIGHT_GRAMS, $weight);
         $dimX = isset($_POST['dim_x']) ? (float) wp_unslash($_POST['dim_x']) : 0.0;
         $dimY = isset($_POST['dim_y']) ? (float) wp_unslash($_POST['dim_y']) : 0.0;
         $dimZ = isset($_POST['dim_z']) ? (float) wp_unslash($_POST['dim_z']) : 0.0;
@@ -1420,12 +1443,31 @@ class LabelAjax
      */
     private function placeMeasuresNeedUiDefaults(array $row): bool
     {
+        $normalized = self::normalizePlaceMeasuresForUi($row);
+
+        return (float) ($row['weight'] ?? 0.0) !== $normalized['weight']
+            || (float) ($row['dim_x'] ?? 0.0) !== $normalized['dim_x']
+            || (float) ($row['dim_y'] ?? 0.0) !== $normalized['dim_y']
+            || (float) ($row['dim_z'] ?? 0.0) !== $normalized['dim_z'];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function normalizePlaceMeasuresForUi(array $row): array
+    {
         $w = isset($row['weight']) ? (float) $row['weight'] : 0.0;
         $dx = isset($row['dim_x']) ? (float) $row['dim_x'] : 0.0;
         $dy = isset($row['dim_y']) ? (float) $row['dim_y'] : 0.0;
         $dz = isset($row['dim_z']) ? (float) $row['dim_z'] : 0.0;
 
-        return $w <= 0.0 && $dx <= 0.0 && $dy <= 0.0 && $dz <= 0.0;
+        $row['weight'] = max((float) LabelService::MIN_WEIGHT_GRAMS, $w);
+        $row['dim_x'] = $dx > 0.0 ? $dx : self::UI_DEFAULT_PLACE_DIMENSION_MM;
+        $row['dim_y'] = $dy > 0.0 ? $dy : self::UI_DEFAULT_PLACE_DIMENSION_MM;
+        $row['dim_z'] = $dz > 0.0 ? $dz : self::UI_DEFAULT_PLACE_DIMENSION_MM;
+
+        return $row;
     }
 
     /**
@@ -1455,7 +1497,7 @@ class LabelAjax
         }
 
         return [
-            max(1, (int) round($totalWeight)),
+            max(LabelService::MIN_WEIGHT_GRAMS, (int) round($totalWeight)),
             max(1, (int) round($maxDx)),
             max(1, (int) round($maxDy)),
             max(1, (int) round($maxDz)),
@@ -1503,10 +1545,13 @@ class LabelAjax
     {
         $weightRaw = WooOrderWeights::contentsWeightTotal($order);
         $weightUnit = (string) get_option('woocommerce_weight_unit', 'kg');
-        $defaultGrams = max(1, (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit)));
+        $defaultGrams = max(
+            LabelService::MIN_WEIGHT_GRAMS,
+            (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit))
+        );
 
         $wg = isset($_POST['weight_grams']) ? (float) wp_unslash($_POST['weight_grams']) : (float) $defaultGrams;
-        $weightGrams = max(1, (int) round($wg));
+        $weightGrams = max(LabelService::MIN_WEIGHT_GRAMS, (int) round($wg));
 
         $dx = isset($_POST['dim_x']) ? (float) wp_unslash($_POST['dim_x']) : 100.0;
         $dy = isset($_POST['dim_y']) ? (float) wp_unslash($_POST['dim_y']) : 100.0;

@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Temporary **REST API consumer key / secret** integration fields and `Options::getConnectAuthorizationHeader()` (replaced by `WooRestCredentials` auto-discovery).
 
 ### Fixed
+- Parcel editing and label generation now enforce a 10 g minimum so carrier integrations cannot round a positive WooCommerce parcel weight down to 0.00 kg. Existing dimensions are preserved when an underweight parcel is normalized.
+- The order panel no longer treats general shipment price and tax fields as cash on delivery for prepaid WooCommerce orders. Explicit backend COD overrides, including zero, remain authoritative.
 - `octavawms_import_order` scheduling now coalesces pending Action Scheduler jobs per order, leaves running jobs untouched, and falls back to inline import if Action Scheduler cannot enqueue a fresh unique action.
 - Order edit panel showed “not in OctavaWMS” after a successful import when the list API used a different HAL `_embedded` key (`orders` / single `order` object) or when `_octavawms_external_order_id` did not match the backend’s canonical `extId`. The plugin now parses several collection shapes, tries multiple Woo identifiers (meta, order key, numeric id, order number), syncs `_octavawms_external_order_id` from the API when found, and reads `extId` from import responses when present.
 
