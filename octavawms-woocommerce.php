@@ -16,6 +16,13 @@ if (! defined('ABSPATH')) {
 
 define('OCTAVAWMS_PLUGIN_FILE', __FILE__);
 
+add_action('before_woocommerce_init', static function (): void {
+    $features = 'Automattic\\WooCommerce\\Utilities\\FeaturesUtil';
+    if (class_exists($features)) {
+        $features::declare_compatibility('cart_checkout_blocks', __FILE__, true);
+    }
+});
+
 // Always resolve plugin classes from /src via PSR-4 (prepend so this wins over an incomplete Composer autoload).
 spl_autoload_register(
     static function (string $class): void {
@@ -93,7 +100,9 @@ $octavawms_bootstrap_woocommerce = static function (): void {
     $adminActions->register();
 
     if (class_exists(\WC_Shipping_Method::class, false)) {
-        (new \OctavaWMS\WooCommerce\Checkout\CheckoutDeliveryService($apiClient))->register();
+        $checkoutDelivery = new \OctavaWMS\WooCommerce\Checkout\CheckoutDeliveryService($apiClient);
+        $checkoutDelivery->register();
+        (new \OctavaWMS\WooCommerce\Checkout\CheckoutBlocksService($checkoutDelivery))->register();
     }
     (new \OctavaWMS\WooCommerce\Checkout\CodVisibilityRules())->register();
 };

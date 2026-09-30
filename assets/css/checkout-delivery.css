@@ -387,3 +387,16 @@ body.woocommerce-cart .woocommerce-shipping-methods .octavawms-shipping-rate-rev
         grid-template-columns: 1fr 1fr;
     }
 }
+.octavawms-blocks-pickup-point {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.octavawms-blocks-pickup-point label {
+    font-weight: 600;
+}
+
+.octavawms-blocks-pickup-point select {
+    width: 100%;
+}

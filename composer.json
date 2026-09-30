@@ -32,6 +32,7 @@
       "php -l src/Checkout/AutoSetSender.php",
       "php -l src/Checkout/CodVisibilityRules.php",
       "php -l src/Checkout/CheckoutCalculator.php",
+      "php -l src/Checkout/CheckoutBlocksService.php",
       "php -l src/Checkout/CheckoutDeliveryService.php",
       "php -l src/Checkout/CheckoutSession.php",
       "php -l src/Checkout/ShippingMethod.php",
@@ -68,6 +69,7 @@
       "php -l tests/Checkout/AutoSetSenderTest.php",
       "php -l tests/Checkout/CodVisibilityRulesTest.php",
       "php -l tests/Checkout/CheckoutCalculatorTest.php",
+      "php -l tests/Checkout/CheckoutBlocksServiceTest.php",
       "php -l tests/Checkout/CheckoutDeliveryServiceTest.php",
       "php -l tests/Checkout/ShippingMethodTest.php"
     ],

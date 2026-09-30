@@ -1,0 +1,82 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: OctavaWMS Connector\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 00:00+0000\n"
+"PO-Revision-Date: 2026-09-16 00:00+0000\n"
+"Last-Translator: OctavaWMS\n"
+"Language-Team: Spanish\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Pickup point"
+msgstr "Punto de recogida"
+
+msgid "Choose pickup point"
+msgstr "Elige un punto de recogida"
+
+msgid "Choose a pickup point before placing the order."
+msgstr "Elige un punto de recogida antes de realizar el pedido."
+
+msgid "Please choose a delivery option again."
+msgstr "Vuelve a elegir una opción de entrega."
+
+msgid "Delivery option is no longer available. Please refresh checkout."
+msgstr "La opción de entrega ya no está disponible. Actualiza la página de pago."
+
+msgid "Loading pickup points..."
+msgstr "Cargando puntos de recogida..."
+
+msgid "No pickup points were found for this address."
+msgstr "No se encontraron puntos de recogida para esta dirección."
+
+msgid "Saving pickup point..."
+msgstr "Guardando el punto de recogida..."
+
+msgid "Could not update the pickup point. Please try again."
+msgstr "No se pudo actualizar el punto de recogida. Inténtalo de nuevo."
+
+msgid "Search pickup point"
+msgstr "Buscar un punto de recogida"
+
+msgid "Loading shipping options..."
+msgstr "Cargando opciones de envío..."
+
+msgid "Shipping"
+msgstr "Envío"
+
+msgid "Selected"
+msgstr "Seleccionado"
+
+msgid "Near me"
+msgstr "Cerca de mí"
+
+msgid "Map"
+msgstr "Mapa"
+
+msgid "List"
+msgstr "Lista"
+
+msgid "Locating..."
+msgstr "Buscando ubicación..."
+
+msgid "Loading map..."
+msgstr "Cargando mapa..."
+
+msgid "Location is not available in this browser."
+msgstr "La ubicación no está disponible en este navegador."
+
+msgid "Could not use your location. Showing pickup points for the selected city."
+msgstr "No se pudo usar tu ubicación. Se muestran los puntos de recogida de la ciudad seleccionada."
+
+msgid "pickup points"
+msgstr "puntos de recogida"
+
+msgid "Locker"
+msgstr "Taquilla"
+
+msgid "Office"
+msgstr "Punto de atención"
