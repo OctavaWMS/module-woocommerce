@@ -89,7 +89,7 @@ class SettingsAjax
         $sourceId = Options::getSourceId();
 
         $raw = isset($_POST['carrier_mapping_json'])
-            ? wp_unslash((string) $_POST['carrier_mapping_json'])
+            ? sanitize_textarea_field((string) wp_unslash($_POST['carrier_mapping_json']))
             : '';
         $decoded = json_decode($raw, true);
         if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
@@ -464,27 +464,40 @@ class SettingsAjax
             )
         );
 
-        // Build optional search clause (already escapes LIKE wildcards).
-        $args = ['\_%']; // first placeholder: NOT LIKE '\_%' excludes _private keys
-        $searchClause = '';
-        if ($search !== '') {
-            $searchClause = 'AND meta_key LIKE %s';
-            $args[]       = '%' . $wpdb->esc_like($search) . '%';
-        }
-
         if ($useHpos) {
-            $sql = $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                "SELECT DISTINCT meta_key FROM `{$hposTable}` WHERE meta_key NOT LIKE %s {$searchClause} ORDER BY meta_key LIMIT 100",
-                ...$args
-            );
+            $sql = $search !== ''
+                ? $wpdb->prepare(
+                    'SELECT DISTINCT meta_key FROM %i WHERE meta_key NOT LIKE %s AND meta_key LIKE %s ORDER BY meta_key LIMIT 100',
+                    $hposTable,
+                    '\_%',
+                    '%' . $wpdb->esc_like($search) . '%'
+                )
+                : $wpdb->prepare(
+                    'SELECT DISTINCT meta_key FROM %i WHERE meta_key NOT LIKE %s ORDER BY meta_key LIMIT 100',
+                    $hposTable,
+                    '\_%'
+                );
         } else {
-            $sql = $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                "SELECT DISTINCT pm.meta_key FROM `{$wpdb->postmeta}` pm
-                 INNER JOIN `{$wpdb->posts}` p ON p.ID = pm.post_id AND p.post_type = 'shop_order'
-                 WHERE pm.meta_key NOT LIKE %s {$searchClause}
-                 ORDER BY pm.meta_key LIMIT 100",
-                ...$args
-            );
+            $sql = $search !== ''
+                ? $wpdb->prepare(
+                    "SELECT DISTINCT pm.meta_key FROM %i pm
+                     INNER JOIN %i p ON p.ID = pm.post_id AND p.post_type = 'shop_order'
+                     WHERE pm.meta_key NOT LIKE %s AND pm.meta_key LIKE %s
+                     ORDER BY pm.meta_key LIMIT 100",
+                    $wpdb->postmeta,
+                    $wpdb->posts,
+                    '\_%',
+                    '%' . $wpdb->esc_like($search) . '%'
+                )
+                : $wpdb->prepare(
+                    "SELECT DISTINCT pm.meta_key FROM %i pm
+                     INNER JOIN %i p ON p.ID = pm.post_id AND p.post_type = 'shop_order'
+                     WHERE pm.meta_key NOT LIKE %s
+                     ORDER BY pm.meta_key LIMIT 100",
+                    $wpdb->postmeta,
+                    $wpdb->posts,
+                    '\_%'
+                );
         }
 
         $rows = $wpdb->get_col($sql); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared

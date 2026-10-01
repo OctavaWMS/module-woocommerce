@@ -43,31 +43,16 @@ final class BrandedStrings
             return null;
         }
 
-        foreach (self::catalogPaths($pack) as $path) {
-            if (! is_readable($path)) {
-                continue;
-            }
+        /** @var array<string, string> $map */
+        $map = match ($pack) {
+            UiBranding::PACK_IZPRATI => require __DIR__ . '/catalogs/izprati-bg.php',
+            default => [],
+        };
 
-            /** @var array<string, string> $map */
-            $map = require $path;
-            if (isset($map[$msgidEnglish]) && is_string($map[$msgidEnglish]) && $map[$msgidEnglish] !== '') {
-                return $map[$msgidEnglish];
-            }
+        if (isset($map[$msgidEnglish]) && is_string($map[$msgidEnglish]) && $map[$msgidEnglish] !== '') {
+            return $map[$msgidEnglish];
         }
 
         return null;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function catalogPaths(string $pack): array
-    {
-        $dir = dirname(__DIR__) . '/I18n/catalogs';
-
-        return match ($pack) {
-            UiBranding::PACK_IZPRATI => [$dir . '/izprati-bg.php'],
-            default => [],
-        };
     }
 }

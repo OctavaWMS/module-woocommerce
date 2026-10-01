@@ -37,6 +37,7 @@ final class SettingsPageTest extends TestCase
         Functions\when('esc_attr')->alias(
             static fn ($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8')
         );
+        Functions\when('sanitize_textarea_field')->alias(static fn (mixed $value): string => (string) $value);
         Functions\when('current_user_can')->alias(static fn (string $capability): bool => true);
         Functions\when('wp_unslash')->returnArg(1);
         Functions\when('add_action')->alias(function (string $hook, $callback, int $priority = 10, int $acceptedArgs = 1): void {

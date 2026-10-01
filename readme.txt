@@ -2,8 +2,9 @@
 Contributors: tagontrack
 Tags: shipping, fulfillment, labels, pickup points, couriers
 Requires at least: 6.0
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -56,6 +57,11 @@ Yes. The extension supports both classic checkout and WooCommerce Cart and Check
 Use the WooCommerce Marketplace support channel for this extension. General Изпрати.БГ documentation is available at https://izprati.bg/docs/.
 
 == Changelog ==
+
+= 1.6.1 - 2026-10-02 =
+
+* Fixed QIT security findings for request sanitization, output handling, prepared SQL, label file paths, and catalog loading.
+* Added WordPress and WooCommerce tested-version headers required by Marketplace validation.
 
 = 1.6.0 - 2026-10-02 =
 

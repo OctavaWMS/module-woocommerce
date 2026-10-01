@@ -62,4 +62,34 @@ final class WooRestCredentialsTest extends TestCase
         $expected = base64_encode(hash_hmac('sha256', $signed['ts'] . '.' . $signed['nonce'] . '.' . $body, 'cs_secret', true));
         self::assertSame($expected, $signed['signature']);
     }
+
+    public function testFindOctavawmsKeyPreparesTheDynamicTableAsAnIdentifier(): void
+    {
+        $GLOBALS['wpdb'] = new class {
+            public string $prefix = 'custom_';
+
+            /** @var list<mixed> */
+            public array $preparedArguments = [];
+
+            public string $preparedQuery = '';
+
+            public function prepare(string $query, ...$args): string
+            {
+                $this->preparedQuery = $query;
+                $this->preparedArguments = $args;
+
+                return 'prepared';
+            }
+
+            public function get_row(string $sql, string $output): ?array
+            {
+                return null;
+            }
+        };
+
+        self::assertNull(WooRestCredentials::findOctavawmsKey());
+        self::assertStringContainsString('FROM %i', $GLOBALS['wpdb']->preparedQuery);
+        self::assertSame('custom_woocommerce_api_keys', $GLOBALS['wpdb']->preparedArguments[0] ?? null);
+        self::assertSame(WooRestCredentials::DESCRIPTION_LIKE, $GLOBALS['wpdb']->preparedArguments[1] ?? null);
+    }
 }

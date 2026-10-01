@@ -193,7 +193,9 @@ final class CodVisibilityRules
 
     private function selectedRateId(): string
     {
-        $posted = $_POST['shipping_method'] ?? null;
+        $posted = isset($_POST['shipping_method'])
+            ? array_map('sanitize_text_field', (array) wp_unslash($_POST['shipping_method']))
+            : null;
         $selected = $this->firstOrderadminRateId($posted);
         if ($selected !== '') {
             return $selected;

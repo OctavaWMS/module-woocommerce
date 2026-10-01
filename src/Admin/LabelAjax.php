@@ -739,7 +739,9 @@ class LabelAjax
             $lid = isset($_POST['recipient_locality_id']) ? absint(wp_unslash($_POST['recipient_locality_id'])) : 0;
             $payload['recipientLocality'] = $lid > 0 ? $lid : null;
         } elseif ($kind === 'delivery_strategy') {
-            $strategy = isset($_POST['strategy']) ? (string) wp_unslash($_POST['strategy']) : '';
+            $strategy = isset($_POST['strategy'])
+                ? sanitize_textarea_field((string) wp_unslash($_POST['strategy']))
+                : '';
             if (! self::isAllowedStrategySelection($strategy)) {
                 wp_send_json_error(['message' => __('Invalid delivery strategy.', 'octavawms')], 400);
             }
@@ -816,7 +818,9 @@ class LabelAjax
 
         $search = isset($_POST['search']) ? sanitize_text_field(wp_unslash((string) $_POST['search'])) : '';
         $page = isset($_POST['page']) ? absint(wp_unslash($_POST['page'])) : 1;
-        $exactId = isset($_POST['exact_id']) ? preg_replace('/[^0-9]/', '', (string) wp_unslash($_POST['exact_id'])) : '';
+        $exactId = isset($_POST['exact_id'])
+            ? preg_replace('/[^0-9]/', '', sanitize_text_field((string) wp_unslash($_POST['exact_id'])))
+            : '';
         $exact = $exactId !== '' ? $exactId : null;
 
         $result = $this->apiClient->fetchLocalitiesPage($search, $page, $exact);
@@ -980,11 +984,11 @@ class LabelAjax
             wp_send_json_error(['message' => __('Invalid place.', 'octavawms')], 400);
         }
 
-        $weight = isset($_POST['weight']) ? (float) wp_unslash($_POST['weight']) : 0.0;
+        $weight = isset($_POST['weight']) ? (float) sanitize_text_field((string) wp_unslash($_POST['weight'])) : 0.0;
         $weight = max((float) LabelService::MIN_WEIGHT_GRAMS, $weight);
-        $dimX = isset($_POST['dim_x']) ? (float) wp_unslash($_POST['dim_x']) : 0.0;
-        $dimY = isset($_POST['dim_y']) ? (float) wp_unslash($_POST['dim_y']) : 0.0;
-        $dimZ = isset($_POST['dim_z']) ? (float) wp_unslash($_POST['dim_z']) : 0.0;
+        $dimX = isset($_POST['dim_x']) ? (float) sanitize_text_field((string) wp_unslash($_POST['dim_x'])) : 0.0;
+        $dimY = isset($_POST['dim_y']) ? (float) sanitize_text_field((string) wp_unslash($_POST['dim_y'])) : 0.0;
+        $dimZ = isset($_POST['dim_z']) ? (float) sanitize_text_field((string) wp_unslash($_POST['dim_z'])) : 0.0;
 
         $r = $this->apiClient->updatePlace($placeId, [
             'weight' => $weight,
@@ -1550,12 +1554,14 @@ class LabelAjax
             (int) round(WooOrderWeights::toGrams($weightRaw, $weightUnit))
         );
 
-        $wg = isset($_POST['weight_grams']) ? (float) wp_unslash($_POST['weight_grams']) : (float) $defaultGrams;
+        $wg = isset($_POST['weight_grams'])
+            ? (float) sanitize_text_field((string) wp_unslash($_POST['weight_grams']))
+            : (float) $defaultGrams;
         $weightGrams = max(LabelService::MIN_WEIGHT_GRAMS, (int) round($wg));
 
-        $dx = isset($_POST['dim_x']) ? (float) wp_unslash($_POST['dim_x']) : 100.0;
-        $dy = isset($_POST['dim_y']) ? (float) wp_unslash($_POST['dim_y']) : 100.0;
-        $dz = isset($_POST['dim_z']) ? (float) wp_unslash($_POST['dim_z']) : 100.0;
+        $dx = isset($_POST['dim_x']) ? (float) sanitize_text_field((string) wp_unslash($_POST['dim_x'])) : 100.0;
+        $dy = isset($_POST['dim_y']) ? (float) sanitize_text_field((string) wp_unslash($_POST['dim_y'])) : 100.0;
+        $dz = isset($_POST['dim_z']) ? (float) sanitize_text_field((string) wp_unslash($_POST['dim_z'])) : 100.0;
         $dimX = max(1, (int) round($dx));
         $dimY = max(1, (int) round($dy));
         $dimZ = max(1, (int) round($dz));

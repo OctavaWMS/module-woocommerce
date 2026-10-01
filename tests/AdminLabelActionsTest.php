@@ -209,6 +209,36 @@ final class AdminLabelActionsTest extends TestCase
         self::assertSame('/tmp/created.pdf', $missing->get_meta(LabelService::ORDER_META_LABEL_FILE, true));
     }
 
+    public function testTrustedLabelPathRejectsWrappersAndFilesOutsidePluginDirectory(): void
+    {
+        $baseDirectory = sys_get_temp_dir() . '/octavawms-label-path-' . bin2hex(random_bytes(6));
+        $labelDirectory = $baseDirectory . '/octavawms-labels';
+        self::assertTrue(mkdir($labelDirectory, 0700, true));
+        $labelPath = $labelDirectory . '/label-test.pdf';
+        self::assertNotFalse(file_put_contents($labelPath, '%PDF-test'));
+
+        Functions\when('wp_upload_dir')->justReturn([
+            'basedir' => $baseDirectory,
+            'error' => false,
+        ]);
+        Functions\when('trailingslashit')->alias(static fn (string $path): string => rtrim($path, '/\\') . '/');
+        Functions\when('wp_normalize_path')->alias(static fn (string $path): string => str_replace('\\', '/', $path));
+
+        $method = new \ReflectionMethod(AdminLabelActions::class, 'trustedLabelFilePath');
+        $method->setAccessible(true);
+
+        try {
+            self::assertSame(realpath($labelPath), $method->invoke(null, $labelPath));
+            self::assertNull($method->invoke(null, 'phar:///tmp/label.pdf'));
+            self::assertNull($method->invoke(null, '/etc/passwd'));
+            self::assertNull($method->invoke(null, $labelDirectory . '/../outside.pdf'));
+        } finally {
+            unlink($labelPath);
+            rmdir($labelDirectory);
+            rmdir($baseDirectory);
+        }
+    }
+
     private function actions(
         LabelService $labelService,
         ?LabelMetaBox $metaBox = null,

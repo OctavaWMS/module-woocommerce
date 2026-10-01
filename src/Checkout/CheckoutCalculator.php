@@ -790,7 +790,7 @@ final class CheckoutCalculator
             if (! isset($_POST[$key])) {
                 continue;
             }
-            $value = function_exists('wp_unslash') ? wp_unslash($_POST[$key]) : $_POST[$key];
+            $value = sanitize_text_field((string) wp_unslash($_POST[$key]));
             if (is_string($value) && trim($value) === 'DEBUG') {
                 return true;
             }

@@ -201,7 +201,7 @@ final class CheckoutDeliveryService
     public function persistShippingItemMeta(mixed $item, mixed $packageKey, mixed $package, mixed $order): void
     {
         unset($packageKey, $package, $order);
-        $rateId = $this->selectedRateId($_POST);
+        $rateId = $this->selectedRateId([]);
         $selection = $this->buildSelection($rateId);
         if ($selection === null || ! is_object($item) || ! method_exists($item, 'add_meta_data')) {
             return;
@@ -219,8 +219,7 @@ final class CheckoutDeliveryService
      */
     public function persistOrderMeta(mixed $order, array $data): void
     {
-        unset($data);
-        $rateId = $this->selectedRateId($_POST);
+        $rateId = $this->selectedRateId($data);
         $selection = $this->buildSelection($rateId) ?? CheckoutSession::selection();
         if ($selection === [] || ! is_object($order) || ! method_exists($order, 'update_meta_data')) {
             return;
@@ -771,16 +770,23 @@ final class CheckoutDeliveryService
      */
     private function selectedRateId(array $data): string
     {
-        $shippingMethod = $data['shipping_method'] ?? ($_POST['shipping_method'] ?? null);
+        $postedShippingMethod = isset($_POST['shipping_method'])
+            ? array_map('sanitize_text_field', (array) wp_unslash($_POST['shipping_method']))
+            : null;
+        $shippingMethod = $data['shipping_method'] ?? $postedShippingMethod;
         if (is_array($shippingMethod)) {
             foreach ($shippingMethod as $value) {
-                if (is_string($value) && self::isOrderadminRateId($value)) {
+                $value = is_scalar($value) ? sanitize_text_field((string) $value) : '';
+                if (self::isOrderadminRateId($value)) {
                     return $value;
                 }
             }
         }
-        if (is_string($shippingMethod) && self::isOrderadminRateId($shippingMethod)) {
-            return $shippingMethod;
+        if (is_string($shippingMethod)) {
+            $shippingMethod = sanitize_text_field($shippingMethod);
+            if (self::isOrderadminRateId($shippingMethod)) {
+                return $shippingMethod;
+            }
         }
 
         return isset($_POST['octavawms_delivery_rate_id']) && is_string($_POST['octavawms_delivery_rate_id'])
@@ -831,7 +837,7 @@ final class CheckoutDeliveryService
             return null;
         }
 
-        $value = wp_unslash($_POST[$key]);
+        $value = sanitize_text_field((string) wp_unslash($_POST[$key]));
 
         return is_numeric($value) ? (float) $value : null;
     }

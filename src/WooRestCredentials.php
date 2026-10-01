@@ -34,16 +34,18 @@ final class WooRestCredentials
         }
 
         $table = $wpdb->prefix . 'woocommerce_api_keys';
-        $sql = $wpdb->prepare(
-            "SELECT consumer_secret, truncated_key, description, user_id
-               FROM {$table}
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT consumer_secret, truncated_key, description, user_id
+               FROM %i
               WHERE description LIKE %s
               ORDER BY last_access DESC, key_id DESC
               LIMIT 1",
-            self::DESCRIPTION_LIKE
+                $table,
+                self::DESCRIPTION_LIKE
+            ),
+            defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A'
         );
-
-        $row = $wpdb->get_row($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
         if (! is_array($row)) {
             return null;
         }

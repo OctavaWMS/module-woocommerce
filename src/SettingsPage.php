@@ -179,9 +179,7 @@ class SettingsPage extends \WC_Integration
             return;
         }
 
-        $raw = function_exists('wp_unslash')
-            ? wp_unslash((string) $_POST[$postKey])
-            : (string) $_POST[$postKey];
+        $raw = sanitize_textarea_field((string) wp_unslash($_POST[$postKey]));
         $decoded = json_decode($raw, true);
         if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
             $this->addAdminError(__('Cash on delivery rules must be a JSON array.', 'octavawms'));
@@ -213,9 +211,7 @@ class SettingsPage extends \WC_Integration
             return null;
         }
 
-        $raw = function_exists('wp_unslash')
-            ? wp_unslash((string) $_POST[$postKey])
-            : (string) $_POST[$postKey];
+        $raw = sanitize_textarea_field((string) wp_unslash($_POST[$postKey]));
         $decoded = json_decode($raw, true);
         if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
             $this->addAdminError(__('Carrier mapping must be a JSON array.', 'octavawms'));
@@ -324,9 +320,13 @@ class SettingsPage extends \WC_Integration
 
     public function admin_options(): void
     {
+        // The render helpers return plugin-owned markup with dynamic values escaped at construction time.
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $this->getConnectDescriptionHtml();
         parent::admin_options();
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $this->getCarrierMatrixSectionHtml();
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $this->getCodVisibilityRulesSectionHtml();
     }
 

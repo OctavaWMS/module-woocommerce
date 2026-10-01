@@ -174,9 +174,11 @@ final class CheckoutBlocksService
     {
         $exception = 'Automattic\\WooCommerce\\StoreApi\\Exceptions\\RouteException';
         if (class_exists($exception)) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the Store API exception serializes the message; this is not direct HTML output.
             throw new $exception('octavawms_delivery_selection_required', $message, 400);
         }
 
+        // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message is not direct HTML output.
         throw new RuntimeException($message);
     }
 }

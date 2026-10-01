@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-10-02
+
+### Fixed
+- Remediated Woo QIT findings for request sanitization, controlled binary output, prepared SQL identifiers, label-file path confinement, and static catalog inclusion.
+- Added the `Tested up to` and `WC tested up to` plugin headers required by Woo Marketplace validation.
+
 ### Marketplace preparation
 - Rebranded the merchant distribution as **Изпрати.БГ Shipping for WooCommerce** while retaining internal identifiers for backward compatibility.
 - Changed the distributable license to **GPL-2.0-or-later**.

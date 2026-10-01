@@ -1,5 +1,10 @@
 *** Изпрати.БГ Shipping for WooCommerce Changelog ***
 
+2026-10-02 - version 1.6.1
+
+* Fixed - Remediated Woo QIT security findings for input, output, database queries, label paths, and catalog loading
+* Fixed - Declared tested WordPress and WooCommerce versions required by Marketplace validation
+
 2026-10-02 - version 1.6.0
 
 * Added - Изпрати.БГ Marketplace branding and first-run connection defaults

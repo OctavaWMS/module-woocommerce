@@ -9,6 +9,18 @@ use OctavaWMS\WooCommerce\Options;
 
 final class PluginBootstrapTest extends TestCase
 {
+    public function testMarketplaceCompatibilityHeadersAreDeclared(): void
+    {
+        $plugin = file_get_contents(dirname(__DIR__) . '/octavawms-woocommerce.php');
+        self::assertIsString($plugin);
+        self::assertStringContainsString(' * Tested up to: 7.1', $plugin);
+        self::assertStringContainsString(' * WC tested up to: 11.1', $plugin);
+
+        $readme = file_get_contents(dirname(__DIR__) . '/readme.txt');
+        self::assertIsString($readme);
+        self::assertStringContainsString("\nTested up to: 7.1\n", $readme);
+    }
+
     public function testOptionsSaveCredentialsPersistsLikeBootstrap(): void
     {
         $stored = [];

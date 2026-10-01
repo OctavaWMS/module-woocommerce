@@ -788,11 +788,12 @@ class AdminLabelActions
 
         $inline = ! empty($_GET['inline']);
         $filePath = (string) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
-        if ($filePath !== '' && file_exists($filePath) && is_readable($filePath)) {
-            $content = (string) file_get_contents($filePath);
+        $trustedFilePath = self::trustedLabelFilePath($filePath);
+        if ($trustedFilePath !== null) {
+            $content = (string) file_get_contents($trustedFilePath); // nosemgrep: audit.php.lang.security.file.phar-deserialization,audit.php.lang.security.file.read-write-delete,php.lang.security.injection.tainted-filename.tainted-filename -- canonical path is confined to the plugin's uploads directory.
             [$content, $decodedMime] = self::decodeDataUriIfNeeded($content);
-            $mime = $decodedMime ?? self::mimeTypeForFilePath($filePath);
-            $ext = $decodedMime !== null ? self::mimeToExt($decodedMime) : self::fileExtension($filePath);
+            $mime = $decodedMime ?? self::mimeTypeForFilePath($trustedFilePath);
+            $ext = $decodedMime !== null ? self::mimeToExt($decodedMime) : self::fileExtension($trustedFilePath);
             $fileBase = 'order-' . (string) $orderId . '-label.' . $ext;
 
             nocache_headers();
@@ -800,7 +801,8 @@ class AdminLabelActions
             header('Content-Type: ' . $mime);
             header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
             header('Content-Length: ' . (string) strlen($content));
-            echo $content;
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- binary download body must not be HTML-escaped.
+            echo $content; // nosemgrep: php.lang.security.injection.echoed-request.echoed-request -- binary response is access-controlled and must not be HTML-escaped.
             exit;
         }
 
@@ -855,7 +857,8 @@ class AdminLabelActions
         header('Content-Type: ' . $mime);
         header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $fileBase . '"');
         header('Content-Length: ' . (string) strlen($body));
-        echo $body;
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- binary download body must not be HTML-escaped.
+        echo $body; // nosemgrep: php.lang.security.injection.echoed-request.echoed-request -- binary response is access-controlled and must not be HTML-escaped.
         exit;
     }
 
@@ -882,6 +885,46 @@ class AdminLabelActions
         $base = preg_replace('/[^a-z0-9]/i', '', $base) ?? '';
 
         return $base !== '' ? strtolower($base) : 'pdf';
+    }
+
+    /**
+     * Accept only regular label files created below this plugin's private uploads directory.
+     */
+    private static function trustedLabelFilePath(string $filePath): ?string
+    {
+        if ($filePath === '' || str_contains($filePath, "\0") || preg_match('#^[a-z][a-z0-9+.-]*://#i', $filePath) === 1) {
+            return null;
+        }
+
+        $uploadDir = wp_upload_dir();
+        if (! empty($uploadDir['error']) || empty($uploadDir['basedir']) || ! is_string($uploadDir['basedir'])) {
+            return null;
+        }
+
+        $labelDirectory = wp_normalize_path(
+            trailingslashit($uploadDir['basedir']) . Activation::LABEL_SUBDIR
+        );
+        $candidate = wp_normalize_path($filePath);
+        if (! str_starts_with($candidate, trailingslashit($labelDirectory))) {
+            return null;
+        }
+
+        // nosemgrep: audit.php.lang.security.file.phar-deserialization -- stream wrappers were rejected and both paths are confined before resolution.
+        $realDirectory = realpath($labelDirectory);
+        // nosemgrep: audit.php.lang.security.file.phar-deserialization -- stream wrappers were rejected and the candidate is confined before resolution.
+        $realCandidate = realpath($candidate);
+        if ($realDirectory === false || $realCandidate === false) {
+            return null;
+        }
+
+        $realDirectory = wp_normalize_path($realDirectory);
+        $realCandidate = wp_normalize_path($realCandidate);
+        if (! str_starts_with($realCandidate, trailingslashit($realDirectory))) {
+            return null;
+        }
+
+        // nosemgrep: audit.php.lang.security.file.phar-deserialization,audit.php.lang.security.file.read-write-delete -- canonical path is confined to the label directory.
+        return is_file($realCandidate) && is_readable($realCandidate) ? $realCandidate : null;
     }
 
     private static function mimeTypeForFilePath(string $filePath): string
