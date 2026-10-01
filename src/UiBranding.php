@@ -37,7 +37,7 @@ final class UiBranding
         return __('Shipment', 'octavawms');
     }
 
-    /** Current brand pack or null when default Octava copy (no tenant catalog). */
+    /** Current brand pack or null when no tenant/distribution catalog applies. */
     public static function currentBrandPack(): ?string
     {
         return self::resolvePack();

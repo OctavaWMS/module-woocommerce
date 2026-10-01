@@ -1,14 +1,5 @@
 #!/bin/bash
-# Release script for OctavaWMS WooCommerce connector (WordPress plugin)
-
-function bump {
-	version=${VERSION}
-	search='("version":[[:space:]]*").+(")'
-	replace="\1${version}\2"
-
-	sed -i ".tmp" -E "s/${search}/${replace}/g" "$1"
-	rm "$1.tmp"
-}
+# Release script for Изпрати.БГ Shipping for WooCommerce.
 
 function help {
 	echo "Usage: $(basename $0) [<newversion>] [--remove-last] [--yes]"
@@ -25,7 +16,7 @@ function help {
 	echo "  3. Run tests"
 	echo "  4. Merge to release/1.x branch"
 	echo "  5. Create and push release tag"
-	echo "  6. Build dist/octavawms-woocommerce-<version>.zip (merchant bundle; excludes tests, vendor, AI-only docs)"
+	echo "  6. Build dist/izprati-bg-shipping-<version>.zip (Marketplace bundle)"
 	echo ""
 	echo "If --remove-last is used, it will also:"
 	echo "  - Remove the last release tag (locally and remotely)"
@@ -227,6 +218,17 @@ fi
 
 echo "🚀 Starting release process for version: $VERSION"
 echo ""
+
+PLUGIN_VERSION="$(sed -n -E 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' "$DIR/octavawms-woocommerce.php" | head -1)"
+if [ "$PLUGIN_VERSION" != "$VERSION" ]; then
+	echo "❌ Plugin header version '$PLUGIN_VERSION' does not match release version '$VERSION'."
+	echo "Update the plugin header, readme.txt, and changelog.txt before releasing."
+	exit 1
+fi
+if ! grep -q -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} - version ${VERSION//./\\.}$" "$DIR/changelog.txt"; then
+	echo "❌ changelog.txt has no release entry for version '$VERSION'."
+	exit 1
+fi
 
 if [ "$ASSUME_YES" != true ]; then
 	confirm_release

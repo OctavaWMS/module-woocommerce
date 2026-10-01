@@ -276,4 +276,4 @@ In the [integration-woocommerce](https://github.com/OctavaWMS/integration-woocom
 
 ## License
 
-Proprietary (OctavaWMS).
+GPL-2.0-or-later. See [`LICENSE`](LICENSE).

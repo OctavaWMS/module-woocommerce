@@ -1,8 +1,8 @@
 {
   "name": "octavawms/module-woocommerce",
-  "description": "OctavaWMS Connector for WordPress and WooCommerce (labels today; more integrations to come).",
+  "description": "Изпрати.БГ Shipping for WooCommerce: carrier rates, pickup points, order synchronization, and shipping labels.",
   "type": "wordpress-plugin",
-  "license": "proprietary",
+  "license": "GPL-2.0-or-later",
   "autoload": {
     "psr-4": {
       "OctavaWMS\\WooCommerce\\": "src/"
@@ -37,6 +37,7 @@
       "php -l src/Checkout/CheckoutSession.php",
       "php -l src/Checkout/ShippingMethod.php",
       "php -l src/ConnectService.php",
+      "php -l src/Distribution.php",
       "php -l src/I18n/catalogs/izprati-bg.php",
       "php -l src/IntegrationSourceImportAsyncSync.php",
       "php -l src/Notices.php",
@@ -47,6 +48,7 @@
       "php -l src/WooRestCredentials.php",
       "php -l src/WooOrderExtId.php",
       "php -l src/WooOrderWeights.php",
+      "php -l src/WooCompatibility.php",
       "php -l src/SettingsPage.php",
       "php -l tests/TestCase.php",
       "php -l tests/bootstrap.php",
@@ -59,6 +61,7 @@
       "php -l tests/IntegrationSourceImportAsyncSyncTest.php",
       "php -l tests/ConnectServiceSignTest.php",
       "php -l tests/ConnectServicePanelLoginTest.php",
+      "php -l tests/DistributionTest.php",
       "php -l tests/PluginBootstrapTest.php",
       "php -l tests/AdminLabelActionsTest.php",
       "php -l tests/Admin/SettingsAjaxTest.php",
@@ -71,7 +74,8 @@
       "php -l tests/Checkout/CheckoutCalculatorTest.php",
       "php -l tests/Checkout/CheckoutBlocksServiceTest.php",
       "php -l tests/Checkout/CheckoutDeliveryServiceTest.php",
-      "php -l tests/Checkout/ShippingMethodTest.php"
+      "php -l tests/Checkout/ShippingMethodTest.php",
+      "php -l tests/WooCompatibilityTest.php"
     ],
     "test": "./vendor/bin/phpunit --testdox",
     "check": [

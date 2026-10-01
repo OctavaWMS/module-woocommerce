@@ -1,0 +1,16 @@
+*** Изпрати.БГ Shipping for WooCommerce Changelog ***
+
+2026-10-02 - version 1.6.0
+
+* Added - Изпрати.БГ Marketplace branding and first-run connection defaults
+* Added - Explicit HPOS and Cart and Checkout blocks compatibility declarations
+* Changed - Licensed the extension under GPL-2.0-or-later
+* Update - Added Marketplace-ready packaging and synchronized version validation
+
+2026-08-21 - version 1.5.2
+
+* Fixed - Included shipping and tax in cash-on-delivery comparison
+
+2025-01-01 - version 1.0.0
+
+* Added - Initial connector release

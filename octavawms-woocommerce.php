@@ -1,11 +1,17 @@
 <?php
 /**
- * Plugin Name: OctavaWMS Connector
- * Description: Connects WooCommerce to OctavaWMS. Includes shipping label generation, one-click connect, and is built to add more features over time.
- * Version: 1.0.0
+ * Plugin Name: Изпрати.БГ Shipping for WooCommerce
+ * Plugin URI: https://izprati.bg/
+ * Description: Connect WooCommerce to Изпрати.БГ for carrier rates, pickup points, order synchronization, and shipping labels.
+ * Version: 1.6.0
+ * Author: TagOnTrack
+ * Author URI: https://tagontrack.com/
  * Requires at least: 6.0
  * Requires PHP: 8.1
+ * Requires Plugins: woocommerce
  * WC requires at least: 7.1
+ * License: GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  * Text Domain: octavawms
  * Domain Path: /languages
  */
@@ -15,13 +21,6 @@ if (! defined('ABSPATH')) {
 }
 
 define('OCTAVAWMS_PLUGIN_FILE', __FILE__);
-
-add_action('before_woocommerce_init', static function (): void {
-    $features = 'Automattic\\WooCommerce\\Utilities\\FeaturesUtil';
-    if (class_exists($features)) {
-        $features::declare_compatibility('cart_checkout_blocks', __FILE__, true);
-    }
-});
 
 // Always resolve plugin classes from /src via PSR-4 (prepend so this wins over an incomplete Composer autoload).
 spl_autoload_register(
@@ -44,6 +43,14 @@ spl_autoload_register(
 if (is_readable(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
+
+// The Marketplace package is Изпрати.БГ-first. Priorities leave room for site-specific overrides.
+add_filter('octavawms_brand_pack', [\OctavaWMS\WooCommerce\Distribution::class, 'defaultBrandPack'], 5);
+add_filter('octavawms_default_connect_url', [\OctavaWMS\WooCommerce\Distribution::class, 'defaultConnectUrl'], 5);
+
+add_action('before_woocommerce_init', static function (): void {
+    \OctavaWMS\WooCommerce\WooCompatibility::declare(OCTAVAWMS_PLUGIN_FILE);
+});
 
 \OctavaWMS\WooCommerce\I18n\TextDomainLoader::register();
 

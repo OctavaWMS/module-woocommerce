@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Marketplace preparation
+- Rebranded the merchant distribution as **Изпрати.БГ Shipping for WooCommerce** while retaining internal identifiers for backward compatibility.
+- Changed the distributable license to **GPL-2.0-or-later**.
+- Added explicit HPOS and Cart and Checkout blocks compatibility declarations.
+- Added Woo Marketplace `readme.txt` and `changelog.txt` metadata plus synchronized package-version validation.
+- Changed the Marketplace archive and plugin-directory slug to `izprati-bg-shipping`.
+
 ### Added
 - `OctavaWMS\WooCommerce\PluginLog` — WooCommerce logger (`octavawms-connect` source) for failed connect attempts; logs **request headers** (Authorization redacted), **response headers** (Set-Cookie redacted), response body, and JSON when parseable. README documents **WooCommerce → Status → Logs** and `wp-content/uploads/wc-logs/` paths.
 - `OctavaWMS\WooCommerce\WooRestCredentials` — auto-discovers the OctavaWMS row in `wp_woocommerce_api_keys` (description `OctavaWMS%`), and builds an HMAC-signed `Authorization: OctavaWMS key_last7=…, ts=…, nonce=…, algo=HMAC-SHA256, signature=…` header for `/apps/woocommerce/connect` (used by `ConnectService` and `BackendApiClient::refreshBearerToken`).
