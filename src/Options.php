@@ -132,8 +132,8 @@ class Options
         if ($stripSuffix !== null && str_ends_with($url, $stripSuffix)) {
             $url = substr($url, 0, -strlen($stripSuffix));
         }
-        $scheme = parse_url($url, PHP_URL_SCHEME);
-        $host = parse_url($url, PHP_URL_HOST);
+        $scheme = wp_parse_url($url, PHP_URL_SCHEME);
+        $host = wp_parse_url($url, PHP_URL_HOST);
         if (is_string($host) && $host !== '') {
             $s = is_string($scheme) && $scheme !== '' ? $scheme : 'https';
 
@@ -205,7 +205,7 @@ class Options
     public static function getCarrierMappingRows(): array
     {
         $decoded = json_decode(self::getCarrierMappingJson(), true);
-        if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
+        if (! is_array($decoded) || $decoded !== array_values($decoded)) {
             return [];
         }
 
@@ -244,7 +244,7 @@ class Options
     public static function getCodVisibilityRules(): array
     {
         $decoded = json_decode(self::getCodVisibilityRulesJson(), true);
-        if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
+        if (! is_array($decoded) || $decoded !== array_values($decoded)) {
             return [];
         }
 

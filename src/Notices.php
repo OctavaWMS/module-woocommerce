@@ -26,7 +26,7 @@ class Notices
         echo '<div class="notice notice-info is-dismissible"><p>';
         esc_html_e(
             'OctavaWMS Connector: no API key stored yet. One will be requested automatically on the first order action, or you can connect manually on the Integrations tab.',
-            'octavawms'
+            'izprati-bg-shipping'
         );
         echo '</p></div>';
     }

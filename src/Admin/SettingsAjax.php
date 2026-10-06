@@ -30,7 +30,7 @@ class SettingsAjax
     public function handleAjax(): void
     {
         if (! current_user_can('manage_woocommerce')) {
-            wp_send_json_error(['message' => __('You do not have permission.', 'octavawms')], 403);
+            wp_send_json_error(['message' => __('You do not have permission.', 'izprati-bg-shipping')], 403);
         }
 
         check_ajax_referer(self::ACTION, 'security');
@@ -47,7 +47,7 @@ class SettingsAjax
         } elseif ($sub === 'meta_keys') {
             $this->handleMetaKeys();
         } else {
-            wp_send_json_error(['message' => __('Invalid request.', 'octavawms')], 400);
+            wp_send_json_error(['message' => __('Invalid request.', 'izprati-bg-shipping')], 400);
         }
     }
 
@@ -55,11 +55,11 @@ class SettingsAjax
     {
         $sourceId = Options::getSourceId();
         if ($sourceId <= 0) {
-            wp_send_json_error(['message' => __('Connect the store first (no source id).', 'octavawms')], 400);
+            wp_send_json_error(['message' => __('Connect the store first (no source id).', 'izprati-bg-shipping')], 400);
         }
         $source = $this->apiClient->getIntegrationSource($sourceId);
         if ($source === null) {
-            wp_send_json_error(['message' => __('Could not load integration source.', 'octavawms')], 502);
+            wp_send_json_error(['message' => __('Could not load integration source.', 'izprati-bg-shipping')], 502);
         }
         $settings = $source['settings'] ?? null;
         $mapping = [];
@@ -92,8 +92,8 @@ class SettingsAjax
             ? sanitize_textarea_field((string) wp_unslash($_POST['carrier_mapping_json']))
             : '';
         $decoded = json_decode($raw, true);
-        if (! is_array($decoded) || ($decoded !== [] && ! array_is_list($decoded))) {
-            wp_send_json_error(['message' => __('carrierMapping must be a JSON array.', 'octavawms')], 400);
+        if (! is_array($decoded) || $decoded !== array_values($decoded)) {
+            wp_send_json_error(['message' => __('carrierMapping must be a JSON array.', 'izprati-bg-shipping')], 400);
         }
 
         $saved = $this->saveCarrierMappingForSource($sourceId, $decoded);
@@ -117,7 +117,7 @@ class SettingsAjax
                 'status' => 400,
                 'message' => __(
                     'Connect the store first. Carrier mapping is saved to the OctavaWMS integration source, but this site has no source id yet.',
-                    'octavawms'
+                    'izprati-bg-shipping'
                 ),
                 'carrierMapping' => [],
             ];
@@ -145,7 +145,7 @@ class SettingsAjax
             return [
                 'ok' => false,
                 'status' => 400,
-                'message' => __('Invalid mapping row(s). Check meta key, meta value, type, carrier, and rate.', 'octavawms'),
+                'message' => __('Invalid mapping row(s). Check meta key, meta value, type, carrier, and rate.', 'izprati-bg-shipping'),
                 'carrierMapping' => [],
             ];
         }
@@ -155,7 +155,7 @@ class SettingsAjax
             return [
                 'ok' => false,
                 'status' => 502,
-                'message' => __('Could not load OctavaWMS integration source before saving carrier mapping.', 'octavawms'),
+                'message' => __('Could not load OctavaWMS integration source before saving carrier mapping.', 'izprati-bg-shipping'),
                 'carrierMapping' => [],
             ];
         }
@@ -268,12 +268,12 @@ class SettingsAjax
         if ($raw !== '') {
             return sprintf(
                 /* translators: %s backend response excerpt. */
-                __('Could not save carrier mapping. Backend response: %s', 'octavawms'),
+                __('Could not save carrier mapping. Backend response: %s', 'izprati-bg-shipping'),
                 mb_substr($raw, 0, 300)
             );
         }
 
-        return __('Could not save carrier mapping to OctavaWMS integration source.', 'octavawms');
+        return __('Could not save carrier mapping to OctavaWMS integration source.', 'izprati-bg-shipping');
     }
 
     /**
@@ -413,7 +413,7 @@ class SettingsAjax
     {
         $dsId = isset($_POST['delivery_service_id']) ? absint(wp_unslash($_POST['delivery_service_id'])) : 0;
         if ($dsId <= 0) {
-            wp_send_json_error(['message' => __('Invalid delivery service.', 'octavawms')], 400);
+            wp_send_json_error(['message' => __('Invalid delivery service.', 'izprati-bg-shipping')], 400);
         }
         $rows = $this->apiClient->fetchRatesForDeliveryService($dsId);
         $items = [];

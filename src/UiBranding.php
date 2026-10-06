@@ -14,19 +14,19 @@ final class UiBranding
 
     public static function appName(): string
     {
-        return __('OctavaWMS', 'octavawms');
+        return __('OctavaWMS', 'izprati-bg-shipping');
     }
 
     public static function integrationTitle(): string
     {
-        return __('OctavaWMS Connector', 'octavawms');
+        return __('OctavaWMS Connector', 'izprati-bg-shipping');
     }
 
     public static function appActionLabel(string $actionLabel): string
     {
         return sprintf(
             /* translators: 1: application name, 2: action label. */
-            __('%1$s: %2$s', 'octavawms'),
+            __('%1$s: %2$s', 'izprati-bg-shipping'),
             self::appName(),
             $actionLabel
         );
@@ -34,7 +34,7 @@ final class UiBranding
 
     public static function shipmentHeadingWord(): string
     {
-        return __('Shipment', 'octavawms');
+        return __('Shipment', 'izprati-bg-shipping');
     }
 
     /** Current brand pack or null when no tenant/distribution catalog applies. */
@@ -72,7 +72,7 @@ final class UiBranding
         }
 
         $base = Options::getBaseUrl();
-        $host = parse_url($base, PHP_URL_HOST);
+        $host = wp_parse_url($base, PHP_URL_HOST);
         if (is_string($host) && $host !== '') {
             $out[] = $host;
         }

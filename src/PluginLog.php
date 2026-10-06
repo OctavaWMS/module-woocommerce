@@ -348,7 +348,7 @@ final class PluginLog
         $lines = [];
         /** @var list<mixed> $list */
         $list = is_array($errors)
-            ? (array_is_list($errors) ? $errors : [$errors])
+            ? (array_values($errors) === $errors ? $errors : [$errors])
             : [$errors];
         foreach ($list as $error) {
             if (is_string($error)) {

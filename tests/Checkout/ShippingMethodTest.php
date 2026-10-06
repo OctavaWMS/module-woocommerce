@@ -19,9 +19,9 @@ final class ShippingMethodTest extends TestCase
         Functions\when('apply_filters')->alias(static function (string $_hook, $value, ...$_args) {
             return $value;
         });
-        Functions\when('__')->alias(static function ($text, $domain = 'octavawms') {
-            $d = is_string($domain) ? $domain : 'octavawms';
-            if ($d !== 'octavawms') {
+        Functions\when('__')->alias(static function ($text, $domain = 'izprati-bg-shipping') {
+            $d = is_string($domain) ? $domain : 'izprati-bg-shipping';
+            if ($d !== 'izprati-bg-shipping') {
                 return $text;
             }
             $pack = UiBranding::currentBrandPack();

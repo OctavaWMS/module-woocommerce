@@ -130,7 +130,7 @@ class LabelService
             'state' => 'measured',
             'deliveryRequest' => [
                 'id' => $deliveryRequestId,
-                'sendDate' => date('Y-m-d'),
+                'sendDate' => gmdate('Y-m-d'),
                 'weight' => max(self::MIN_WEIGHT_GRAMS, $weightGrams),
                 'dimensions' => [
                     'x' => max(1, $dimX),

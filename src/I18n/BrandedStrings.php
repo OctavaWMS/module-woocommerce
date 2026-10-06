@@ -7,7 +7,7 @@ namespace OctavaWMS\WooCommerce\I18n;
 use OctavaWMS\WooCommerce\UiBranding;
 
 /**
- * Applies brand/module-specific gettext overrides for domain {@see octavawms}.
+ * Applies brand/module-specific gettext overrides for the public plugin text domain.
  *
  * Canonical English strings are passed through {@see __()} in code; catalogs map
  * msgid → copy for tenants (e.g. Изпрати.БГ) under {@see src/I18n/catalogs/}.
@@ -25,7 +25,7 @@ final class BrandedStrings
      */
     public static function filterGettext($translation, string $text, string $domain)
     {
-        if ($domain !== 'octavawms') {
+        if ($domain !== 'izprati-bg-shipping') {
             return $translation;
         }
 

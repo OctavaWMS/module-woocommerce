@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the merchant-ready Изпрати.БГ Marketplace zip under dist/.
+# Build the merchant-ready Изпрати.БГ distribution zip under dist/.
 # Excludes development, test, dependency, and internal contributor files.
 
 set -euo pipefail
@@ -50,6 +50,7 @@ rsync -a \
 	--exclude='dev/' \
 	--exclude='docs/' \
 	--exclude='marketplace/' \
+	--exclude='.wordpress-org/' \
 	--exclude='scripts/' \
 	--exclude='release.sh' \
 	--exclude='README.md' \
@@ -77,7 +78,7 @@ if [[ ! -f "$TARGET/octavawms-woocommerce.php" ]]; then
 	exit 1
 fi
 if [[ ! -f "$TARGET/readme.txt" || ! -f "$TARGET/changelog.txt" || ! -f "$TARGET/LICENSE" ]]; then
-	echo "❌ Marketplace metadata or license is missing from the staged package." >&2
+	echo "❌ Distribution metadata or license is missing from the staged package." >&2
 	exit 1
 fi
 

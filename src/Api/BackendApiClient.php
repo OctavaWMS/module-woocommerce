@@ -118,7 +118,7 @@ class BackendApiClient
             'refresh_token' => '',
             'message' => __(
                 'Connect the plugin under WooCommerce → Settings → Integrations first.',
-                'octavawms'
+                'izprati-bg-shipping'
             ),
         ];
     }
@@ -135,7 +135,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (user lookup failed).', 'octavawms'),
+                'message' => __('Could not open panel login (user lookup failed).', 'izprati-bg-shipping'),
             ];
         }
 
@@ -144,7 +144,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (invalid user id).', 'octavawms'),
+                'message' => __('Could not open panel login (invalid user id).', 'izprati-bg-shipping'),
             ];
         }
 
@@ -153,7 +153,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (authenticate request failed).', 'octavawms'),
+                'message' => __('Could not open panel login (authenticate request failed).', 'izprati-bg-shipping'),
             ];
         }
 
@@ -162,7 +162,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (missing refresh token).', 'octavawms'),
+                'message' => __('Could not open panel login (missing refresh token).', 'izprati-bg-shipping'),
             ];
         }
 

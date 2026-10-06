@@ -21,6 +21,18 @@ final class PluginBootstrapTest extends TestCase
         self::assertStringContainsString("\nTested up to: 7.1\n", $readme);
     }
 
+    public function testWordPressOrgReadmeDisclosesTheExternalService(): void
+    {
+        $readme = file_get_contents(dirname(__DIR__) . '/readme.txt');
+        self::assertIsString($readme);
+        self::assertStringContainsString('== External service and data disclosure ==', $readme);
+        self::assertStringContainsString('https://api.izprati.bg/', $readme);
+        self::assertStringContainsString('store URL, store name, and WordPress administrator email address', $readme);
+        self::assertStringContainsString('billing and shipping names, addresses, email address, phone number', $readme);
+        self::assertStringContainsString('https://izprati.bg/terms-conditions/', $readme);
+        self::assertStringContainsString('https://izprati.bg/privacy-policy/', $readme);
+    }
+
     public function testOptionsSaveCredentialsPersistsLikeBootstrap(): void
     {
         $stored = [];

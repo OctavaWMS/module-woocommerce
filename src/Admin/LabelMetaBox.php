@@ -21,7 +21,7 @@ class LabelMetaBox
     {
         add_meta_box(
             'octavawms-label',
-            UiBranding::appActionLabel(__('Create shipping label', 'octavawms')),
+            UiBranding::appActionLabel(__('Create shipping label', 'izprati-bg-shipping')),
             [$this, 'renderLabelMetaBox'],
             ['shop_order', 'woocommerce_page_wc-orders'],
             'normal',
@@ -236,106 +236,111 @@ CSS;
             'weightUnit' => $weightUnitSlug,
             'weightUnitLabel' => $this->weightUnitLabelTranslated($weightUnitSlug),
             'strings' => [
-                'loading' => __('Loading…', 'octavawms'),
-                'error' => __('Could not load OctavaWMS status.', 'octavawms'),
-                'noOrder' => __('This order is not in OctavaWMS yet. Upload it to create shipments and labels.', 'octavawms'),
-                'uploadOrder' => __('Upload order', 'octavawms'),
-                'uploading' => __('Uploading…', 'octavawms'),
-                'reimportOrder' => __('Re-import order', 'octavawms'),
-                'reimporting' => __('Re-importing…', 'octavawms'),
-                'codMismatch' => __('COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.', 'octavawms'),
-                'codMismatchSuggestion' => __('Re-import the order to update OctavaWMS. Existing carrier labels are not changed.', 'octavawms'),
-                'orderSynced' => __('Order synced', 'octavawms'),
-                'importQueued' => __('Import queued in OctavaWMS.', 'octavawms'),
-                'importProcessing' => __('Import is processing in OctavaWMS.', 'octavawms'),
-                'importDuplicate' => __('Import is already queued or running.', 'octavawms'),
-                'importConfirmed' => __('Import finished. Refreshing order status…', 'octavawms'),
-                'importFailed' => __('Import failed.', 'octavawms'),
-                'importStillProcessing' => __('Import is still processing in OctavaWMS.', 'octavawms'),
-                'importReference' => __('Import #%s', 'octavawms'),
-                'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'octavawms'),
+                'loading' => __('Loading…', 'izprati-bg-shipping'),
+                'error' => __('Could not load OctavaWMS status.', 'izprati-bg-shipping'),
+                'noOrder' => __('This order is not in OctavaWMS yet. Upload it to create shipments and labels.', 'izprati-bg-shipping'),
+                'uploadOrder' => __('Upload order', 'izprati-bg-shipping'),
+                'uploading' => __('Uploading…', 'izprati-bg-shipping'),
+                'reimportOrder' => __('Re-import order', 'izprati-bg-shipping'),
+                'reimporting' => __('Re-importing…', 'izprati-bg-shipping'),
+                /* translators: 1: WooCommerce COD amount, 2: OctavaWMS COD amount. */
+                'codMismatch' => __('COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.', 'izprati-bg-shipping'),
+                'codMismatchSuggestion' => __('Re-import the order to update OctavaWMS. Existing carrier labels are not changed.', 'izprati-bg-shipping'),
+                'orderSynced' => __('Order synced', 'izprati-bg-shipping'),
+                'importQueued' => __('Import queued in OctavaWMS.', 'izprati-bg-shipping'),
+                'importProcessing' => __('Import is processing in OctavaWMS.', 'izprati-bg-shipping'),
+                'importDuplicate' => __('Import is already queued or running.', 'izprati-bg-shipping'),
+                'importConfirmed' => __('Import finished. Refreshing order status…', 'izprati-bg-shipping'),
+                'importFailed' => __('Import failed.', 'izprati-bg-shipping'),
+                'importStillProcessing' => __('Import is still processing in OctavaWMS.', 'izprati-bg-shipping'),
+                /* translators: %s: import identifier. */
+                'importReference' => __('Import #%s', 'izprati-bg-shipping'),
+                'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'izprati-bg-shipping'),
                 'shipment' => UiBranding::shipmentHeadingWord(),
-                'labelReady' => __('Label Ready', 'octavawms'),
-                'downloadLabel' => __('Download Label', 'octavawms'),
-                'printLabel' => __('Print Label', 'octavawms'),
-                'labelViewerTitle' => __('Shipping Label', 'octavawms'),
-                'trackingNumberLabel' => __('Tracking number', 'octavawms'),
-                'copyTracking' => __('Copy', 'octavawms'),
-                'copiedTracking' => __('Copied', 'octavawms'),
-                'trackShipment' => __('Track shipment', 'octavawms'),
-                'cancelShipment' => __('Cancel Shipment', 'octavawms'),
-                'cancellingShipment' => __('Cancelling…', 'octavawms'),
-                'shipmentLocked' => __('Shipment is locked (tracking number assigned).', 'octavawms'),
-                'labelUnavailable' => __('Shipment is finished, but no label file is available from OctavaWMS yet.', 'octavawms'),
-                'generateLabel' => __('Generate Label', 'octavawms'),
-                'regenerateLabel' => __('Re-generate Label', 'octavawms'),
-                'generatingLabel' => __('Generating label…', 'octavawms'),
-                'tryAgain' => __('Try again', 'octavawms'),
-                'requeueEndingQueued' => __('Re-queue shipment', 'octavawms'),
-                'requeueingEndingQueued' => __('Re-queuing…', 'octavawms'),
-                'refreshStatus' => __('Refresh status', 'octavawms'),
-                'loginToPanel' => __('Login to the panel', 'octavawms'),
-                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'octavawms'),
-                'servicePointSection' => __('Edit shipment', 'octavawms'),
-                'noShipmentForSection' => __('Available after a shipment exists for this order.', 'octavawms'),
-                'searchPlaceholder' => __('Search pickup point…', 'octavawms'),
-                'noLockers' => __('No lockers', 'octavawms'),
-                'select' => __('Select', 'octavawms'),
-                'applyServicePoint' => __('Apply service point', 'octavawms'),
-                'servicePointFieldLabel' => __('Service point', 'octavawms'),
-                'chooseServicePoint' => __('— Choose —', 'octavawms'),
-                'servicePointDetails' => __('Details', 'octavawms'),
-                'noDetailsYet' => __('Choose a pickup point from the list.', 'octavawms'),
-                'spPreviewId' => __('ID', 'octavawms'),
-                'spPreviewType' => __('Type', 'octavawms'),
-                'spPreviewState' => __('State', 'octavawms'),
-                'spPreviewAddress' => __('Address', 'octavawms'),
-                'spPreviewPhone' => __('Phone', 'octavawms'),
-                'spPreviewHours' => __('Working hours', 'octavawms'),
-                'spPreviewTimetable' => __('Schedule', 'octavawms'),
-                'spPreviewAiNote' => __('Routing note', 'octavawms'),
-                'spOpenInMaps' => __('Open in Maps', 'octavawms'),
-                'spDistanceMeters' => __('Distance: %s m', 'octavawms'),
-                'saving' => __('Saving…', 'octavawms'),
-                'noServicePoints' => __('No pickup points found.', 'octavawms'),
-                'currentPoint' => __('Current', 'octavawms'),
-                'noPlaces' => __('No boxes/places yet.', 'octavawms'),
-                'addPlace' => __('Add box', 'octavawms'),
-                'save' => __('Save', 'octavawms'),
-                'removePlace' => __('Remove box', 'octavawms'),
-                'boxColumn' => __('Box', 'octavawms'),
-                'placeActionsColumn' => __('Actions', 'octavawms'),
-                'weightG' => __('Weight (g)', 'octavawms'),
-                'placeTableWeightHeader' => __('(g)', 'octavawms'),
-                'placeTableDimsHeader' => __('(W, H, L) mm', 'octavawms'),
-                'placeTableDimsHeaderTitle' => __('Width, height, length in millimetres', 'octavawms'),
-                'strategyForAi' => __('Strategy for AI', 'octavawms'),
-                'deliveryCarrier' => __('Delivery carrier', 'octavawms'),
-                'recipientLocality' => __('Recipient locality', 'octavawms'),
-                'carrierPlaceholder' => __('Search and select carrier…', 'octavawms'),
-                'localityPlaceholder' => __('Search city (e.g. Varna)…', 'octavawms'),
-                'pickupPointPlaceholder' => __('Search pickup point…', 'octavawms'),
-                'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'octavawms'),
-                'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'octavawms'),
-                'retryPendingError' => __('Retry', 'octavawms'),
-                'retryingPendingError' => __('Retrying…', 'octavawms'),
-                'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'octavawms'),
-                'localitySearchMin' => __('Type at least 2 characters to search.', 'octavawms'),
-                'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'octavawms'),
-                'labelPanelSrHeading' => __('Shipping labels and parcel boxes', 'octavawms'),
-                'widthMm' => __('W', 'octavawms'),
-                'heightMm' => __('H', 'octavawms'),
-                'lengthMm' => __('L', 'octavawms'),
-                'editOrder' => __('Edit order', 'octavawms'),
+                'labelReady' => __('Label Ready', 'izprati-bg-shipping'),
+                'downloadLabel' => __('Download Label', 'izprati-bg-shipping'),
+                'printLabel' => __('Print Label', 'izprati-bg-shipping'),
+                'labelViewerTitle' => __('Shipping Label', 'izprati-bg-shipping'),
+                'trackingNumberLabel' => __('Tracking number', 'izprati-bg-shipping'),
+                'copyTracking' => __('Copy', 'izprati-bg-shipping'),
+                'copiedTracking' => __('Copied', 'izprati-bg-shipping'),
+                'trackShipment' => __('Track shipment', 'izprati-bg-shipping'),
+                'cancelShipment' => __('Cancel Shipment', 'izprati-bg-shipping'),
+                'cancellingShipment' => __('Cancelling…', 'izprati-bg-shipping'),
+                'shipmentLocked' => __('Shipment is locked (tracking number assigned).', 'izprati-bg-shipping'),
+                'labelUnavailable' => __('Shipment is finished, but no label file is available from OctavaWMS yet.', 'izprati-bg-shipping'),
+                'generateLabel' => __('Generate Label', 'izprati-bg-shipping'),
+                'regenerateLabel' => __('Re-generate Label', 'izprati-bg-shipping'),
+                'generatingLabel' => __('Generating label…', 'izprati-bg-shipping'),
+                'tryAgain' => __('Try again', 'izprati-bg-shipping'),
+                'requeueEndingQueued' => __('Re-queue shipment', 'izprati-bg-shipping'),
+                'requeueingEndingQueued' => __('Re-queuing…', 'izprati-bg-shipping'),
+                'refreshStatus' => __('Refresh status', 'izprati-bg-shipping'),
+                'loginToPanel' => __('Login to the panel', 'izprati-bg-shipping'),
+                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'izprati-bg-shipping'),
+                'servicePointSection' => __('Edit shipment', 'izprati-bg-shipping'),
+                'noShipmentForSection' => __('Available after a shipment exists for this order.', 'izprati-bg-shipping'),
+                'searchPlaceholder' => __('Search pickup point…', 'izprati-bg-shipping'),
+                'noLockers' => __('No lockers', 'izprati-bg-shipping'),
+                'select' => __('Select', 'izprati-bg-shipping'),
+                'applyServicePoint' => __('Apply service point', 'izprati-bg-shipping'),
+                'servicePointFieldLabel' => __('Service point', 'izprati-bg-shipping'),
+                'chooseServicePoint' => __('— Choose —', 'izprati-bg-shipping'),
+                'servicePointDetails' => __('Details', 'izprati-bg-shipping'),
+                'noDetailsYet' => __('Choose a pickup point from the list.', 'izprati-bg-shipping'),
+                'spPreviewId' => __('ID', 'izprati-bg-shipping'),
+                'spPreviewType' => __('Type', 'izprati-bg-shipping'),
+                'spPreviewState' => __('State', 'izprati-bg-shipping'),
+                'spPreviewAddress' => __('Address', 'izprati-bg-shipping'),
+                'spPreviewPhone' => __('Phone', 'izprati-bg-shipping'),
+                'spPreviewHours' => __('Working hours', 'izprati-bg-shipping'),
+                'spPreviewTimetable' => __('Schedule', 'izprati-bg-shipping'),
+                'spPreviewAiNote' => __('Routing note', 'izprati-bg-shipping'),
+                'spOpenInMaps' => __('Open in Maps', 'izprati-bg-shipping'),
+                /* translators: %s: distance in metres. */
+                'spDistanceMeters' => __('Distance: %s m', 'izprati-bg-shipping'),
+                'saving' => __('Saving…', 'izprati-bg-shipping'),
+                'noServicePoints' => __('No pickup points found.', 'izprati-bg-shipping'),
+                'currentPoint' => __('Current', 'izprati-bg-shipping'),
+                'noPlaces' => __('No boxes/places yet.', 'izprati-bg-shipping'),
+                'addPlace' => __('Add box', 'izprati-bg-shipping'),
+                'save' => __('Save', 'izprati-bg-shipping'),
+                'removePlace' => __('Remove box', 'izprati-bg-shipping'),
+                'boxColumn' => __('Box', 'izprati-bg-shipping'),
+                'placeActionsColumn' => __('Actions', 'izprati-bg-shipping'),
+                'weightG' => __('Weight (g)', 'izprati-bg-shipping'),
+                'placeTableWeightHeader' => __('(g)', 'izprati-bg-shipping'),
+                'placeTableDimsHeader' => __('(W, H, L) mm', 'izprati-bg-shipping'),
+                'placeTableDimsHeaderTitle' => __('Width, height, length in millimetres', 'izprati-bg-shipping'),
+                'strategyForAi' => __('Strategy for AI', 'izprati-bg-shipping'),
+                'deliveryCarrier' => __('Delivery carrier', 'izprati-bg-shipping'),
+                'recipientLocality' => __('Recipient locality', 'izprati-bg-shipping'),
+                'carrierPlaceholder' => __('Search and select carrier…', 'izprati-bg-shipping'),
+                'localityPlaceholder' => __('Search city (e.g. Varna)…', 'izprati-bg-shipping'),
+                'pickupPointPlaceholder' => __('Search pickup point…', 'izprati-bg-shipping'),
+                'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'izprati-bg-shipping'),
+                'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'izprati-bg-shipping'),
+                'retryPendingError' => __('Retry', 'izprati-bg-shipping'),
+                'retryingPendingError' => __('Retrying…', 'izprati-bg-shipping'),
+                'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'izprati-bg-shipping'),
+                'localitySearchMin' => __('Type at least 2 characters to search.', 'izprati-bg-shipping'),
+                'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'izprati-bg-shipping'),
+                'labelPanelSrHeading' => __('Shipping labels and parcel boxes', 'izprati-bg-shipping'),
+                'widthMm' => __('W', 'izprati-bg-shipping'),
+                'heightMm' => __('H', 'izprati-bg-shipping'),
+                'lengthMm' => __('L', 'izprati-bg-shipping'),
+                'editOrder' => __('Edit order', 'izprati-bg-shipping'),
                 'shipmentLabel' => UiBranding::shipmentHeadingWord(),
-                'shipmentStatus' => __('Status', 'octavawms'),
-                'codNo' => __('No COD', 'octavawms'),
-                'codYes' => __('Cash on delivery', 'octavawms'),
-                'placesTotalOneBox' => __('1 box total', 'octavawms'),
-                'placesTotalBoxes' => __('%d boxes total', 'octavawms'),
-                'placeRemoveBlockedTitle' => __('This box holds items and cannot be removed.', 'octavawms'),
-                'placesSummaryGramsLine' => __('%1$s · %2$d g', 'octavawms'),
-                'generateLabelNeedBoxes' => __('Add at least one box before generating a label.', 'octavawms'),
+                'shipmentStatus' => __('Status', 'izprati-bg-shipping'),
+                'codNo' => __('No COD', 'izprati-bg-shipping'),
+                'codYes' => __('Cash on delivery', 'izprati-bg-shipping'),
+                'placesTotalOneBox' => __('1 box total', 'izprati-bg-shipping'),
+                /* translators: %d: number of parcel boxes. */
+                'placesTotalBoxes' => __('%d boxes total', 'izprati-bg-shipping'),
+                'placeRemoveBlockedTitle' => __('This box holds items and cannot be removed.', 'izprati-bg-shipping'),
+                /* translators: 1: parcel summary, 2: total weight in grams. */
+                'placesSummaryGramsLine' => __('%1$s · %2$d g', 'izprati-bg-shipping'),
+                'generateLabelNeedBoxes' => __('Add at least one box before generating a label.', 'izprati-bg-shipping'),
             ],
         ]);
     }
@@ -344,13 +349,13 @@ CSS;
     {
         switch ($slug) {
             case 'g':
-                return function_exists('__') ? (string) __('g', 'woocommerce') : $slug;
+                return function_exists('__') ? (string) __('g', 'izprati-bg-shipping') : $slug;
             case 'kg':
-                return function_exists('__') ? (string) __('kg', 'woocommerce') : $slug;
+                return function_exists('__') ? (string) __('kg', 'izprati-bg-shipping') : $slug;
             case 'lbs':
-                return function_exists('__') ? (string) __('lbs', 'woocommerce') : $slug;
+                return function_exists('__') ? (string) __('lbs', 'izprati-bg-shipping') : $slug;
             case 'oz':
-                return function_exists('__') ? (string) __('oz', 'woocommerce') : $slug;
+                return function_exists('__') ? (string) __('oz', 'izprati-bg-shipping') : $slug;
             default:
                 return $slug;
         }
@@ -408,7 +413,7 @@ CSS;
 
         echo '<div id="octavawms-panel" class="octavawms-label-box__section" data-order-id="' . esc_attr((string) $orderId) . '">';
         echo '<span class="octavawms-spinner"></span> ';
-        echo esc_html__('Loading…', 'octavawms');
+        echo esc_html__('Loading…', 'izprati-bg-shipping');
         echo '</div>';
         echo '</div>';
     }
@@ -444,14 +449,14 @@ CSS;
         if ($raw === 'success') {
             return [
                 'type' => 'success',
-                'message' => __('Label generated successfully.', 'octavawms'),
+                'message' => __('Label generated successfully.', 'izprati-bg-shipping'),
             ];
         }
 
         if ($raw === 'error') {
             return [
                 'type' => 'error',
-                'message' => __('Label generation failed. See order notes for details.', 'octavawms'),
+                'message' => __('Label generation failed. See order notes for details.', 'izprati-bg-shipping'),
             ];
         }
 
@@ -475,7 +480,7 @@ CSS;
                 '<a%s href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
                 $classAttr,
                 esc_url($labelUrl),
-                esc_html__('Download Label', 'octavawms')
+                esc_html__('Download Label', 'izprati-bg-shipping')
             );
         }
 
@@ -489,7 +494,7 @@ CSS;
                 '<a%s href="%s">%s</a>',
                 $classAttr,
                 esc_url($downloadUrl),
-                esc_html__('Download Label', 'octavawms')
+                esc_html__('Download Label', 'izprati-bg-shipping')
             );
         }
 

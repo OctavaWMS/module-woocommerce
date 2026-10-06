@@ -59,12 +59,12 @@ final class CheckoutBlocksService
             'methodPrefix' => ShippingMethod::METHOD_ID,
             'updateNamespace' => self::UPDATE_NAMESPACE,
             'strings' => [
-                'pickupTitle' => __('Pickup point', 'octavawms'),
-                'choosePickup' => __('Choose pickup point', 'octavawms'),
-                'loading' => __('Loading pickup points...', 'octavawms'),
-                'noPoints' => __('No pickup points were found for this address.', 'octavawms'),
-                'saving' => __('Saving pickup point...', 'octavawms'),
-                'error' => __('Could not update the pickup point. Please try again.', 'octavawms'),
+                'pickupTitle' => __('Pickup point', 'izprati-bg-shipping'),
+                'choosePickup' => __('Choose pickup point', 'izprati-bg-shipping'),
+                'loading' => __('Loading pickup points...', 'izprati-bg-shipping'),
+                'noPoints' => __('No pickup points were found for this address.', 'izprati-bg-shipping'),
+                'saving' => __('Saving pickup point...', 'izprati-bg-shipping'),
+                'error' => __('Could not update the pickup point. Please try again.', 'izprati-bg-shipping'),
             ],
         ]);
     }
@@ -111,12 +111,12 @@ final class CheckoutBlocksService
         $rate = CheckoutSession::rate($rateId);
         $selection = CheckoutSession::selection();
         if ($rate === null || ($selection['rateId'] ?? '') !== $rateId) {
-            $this->rejectCheckout(__('Please choose a delivery option again.', 'octavawms'));
+            $this->rejectCheckout(__('Please choose a delivery option again.', 'izprati-bg-shipping'));
         }
         if (CheckoutDeliveryService::rateRequiresPickupPoint($rate)) {
             $pointId = isset($selection['servicePoint']) ? (int) $selection['servicePoint'] : 0;
             if ($pointId <= 0) {
-                $this->rejectCheckout(__('Choose a pickup point before placing the order.', 'octavawms'));
+                $this->rejectCheckout(__('Choose a pickup point before placing the order.', 'izprati-bg-shipping'));
             }
         }
 

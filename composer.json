@@ -59,6 +59,7 @@
       "php -l tests/WooRestCredentialsTest.php",
       "php -l tests/WooOrderExtIdTest.php",
       "php -l tests/IntegrationSourceImportAsyncSyncTest.php",
+      "php -l tests/I18n/BrandedStringsTest.php",
       "php -l tests/ConnectServiceSignTest.php",
       "php -l tests/ConnectServicePanelLoginTest.php",
       "php -l tests/DistributionTest.php",

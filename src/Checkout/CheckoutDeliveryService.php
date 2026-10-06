@@ -97,24 +97,24 @@ final class CheckoutDeliveryService
             'methodPrefix' => ShippingMethod::METHOD_ID,
             'showIzpratiAttribution' => $this->shouldShowIzpratiAttribution(),
             'strings' => [
-                'pickupTitle' => __('Pickup point', 'octavawms'),
-                'shippingTitle' => __('Shipping', 'octavawms'),
-                'poweredByPrefix' => __('Работи с ', 'octavawms'),
-                'poweredByMarkWord' => __('ИЗПРАТИ.БГ', 'octavawms'),
-                'choosePickup' => __('Choose pickup point', 'octavawms'),
-                'searchPickup' => __('Search pickup point', 'octavawms'),
-                'loadingShipping' => __('Loading shipping options...', 'octavawms'),
-                'loading' => __('Loading pickup points...', 'octavawms'),
-                'noPoints' => __('No pickup points were found for this address.', 'octavawms'),
-                'selected' => __('Selected', 'octavawms'),
-                'nearMe' => __('Near me', 'octavawms'),
-                'map' => __('Map', 'octavawms'),
-                'list' => __('List', 'octavawms'),
-                'locating' => __('Locating...', 'octavawms'),
-                'mapLoading' => __('Loading map...', 'octavawms'),
-                'locationUnavailable' => __('Location is not available in this browser.', 'octavawms'),
-                'locationDenied' => __('Could not use your location. Showing pickup points for the selected city.', 'octavawms'),
-                'pickupPoints' => __('pickup points', 'octavawms'),
+                'pickupTitle' => __('Pickup point', 'izprati-bg-shipping'),
+                'shippingTitle' => __('Shipping', 'izprati-bg-shipping'),
+                'poweredByPrefix' => __('Работи с ', 'izprati-bg-shipping'),
+                'poweredByMarkWord' => __('ИЗПРАТИ.БГ', 'izprati-bg-shipping'),
+                'choosePickup' => __('Choose pickup point', 'izprati-bg-shipping'),
+                'searchPickup' => __('Search pickup point', 'izprati-bg-shipping'),
+                'loadingShipping' => __('Loading shipping options...', 'izprati-bg-shipping'),
+                'loading' => __('Loading pickup points...', 'izprati-bg-shipping'),
+                'noPoints' => __('No pickup points were found for this address.', 'izprati-bg-shipping'),
+                'selected' => __('Selected', 'izprati-bg-shipping'),
+                'nearMe' => __('Near me', 'izprati-bg-shipping'),
+                'map' => __('Map', 'izprati-bg-shipping'),
+                'list' => __('List', 'izprati-bg-shipping'),
+                'locating' => __('Locating...', 'izprati-bg-shipping'),
+                'mapLoading' => __('Loading map...', 'izprati-bg-shipping'),
+                'locationUnavailable' => __('Location is not available in this browser.', 'izprati-bg-shipping'),
+                'locationDenied' => __('Could not use your location. Showing pickup points for the selected city.', 'izprati-bg-shipping'),
+                'pickupPoints' => __('pickup points', 'izprati-bg-shipping'),
             ],
         ]);
     }
@@ -147,7 +147,7 @@ final class CheckoutDeliveryService
         $origin = $lat !== null && $lng !== null ? ['lat' => $lat, 'lng' => $lng] : null;
         $rate = $rateId !== '' ? CheckoutSession::rate($rateId) : null;
         if ($rate === null) {
-            wp_send_json_error(['message' => __('Delivery option is no longer available. Please refresh checkout.', 'octavawms')], 404);
+            wp_send_json_error(['message' => __('Delivery option is no longer available. Please refresh checkout.', 'izprati-bg-shipping')], 404);
 
             return;
         }
@@ -178,7 +178,7 @@ final class CheckoutDeliveryService
         }
         $rate = CheckoutSession::rate($rateId);
         if ($rate === null) {
-            $this->addValidationError($errors, __('Please choose a delivery option again.', 'octavawms'));
+            $this->addValidationError($errors, __('Please choose a delivery option again.', 'izprati-bg-shipping'));
 
             return;
         }
@@ -188,7 +188,7 @@ final class CheckoutDeliveryService
 
         $pointId = $this->postedInt('octavawms_service_point_id');
         if ($pointId <= 0) {
-            $this->addValidationError($errors, __('Choose a pickup point before placing the order.', 'octavawms'));
+            $this->addValidationError($errors, __('Choose a pickup point before placing the order.', 'izprati-bg-shipping'));
         }
     }
 
@@ -511,8 +511,8 @@ final class CheckoutDeliveryService
     private function servicePointTypeLabel(string $type): string
     {
         return match ($type) {
-            'self_service_point' => __('Locker', 'octavawms'),
-            'service_point' => __('Office', 'octavawms'),
+            'self_service_point' => __('Locker', 'izprati-bg-shipping'),
+            'service_point' => __('Office', 'izprati-bg-shipping'),
             default => '',
         };
     }

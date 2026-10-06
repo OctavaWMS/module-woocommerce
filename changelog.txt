@@ -1,5 +1,11 @@
 *** Изпрати.БГ Shipping for WooCommerce Changelog ***
 
+2026-10-07 - version 1.6.2
+
+* Added - External-service and data-transfer disclosure for WordPress.org publication
+* Update - Channel-neutral support guidance and WordPress.org publication packaging safeguards
+* Update - Aligned the text domain with the WordPress.org slug and corrected the minimum WordPress version to 6.2
+
 2026-10-02 - version 1.6.1
 
 * Fixed - Remediated Woo QIT security findings for input, output, database queries, label paths, and catalog loading

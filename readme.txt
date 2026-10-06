@@ -1,10 +1,10 @@
 === Изпрати.БГ Shipping for WooCommerce ===
-Contributors: tagontrack
+Contributors: tasselchof
 Tags: shipping, fulfillment, labels, pickup points, couriers
-Requires at least: 6.0
+Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -30,6 +30,21 @@ Documentation: https://izprati.bg/docs/
 Privacy: https://izprati.bg/privacy-policy/
 Terms: https://izprati.bg/terms-conditions/
 
+== External service and data disclosure ==
+
+This plugin relies on the hosted Изпрати.БГ shipping service. The service website is https://izprati.bg/ and its API is hosted at https://api.izprati.bg/. The plugin cannot calculate connected carrier options, synchronize orders, manage shipments, or create labels without communicating with this service.
+
+The following data is transmitted or made available to Изпрати.БГ when the corresponding feature is used:
+
+* When a store administrator connects the plugin or refreshes its connection, the store URL, store name, and WordPress administrator email address are sent. If an existing WooCommerce REST connection is available, a public key suffix and cryptographic signature may be sent to match that connection; the WooCommerce consumer secret is not transmitted.
+* When the connected store calculates delivery options, destination locality information such as country, city, and postcode is sent together with package weight, order-value estimate, selected sender, and configured carrier identifiers.
+* When automatic synchronization is enabled, or an administrator manually synchronizes an order, the connected service retrieves the WooCommerce order through the authorized WooCommerce REST connection. This can include order identifiers and status, products, quantities, prices and totals, billing and shipping names, addresses, email address, phone number, and the selected carrier office or locker.
+* When an administrator manages a shipment or creates a label, shipment identifiers, parcel dimensions and weight, sender, carrier, service point, and related fulfillment instructions are sent. Generated shipping labels are returned by the service.
+
+Communication occurs after a store administrator connects the plugin and then when storefront delivery calculation, enabled order synchronization, or an administrator-requested shipment action requires it.
+
+Use of the service is subject to the Изпрати.БГ [Terms and Conditions](https://izprati.bg/terms-conditions/) and [Privacy Policy](https://izprati.bg/privacy-policy/).
+
 == Installation ==
 
 1. Install and activate the extension.
@@ -54,9 +69,14 @@ Yes. The extension supports both classic checkout and WooCommerce Cart and Check
 
 = Where can I get help? =
 
-Use the WooCommerce Marketplace support channel for this extension. General Изпрати.БГ documentation is available at https://izprati.bg/docs/.
+Use the support channel where you obtained the plugin: its WordPress.org support forum or the WooCommerce Marketplace support channel. General Изпрати.БГ documentation is available at https://izprati.bg/docs/.
 
 == Changelog ==
+
+= 1.6.2 - 2026-10-07 =
+
+* Added the external-service and data-transfer disclosure required for WordPress.org publication.
+* Added channel-neutral support guidance and WordPress.org publication packaging safeguards.
 
 = 1.6.1 - 2026-10-02 =
 

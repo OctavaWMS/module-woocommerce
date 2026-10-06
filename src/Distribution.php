@@ -7,7 +7,7 @@ namespace OctavaWMS\WooCommerce;
 /** Marketplace distribution identity while internal identifiers stay backward compatible. */
 final class Distribution
 {
-    public const VERSION = '1.6.1';
+    public const VERSION = '1.6.2';
 
     public const PRODUCT_NAME = 'Изпрати.БГ Shipping for WooCommerce';
 

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.6.2] — 2026-10-07
+
+### WordPress.org preparation
+- Documented the Izprati.bg external service, the data categories transmitted, the triggering circumstances, and the public terms and privacy policy.
+- Made support guidance appropriate for both the WordPress.org and WooCommerce Marketplace distribution channels.
+- Added WordPress.org directory-asset and SVN publication guidance while keeping those assets out of the installable plugin archive.
+- Added focused metadata and package regression checks for the WordPress.org release.
+- Aligned the translation text domain with the requested `izprati-bg-shipping` directory slug.
+- Corrected the minimum WordPress version to 6.2, which the existing `%i` database placeholders already require.
+
 ## [1.6.1] — 2026-10-02
 
 ### Fixed

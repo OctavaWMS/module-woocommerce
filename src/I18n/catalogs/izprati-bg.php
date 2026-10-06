@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Изпрати.БГ — Bulgarian UI overrides (keys = canonical English msgids from __('…', 'octavawms')).
+ * Изпрати.БГ — Bulgarian UI overrides (keys = canonical English msgids from __('…', 'izprati-bg-shipping')).
  *
  * Add rows here as you introduce new tenant-facing strings. Default Octava installs
  * skip this file ({@see BrandedStrings}).
