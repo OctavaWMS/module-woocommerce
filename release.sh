@@ -16,7 +16,7 @@ function help {
 	echo "  3. Run tests"
 	echo "  4. Merge to release/1.x branch"
 	echo "  5. Create and push release tag"
-	echo "  6. Build dist/izprati-bg-shipping-<version>.zip (Marketplace bundle)"
+	echo "  6. Build dist/izprati-bulgaria-shipping-<version>.zip (Marketplace bundle)"
 	echo ""
 	echo "If --remove-last is used, it will also:"
 	echo "  - Remove the last release tag (locally and remotely)"

@@ -118,7 +118,7 @@ class BackendApiClient
             'refresh_token' => '',
             'message' => __(
                 'Connect the plugin under WooCommerce → Settings → Integrations first.',
-                'izprati-bg-shipping'
+                'izprati-bulgaria-shipping'
             ),
         ];
     }
@@ -135,7 +135,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (user lookup failed).', 'izprati-bg-shipping'),
+                'message' => __('Could not open panel login (user lookup failed).', 'izprati-bulgaria-shipping'),
             ];
         }
 
@@ -144,7 +144,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (invalid user id).', 'izprati-bg-shipping'),
+                'message' => __('Could not open panel login (invalid user id).', 'izprati-bulgaria-shipping'),
             ];
         }
 
@@ -153,7 +153,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (authenticate request failed).', 'izprati-bg-shipping'),
+                'message' => __('Could not open panel login (authenticate request failed).', 'izprati-bulgaria-shipping'),
             ];
         }
 
@@ -162,7 +162,7 @@ class BackendApiClient
             return [
                 'ok' => false,
                 'refresh_token' => '',
-                'message' => __('Could not open panel login (missing refresh token).', 'izprati-bg-shipping'),
+                'message' => __('Could not open panel login (missing refresh token).', 'izprati-bulgaria-shipping'),
             ];
         }
 

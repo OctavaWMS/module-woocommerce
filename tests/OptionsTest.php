@@ -288,6 +288,32 @@ final class OptionsTest extends TestCase
         self::assertFalse(Options::isOrderUpdateSyncEnabled());
     }
 
+    public function testCheckoutAttributionIsDisabledByDefault(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return [];
+            }
+
+            return $default;
+        });
+
+        self::assertFalse(Options::isCheckoutAttributionEnabled());
+    }
+
+    public function testCheckoutAttributionRequiresExplicitOptIn(): void
+    {
+        Functions\when('get_option')->alias(static function (string $name, $default = false) {
+            if ($name === 'woocommerce_octavawms_settings') {
+                return ['show_checkout_attribution' => 'yes'];
+            }
+
+            return $default;
+        });
+
+        self::assertTrue(Options::isCheckoutAttributionEnabled());
+    }
+
     public function testCarrierMappingRowsDecodeLocalJson(): void
     {
         Functions\when('get_option')->alias(static function (string $name, $default = false) {

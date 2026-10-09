@@ -21,7 +21,7 @@ class LabelMetaBox
     {
         add_meta_box(
             'octavawms-label',
-            UiBranding::appActionLabel(__('Create shipping label', 'izprati-bg-shipping')),
+            UiBranding::appActionLabel(__('Create shipping label', 'izprati-bulgaria-shipping')),
             [$this, 'renderLabelMetaBox'],
             ['shop_order', 'woocommerce_page_wc-orders'],
             'normal',
@@ -236,111 +236,111 @@ CSS;
             'weightUnit' => $weightUnitSlug,
             'weightUnitLabel' => $this->weightUnitLabelTranslated($weightUnitSlug),
             'strings' => [
-                'loading' => __('Loading…', 'izprati-bg-shipping'),
-                'error' => __('Could not load OctavaWMS status.', 'izprati-bg-shipping'),
-                'noOrder' => __('This order is not in OctavaWMS yet. Upload it to create shipments and labels.', 'izprati-bg-shipping'),
-                'uploadOrder' => __('Upload order', 'izprati-bg-shipping'),
-                'uploading' => __('Uploading…', 'izprati-bg-shipping'),
-                'reimportOrder' => __('Re-import order', 'izprati-bg-shipping'),
-                'reimporting' => __('Re-importing…', 'izprati-bg-shipping'),
+                'loading' => __('Loading…', 'izprati-bulgaria-shipping'),
+                'error' => __('Could not load OctavaWMS status.', 'izprati-bulgaria-shipping'),
+                'noOrder' => __('This order is not in OctavaWMS yet. Upload it to create shipments and labels.', 'izprati-bulgaria-shipping'),
+                'uploadOrder' => __('Upload order', 'izprati-bulgaria-shipping'),
+                'uploading' => __('Uploading…', 'izprati-bulgaria-shipping'),
+                'reimportOrder' => __('Re-import order', 'izprati-bulgaria-shipping'),
+                'reimporting' => __('Re-importing…', 'izprati-bulgaria-shipping'),
                 /* translators: 1: WooCommerce COD amount, 2: OctavaWMS COD amount. */
-                'codMismatch' => __('COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.', 'izprati-bg-shipping'),
-                'codMismatchSuggestion' => __('Re-import the order to update OctavaWMS. Existing carrier labels are not changed.', 'izprati-bg-shipping'),
-                'orderSynced' => __('Order synced', 'izprati-bg-shipping'),
-                'importQueued' => __('Import queued in OctavaWMS.', 'izprati-bg-shipping'),
-                'importProcessing' => __('Import is processing in OctavaWMS.', 'izprati-bg-shipping'),
-                'importDuplicate' => __('Import is already queued or running.', 'izprati-bg-shipping'),
-                'importConfirmed' => __('Import finished. Refreshing order status…', 'izprati-bg-shipping'),
-                'importFailed' => __('Import failed.', 'izprati-bg-shipping'),
-                'importStillProcessing' => __('Import is still processing in OctavaWMS.', 'izprati-bg-shipping'),
+                'codMismatch' => __('COD mismatch: WooCommerce %1$s; OctavaWMS %2$s.', 'izprati-bulgaria-shipping'),
+                'codMismatchSuggestion' => __('Re-import the order to update OctavaWMS. Existing carrier labels are not changed.', 'izprati-bulgaria-shipping'),
+                'orderSynced' => __('Order synced', 'izprati-bulgaria-shipping'),
+                'importQueued' => __('Import queued in OctavaWMS.', 'izprati-bulgaria-shipping'),
+                'importProcessing' => __('Import is processing in OctavaWMS.', 'izprati-bulgaria-shipping'),
+                'importDuplicate' => __('Import is already queued or running.', 'izprati-bulgaria-shipping'),
+                'importConfirmed' => __('Import finished. Refreshing order status…', 'izprati-bulgaria-shipping'),
+                'importFailed' => __('Import failed.', 'izprati-bulgaria-shipping'),
+                'importStillProcessing' => __('Import is still processing in OctavaWMS.', 'izprati-bulgaria-shipping'),
                 /* translators: %s: import identifier. */
-                'importReference' => __('Import #%s', 'izprati-bg-shipping'),
-                'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'izprati-bg-shipping'),
+                'importReference' => __('Import #%s', 'izprati-bulgaria-shipping'),
+                'awaitingShipment' => __('Order is in OctavaWMS; waiting for a shipment (delivery request) to appear.', 'izprati-bulgaria-shipping'),
                 'shipment' => UiBranding::shipmentHeadingWord(),
-                'labelReady' => __('Label Ready', 'izprati-bg-shipping'),
-                'downloadLabel' => __('Download Label', 'izprati-bg-shipping'),
-                'printLabel' => __('Print Label', 'izprati-bg-shipping'),
-                'labelViewerTitle' => __('Shipping Label', 'izprati-bg-shipping'),
-                'trackingNumberLabel' => __('Tracking number', 'izprati-bg-shipping'),
-                'copyTracking' => __('Copy', 'izprati-bg-shipping'),
-                'copiedTracking' => __('Copied', 'izprati-bg-shipping'),
-                'trackShipment' => __('Track shipment', 'izprati-bg-shipping'),
-                'cancelShipment' => __('Cancel Shipment', 'izprati-bg-shipping'),
-                'cancellingShipment' => __('Cancelling…', 'izprati-bg-shipping'),
-                'shipmentLocked' => __('Shipment is locked (tracking number assigned).', 'izprati-bg-shipping'),
-                'labelUnavailable' => __('Shipment is finished, but no label file is available from OctavaWMS yet.', 'izprati-bg-shipping'),
-                'generateLabel' => __('Generate Label', 'izprati-bg-shipping'),
-                'regenerateLabel' => __('Re-generate Label', 'izprati-bg-shipping'),
-                'generatingLabel' => __('Generating label…', 'izprati-bg-shipping'),
-                'tryAgain' => __('Try again', 'izprati-bg-shipping'),
-                'requeueEndingQueued' => __('Re-queue shipment', 'izprati-bg-shipping'),
-                'requeueingEndingQueued' => __('Re-queuing…', 'izprati-bg-shipping'),
-                'refreshStatus' => __('Refresh status', 'izprati-bg-shipping'),
-                'loginToPanel' => __('Login to the panel', 'izprati-bg-shipping'),
-                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'izprati-bg-shipping'),
-                'servicePointSection' => __('Edit shipment', 'izprati-bg-shipping'),
-                'noShipmentForSection' => __('Available after a shipment exists for this order.', 'izprati-bg-shipping'),
-                'searchPlaceholder' => __('Search pickup point…', 'izprati-bg-shipping'),
-                'noLockers' => __('No lockers', 'izprati-bg-shipping'),
-                'select' => __('Select', 'izprati-bg-shipping'),
-                'applyServicePoint' => __('Apply service point', 'izprati-bg-shipping'),
-                'servicePointFieldLabel' => __('Service point', 'izprati-bg-shipping'),
-                'chooseServicePoint' => __('— Choose —', 'izprati-bg-shipping'),
-                'servicePointDetails' => __('Details', 'izprati-bg-shipping'),
-                'noDetailsYet' => __('Choose a pickup point from the list.', 'izprati-bg-shipping'),
-                'spPreviewId' => __('ID', 'izprati-bg-shipping'),
-                'spPreviewType' => __('Type', 'izprati-bg-shipping'),
-                'spPreviewState' => __('State', 'izprati-bg-shipping'),
-                'spPreviewAddress' => __('Address', 'izprati-bg-shipping'),
-                'spPreviewPhone' => __('Phone', 'izprati-bg-shipping'),
-                'spPreviewHours' => __('Working hours', 'izprati-bg-shipping'),
-                'spPreviewTimetable' => __('Schedule', 'izprati-bg-shipping'),
-                'spPreviewAiNote' => __('Routing note', 'izprati-bg-shipping'),
-                'spOpenInMaps' => __('Open in Maps', 'izprati-bg-shipping'),
+                'labelReady' => __('Label Ready', 'izprati-bulgaria-shipping'),
+                'downloadLabel' => __('Download Label', 'izprati-bulgaria-shipping'),
+                'printLabel' => __('Print Label', 'izprati-bulgaria-shipping'),
+                'labelViewerTitle' => __('Shipping Label', 'izprati-bulgaria-shipping'),
+                'trackingNumberLabel' => __('Tracking number', 'izprati-bulgaria-shipping'),
+                'copyTracking' => __('Copy', 'izprati-bulgaria-shipping'),
+                'copiedTracking' => __('Copied', 'izprati-bulgaria-shipping'),
+                'trackShipment' => __('Track shipment', 'izprati-bulgaria-shipping'),
+                'cancelShipment' => __('Cancel Shipment', 'izprati-bulgaria-shipping'),
+                'cancellingShipment' => __('Cancelling…', 'izprati-bulgaria-shipping'),
+                'shipmentLocked' => __('Shipment is locked (tracking number assigned).', 'izprati-bulgaria-shipping'),
+                'labelUnavailable' => __('Shipment is finished, but no label file is available from OctavaWMS yet.', 'izprati-bulgaria-shipping'),
+                'generateLabel' => __('Generate Label', 'izprati-bulgaria-shipping'),
+                'regenerateLabel' => __('Re-generate Label', 'izprati-bulgaria-shipping'),
+                'generatingLabel' => __('Generating label…', 'izprati-bulgaria-shipping'),
+                'tryAgain' => __('Try again', 'izprati-bulgaria-shipping'),
+                'requeueEndingQueued' => __('Re-queue shipment', 'izprati-bulgaria-shipping'),
+                'requeueingEndingQueued' => __('Re-queuing…', 'izprati-bulgaria-shipping'),
+                'refreshStatus' => __('Refresh status', 'izprati-bulgaria-shipping'),
+                'loginToPanel' => __('Login to the panel', 'izprati-bulgaria-shipping'),
+                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'izprati-bulgaria-shipping'),
+                'servicePointSection' => __('Edit shipment', 'izprati-bulgaria-shipping'),
+                'noShipmentForSection' => __('Available after a shipment exists for this order.', 'izprati-bulgaria-shipping'),
+                'searchPlaceholder' => __('Search pickup point…', 'izprati-bulgaria-shipping'),
+                'noLockers' => __('No lockers', 'izprati-bulgaria-shipping'),
+                'select' => __('Select', 'izprati-bulgaria-shipping'),
+                'applyServicePoint' => __('Apply service point', 'izprati-bulgaria-shipping'),
+                'servicePointFieldLabel' => __('Service point', 'izprati-bulgaria-shipping'),
+                'chooseServicePoint' => __('— Choose —', 'izprati-bulgaria-shipping'),
+                'servicePointDetails' => __('Details', 'izprati-bulgaria-shipping'),
+                'noDetailsYet' => __('Choose a pickup point from the list.', 'izprati-bulgaria-shipping'),
+                'spPreviewId' => __('ID', 'izprati-bulgaria-shipping'),
+                'spPreviewType' => __('Type', 'izprati-bulgaria-shipping'),
+                'spPreviewState' => __('State', 'izprati-bulgaria-shipping'),
+                'spPreviewAddress' => __('Address', 'izprati-bulgaria-shipping'),
+                'spPreviewPhone' => __('Phone', 'izprati-bulgaria-shipping'),
+                'spPreviewHours' => __('Working hours', 'izprati-bulgaria-shipping'),
+                'spPreviewTimetable' => __('Schedule', 'izprati-bulgaria-shipping'),
+                'spPreviewAiNote' => __('Routing note', 'izprati-bulgaria-shipping'),
+                'spOpenInMaps' => __('Open in Maps', 'izprati-bulgaria-shipping'),
                 /* translators: %s: distance in metres. */
-                'spDistanceMeters' => __('Distance: %s m', 'izprati-bg-shipping'),
-                'saving' => __('Saving…', 'izprati-bg-shipping'),
-                'noServicePoints' => __('No pickup points found.', 'izprati-bg-shipping'),
-                'currentPoint' => __('Current', 'izprati-bg-shipping'),
-                'noPlaces' => __('No boxes/places yet.', 'izprati-bg-shipping'),
-                'addPlace' => __('Add box', 'izprati-bg-shipping'),
-                'save' => __('Save', 'izprati-bg-shipping'),
-                'removePlace' => __('Remove box', 'izprati-bg-shipping'),
-                'boxColumn' => __('Box', 'izprati-bg-shipping'),
-                'placeActionsColumn' => __('Actions', 'izprati-bg-shipping'),
-                'weightG' => __('Weight (g)', 'izprati-bg-shipping'),
-                'placeTableWeightHeader' => __('(g)', 'izprati-bg-shipping'),
-                'placeTableDimsHeader' => __('(W, H, L) mm', 'izprati-bg-shipping'),
-                'placeTableDimsHeaderTitle' => __('Width, height, length in millimetres', 'izprati-bg-shipping'),
-                'strategyForAi' => __('Strategy for AI', 'izprati-bg-shipping'),
-                'deliveryCarrier' => __('Delivery carrier', 'izprati-bg-shipping'),
-                'recipientLocality' => __('Recipient locality', 'izprati-bg-shipping'),
-                'carrierPlaceholder' => __('Search and select carrier…', 'izprati-bg-shipping'),
-                'localityPlaceholder' => __('Search city (e.g. Varna)…', 'izprati-bg-shipping'),
-                'pickupPointPlaceholder' => __('Search pickup point…', 'izprati-bg-shipping'),
-                'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'izprati-bg-shipping'),
-                'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'izprati-bg-shipping'),
-                'retryPendingError' => __('Retry', 'izprati-bg-shipping'),
-                'retryingPendingError' => __('Retrying…', 'izprati-bg-shipping'),
-                'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'izprati-bg-shipping'),
-                'localitySearchMin' => __('Type at least 2 characters to search.', 'izprati-bg-shipping'),
-                'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'izprati-bg-shipping'),
-                'labelPanelSrHeading' => __('Shipping labels and parcel boxes', 'izprati-bg-shipping'),
-                'widthMm' => __('W', 'izprati-bg-shipping'),
-                'heightMm' => __('H', 'izprati-bg-shipping'),
-                'lengthMm' => __('L', 'izprati-bg-shipping'),
-                'editOrder' => __('Edit order', 'izprati-bg-shipping'),
+                'spDistanceMeters' => __('Distance: %s m', 'izprati-bulgaria-shipping'),
+                'saving' => __('Saving…', 'izprati-bulgaria-shipping'),
+                'noServicePoints' => __('No pickup points found.', 'izprati-bulgaria-shipping'),
+                'currentPoint' => __('Current', 'izprati-bulgaria-shipping'),
+                'noPlaces' => __('No boxes/places yet.', 'izprati-bulgaria-shipping'),
+                'addPlace' => __('Add box', 'izprati-bulgaria-shipping'),
+                'save' => __('Save', 'izprati-bulgaria-shipping'),
+                'removePlace' => __('Remove box', 'izprati-bulgaria-shipping'),
+                'boxColumn' => __('Box', 'izprati-bulgaria-shipping'),
+                'placeActionsColumn' => __('Actions', 'izprati-bulgaria-shipping'),
+                'weightG' => __('Weight (g)', 'izprati-bulgaria-shipping'),
+                'placeTableWeightHeader' => __('(g)', 'izprati-bulgaria-shipping'),
+                'placeTableDimsHeader' => __('(W, H, L) mm', 'izprati-bulgaria-shipping'),
+                'placeTableDimsHeaderTitle' => __('Width, height, length in millimetres', 'izprati-bulgaria-shipping'),
+                'strategyForAi' => __('Strategy for AI', 'izprati-bulgaria-shipping'),
+                'deliveryCarrier' => __('Delivery carrier', 'izprati-bulgaria-shipping'),
+                'recipientLocality' => __('Recipient locality', 'izprati-bulgaria-shipping'),
+                'carrierPlaceholder' => __('Search and select carrier…', 'izprati-bulgaria-shipping'),
+                'localityPlaceholder' => __('Search city (e.g. Varna)…', 'izprati-bulgaria-shipping'),
+                'pickupPointPlaceholder' => __('Search pickup point…', 'izprati-bulgaria-shipping'),
+                'selectCarrierLocalityFirst' => __('Select carrier and locality first.', 'izprati-bulgaria-shipping'),
+                'shipmentPendingErrorGeneric' => __('OctavaWMS could not process this shipment. See the message below or open the delivery request in OctavaWMS.', 'izprati-bulgaria-shipping'),
+                'retryPendingError' => __('Retry', 'izprati-bulgaria-shipping'),
+                'retryingPendingError' => __('Retrying…', 'izprati-bulgaria-shipping'),
+                'shipmentQueuedInfo' => __('This shipment is queued for AI processing. Wait until it finishes before changing settings, or continue if your workflow allows it.', 'izprati-bulgaria-shipping'),
+                'localitySearchMin' => __('Type at least 2 characters to search.', 'izprati-bulgaria-shipping'),
+                'needSelectWoo' => __('Shipment fields require WooCommerce admin (SelectWoo). Ensure WooCommerce is active.', 'izprati-bulgaria-shipping'),
+                'labelPanelSrHeading' => __('Shipping labels and parcel boxes', 'izprati-bulgaria-shipping'),
+                'widthMm' => __('W', 'izprati-bulgaria-shipping'),
+                'heightMm' => __('H', 'izprati-bulgaria-shipping'),
+                'lengthMm' => __('L', 'izprati-bulgaria-shipping'),
+                'editOrder' => __('Edit order', 'izprati-bulgaria-shipping'),
                 'shipmentLabel' => UiBranding::shipmentHeadingWord(),
-                'shipmentStatus' => __('Status', 'izprati-bg-shipping'),
-                'codNo' => __('No COD', 'izprati-bg-shipping'),
-                'codYes' => __('Cash on delivery', 'izprati-bg-shipping'),
-                'placesTotalOneBox' => __('1 box total', 'izprati-bg-shipping'),
+                'shipmentStatus' => __('Status', 'izprati-bulgaria-shipping'),
+                'codNo' => __('No COD', 'izprati-bulgaria-shipping'),
+                'codYes' => __('Cash on delivery', 'izprati-bulgaria-shipping'),
+                'placesTotalOneBox' => __('1 box total', 'izprati-bulgaria-shipping'),
                 /* translators: %d: number of parcel boxes. */
-                'placesTotalBoxes' => __('%d boxes total', 'izprati-bg-shipping'),
-                'placeRemoveBlockedTitle' => __('This box holds items and cannot be removed.', 'izprati-bg-shipping'),
+                'placesTotalBoxes' => __('%d boxes total', 'izprati-bulgaria-shipping'),
+                'placeRemoveBlockedTitle' => __('This box holds items and cannot be removed.', 'izprati-bulgaria-shipping'),
                 /* translators: 1: parcel summary, 2: total weight in grams. */
-                'placesSummaryGramsLine' => __('%1$s · %2$d g', 'izprati-bg-shipping'),
-                'generateLabelNeedBoxes' => __('Add at least one box before generating a label.', 'izprati-bg-shipping'),
+                'placesSummaryGramsLine' => __('%1$s · %2$d g', 'izprati-bulgaria-shipping'),
+                'generateLabelNeedBoxes' => __('Add at least one box before generating a label.', 'izprati-bulgaria-shipping'),
             ],
         ]);
     }
@@ -349,13 +349,13 @@ CSS;
     {
         switch ($slug) {
             case 'g':
-                return function_exists('__') ? (string) __('g', 'izprati-bg-shipping') : $slug;
+                return function_exists('__') ? (string) __('g', 'izprati-bulgaria-shipping') : $slug;
             case 'kg':
-                return function_exists('__') ? (string) __('kg', 'izprati-bg-shipping') : $slug;
+                return function_exists('__') ? (string) __('kg', 'izprati-bulgaria-shipping') : $slug;
             case 'lbs':
-                return function_exists('__') ? (string) __('lbs', 'izprati-bg-shipping') : $slug;
+                return function_exists('__') ? (string) __('lbs', 'izprati-bulgaria-shipping') : $slug;
             case 'oz':
-                return function_exists('__') ? (string) __('oz', 'izprati-bg-shipping') : $slug;
+                return function_exists('__') ? (string) __('oz', 'izprati-bulgaria-shipping') : $slug;
             default:
                 return $slug;
         }
@@ -413,7 +413,7 @@ CSS;
 
         echo '<div id="octavawms-panel" class="octavawms-label-box__section" data-order-id="' . esc_attr((string) $orderId) . '">';
         echo '<span class="octavawms-spinner"></span> ';
-        echo esc_html__('Loading…', 'izprati-bg-shipping');
+        echo esc_html__('Loading…', 'izprati-bulgaria-shipping');
         echo '</div>';
         echo '</div>';
     }
@@ -449,14 +449,14 @@ CSS;
         if ($raw === 'success') {
             return [
                 'type' => 'success',
-                'message' => __('Label generated successfully.', 'izprati-bg-shipping'),
+                'message' => __('Label generated successfully.', 'izprati-bulgaria-shipping'),
             ];
         }
 
         if ($raw === 'error') {
             return [
                 'type' => 'error',
-                'message' => __('Label generation failed. See order notes for details.', 'izprati-bg-shipping'),
+                'message' => __('Label generation failed. See order notes for details.', 'izprati-bulgaria-shipping'),
             ];
         }
 
@@ -480,7 +480,7 @@ CSS;
                 '<a%s href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
                 $classAttr,
                 esc_url($labelUrl),
-                esc_html__('Download Label', 'izprati-bg-shipping')
+                esc_html__('Download Label', 'izprati-bulgaria-shipping')
             );
         }
 
@@ -494,7 +494,7 @@ CSS;
                 '<a%s href="%s">%s</a>',
                 $classAttr,
                 esc_url($downloadUrl),
-                esc_html__('Download Label', 'izprati-bg-shipping')
+                esc_html__('Download Label', 'izprati-bulgaria-shipping')
             );
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OctavaWMS\WooCommerce\Checkout;
 
 use OctavaWMS\WooCommerce\Api\BackendApiClient;
+use OctavaWMS\WooCommerce\Options;
 use OctavaWMS\WooCommerce\PluginLog;
 use OctavaWMS\WooCommerce\UiBranding;
 
@@ -94,27 +95,29 @@ final class CheckoutDeliveryService
         wp_localize_script('octavawms-checkout-delivery', 'octavawmsCheckoutDelivery', [
             'ajaxUrl' => function_exists('admin_url') ? admin_url('admin-ajax.php') : '',
             'nonce' => wp_create_nonce(self::NONCE_ACTION),
+            'leafletCssUrl' => plugins_url('assets/lib/leaflet/leaflet.css', $pluginFile),
+            'leafletJsUrl' => plugins_url('assets/lib/leaflet/leaflet-src.js', $pluginFile),
             'methodPrefix' => ShippingMethod::METHOD_ID,
             'showIzpratiAttribution' => $this->shouldShowIzpratiAttribution(),
             'strings' => [
-                'pickupTitle' => __('Pickup point', 'izprati-bg-shipping'),
-                'shippingTitle' => __('Shipping', 'izprati-bg-shipping'),
-                'poweredByPrefix' => __('Работи с ', 'izprati-bg-shipping'),
-                'poweredByMarkWord' => __('ИЗПРАТИ.БГ', 'izprati-bg-shipping'),
-                'choosePickup' => __('Choose pickup point', 'izprati-bg-shipping'),
-                'searchPickup' => __('Search pickup point', 'izprati-bg-shipping'),
-                'loadingShipping' => __('Loading shipping options...', 'izprati-bg-shipping'),
-                'loading' => __('Loading pickup points...', 'izprati-bg-shipping'),
-                'noPoints' => __('No pickup points were found for this address.', 'izprati-bg-shipping'),
-                'selected' => __('Selected', 'izprati-bg-shipping'),
-                'nearMe' => __('Near me', 'izprati-bg-shipping'),
-                'map' => __('Map', 'izprati-bg-shipping'),
-                'list' => __('List', 'izprati-bg-shipping'),
-                'locating' => __('Locating...', 'izprati-bg-shipping'),
-                'mapLoading' => __('Loading map...', 'izprati-bg-shipping'),
-                'locationUnavailable' => __('Location is not available in this browser.', 'izprati-bg-shipping'),
-                'locationDenied' => __('Could not use your location. Showing pickup points for the selected city.', 'izprati-bg-shipping'),
-                'pickupPoints' => __('pickup points', 'izprati-bg-shipping'),
+                'pickupTitle' => __('Pickup point', 'izprati-bulgaria-shipping'),
+                'shippingTitle' => __('Shipping', 'izprati-bulgaria-shipping'),
+                'poweredByPrefix' => __('Работи с ', 'izprati-bulgaria-shipping'),
+                'poweredByMarkWord' => __('ИЗПРАТИ.БГ', 'izprati-bulgaria-shipping'),
+                'choosePickup' => __('Choose pickup point', 'izprati-bulgaria-shipping'),
+                'searchPickup' => __('Search pickup point', 'izprati-bulgaria-shipping'),
+                'loadingShipping' => __('Loading shipping options...', 'izprati-bulgaria-shipping'),
+                'loading' => __('Loading pickup points...', 'izprati-bulgaria-shipping'),
+                'noPoints' => __('No pickup points were found for this address.', 'izprati-bulgaria-shipping'),
+                'selected' => __('Selected', 'izprati-bulgaria-shipping'),
+                'nearMe' => __('Near me', 'izprati-bulgaria-shipping'),
+                'map' => __('Map', 'izprati-bulgaria-shipping'),
+                'list' => __('List', 'izprati-bulgaria-shipping'),
+                'locating' => __('Locating...', 'izprati-bulgaria-shipping'),
+                'mapLoading' => __('Loading map...', 'izprati-bulgaria-shipping'),
+                'locationUnavailable' => __('Location is not available in this browser.', 'izprati-bulgaria-shipping'),
+                'locationDenied' => __('Could not use your location. Showing pickup points for the selected city.', 'izprati-bulgaria-shipping'),
+                'pickupPoints' => __('pickup points', 'izprati-bulgaria-shipping'),
             ],
         ]);
     }
@@ -125,20 +128,12 @@ final class CheckoutDeliveryService
             return false;
         }
 
-        return ! $this->hasRemoveBrandingPlan();
-    }
-
-    private function hasRemoveBrandingPlan(): bool
-    {
-        // TODO: Replace with backend plan endpoint once it is available.
-        return false;
+        return Options::isCheckoutAttributionEnabled();
     }
 
     public function handleServicePoints(): void
     {
-        if (function_exists('check_ajax_referer')) {
-            check_ajax_referer(self::NONCE_ACTION, 'nonce');
-        }
+        check_ajax_referer(self::NONCE_ACTION, 'nonce');
 
         $rateId = isset($_POST['rate_id']) ? sanitize_text_field((string) wp_unslash($_POST['rate_id'])) : '';
         $search = isset($_POST['search']) ? sanitize_text_field((string) wp_unslash($_POST['search'])) : '';
@@ -147,7 +142,7 @@ final class CheckoutDeliveryService
         $origin = $lat !== null && $lng !== null ? ['lat' => $lat, 'lng' => $lng] : null;
         $rate = $rateId !== '' ? CheckoutSession::rate($rateId) : null;
         if ($rate === null) {
-            wp_send_json_error(['message' => __('Delivery option is no longer available. Please refresh checkout.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Delivery option is no longer available. Please refresh checkout.', 'izprati-bulgaria-shipping')], 404);
 
             return;
         }
@@ -178,7 +173,7 @@ final class CheckoutDeliveryService
         }
         $rate = CheckoutSession::rate($rateId);
         if ($rate === null) {
-            $this->addValidationError($errors, __('Please choose a delivery option again.', 'izprati-bg-shipping'));
+            $this->addValidationError($errors, __('Please choose a delivery option again.', 'izprati-bulgaria-shipping'));
 
             return;
         }
@@ -188,7 +183,7 @@ final class CheckoutDeliveryService
 
         $pointId = $this->postedInt('octavawms_service_point_id');
         if ($pointId <= 0) {
-            $this->addValidationError($errors, __('Choose a pickup point before placing the order.', 'izprati-bg-shipping'));
+            $this->addValidationError($errors, __('Choose a pickup point before placing the order.', 'izprati-bulgaria-shipping'));
         }
     }
 
@@ -511,8 +506,8 @@ final class CheckoutDeliveryService
     private function servicePointTypeLabel(string $type): string
     {
         return match ($type) {
-            'self_service_point' => __('Locker', 'izprati-bg-shipping'),
-            'service_point' => __('Office', 'izprati-bg-shipping'),
+            'self_service_point' => __('Locker', 'izprati-bulgaria-shipping'),
+            'service_point' => __('Office', 'izprati-bulgaria-shipping'),
             default => '',
         };
     }

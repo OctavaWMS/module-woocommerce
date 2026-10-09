@@ -18,7 +18,7 @@ class ShippingMethod extends \WC_Shipping_Method
         $this->method_title = UiBranding::appName();
         $this->method_description = __(
             'Calculated carrier delivery rates from OctavaWMS.',
-            'izprati-bg-shipping'
+            'izprati-bulgaria-shipping'
         );
         $this->supports = ['shipping-zones', 'instance-settings'];
         $this->calculator = $calculator ?? new CheckoutCalculator(new BackendApiClient());

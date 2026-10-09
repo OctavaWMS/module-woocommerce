@@ -1,14 +1,14 @@
 (function ($) {
     'use strict';
 
-    var LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    var LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    var OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    var OSM_TILE_ATTRIBUTION = '&copy; OpenStreetMap contributors';
+    var OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    var OSM_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
     var IZPRATI_PLANE_PATH_LARGE = 'm59.41,75.81L364.61,0H59.41v75.81Z';
     var IZPRATI_PLANE_PATH_SMALL = 'm0,37.9L152.6,0H0v37.9Z';
 
     var cfg = window.octavawmsCheckoutDelivery || {};
+    var LEAFLET_CSS_URL = cfg.leafletCssUrl;
+    var LEAFLET_JS_URL = cfg.leafletJsUrl;
     var prefix = cfg.methodPrefix || 'delivery_with_orderadmin';
     var strings = cfg.strings || {};
     var helpers = window.octavawmsCheckoutDeliveryHelpers || {};

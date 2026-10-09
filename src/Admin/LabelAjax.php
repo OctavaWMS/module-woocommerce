@@ -67,14 +67,14 @@ class LabelAjax
     {
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer('octavawms_order_status_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
 
         [$backendOrder, $resolvedExtId] = $this->findBackendOrderAndResolvedExtId($order);
@@ -151,7 +151,7 @@ class LabelAjax
             );
             $codPayload = [
                 'is_cod' => true,
-                'label' => __('Cash on delivery', 'izprati-bg-shipping'),
+                'label' => __('Cash on delivery', 'izprati-bulgaria-shipping'),
                 'formatted_total' => $formatted,
             ];
             $pmTitle = trim((string) $order->get_payment_method_title());
@@ -329,26 +329,26 @@ class LabelAjax
     {
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer('octavawms_upload_order_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
 
         $sourceId = Options::getSourceId();
         if ($sourceId <= 0) {
-            wp_send_json_error(['message' => __('Connect the plugin under WooCommerce → Settings → Integrations first.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Connect the plugin under WooCommerce → Settings → Integrations first.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $extId = WooOrderExtId::importFilterExtId($order);
 
         $result = $this->apiClient->importOrderSynchronously($extId, $sourceId);
         if (! $result['ok']) {
-            wp_send_json_error(['message' => $result['message'] ?? __('Upload failed.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $result['message'] ?? __('Upload failed.', 'izprati-bulgaria-shipping')], 502);
         }
 
         if (! empty($result['duplicate'])) {
@@ -359,7 +359,7 @@ class LabelAjax
                 'async' => (bool) ($result['async'] ?? Options::isImportAsyncEnabled()),
                 'import_id' => self::importResultId($result),
                 'state' => self::importResultState($result),
-                'message' => $result['message'] ?? __('Import is already queued or running.', 'izprati-bg-shipping'),
+                'message' => $result['message'] ?? __('Import is already queued or running.', 'izprati-bulgaria-shipping'),
             ]);
         }
 
@@ -383,8 +383,8 @@ class LabelAjax
             'import_id' => $importId,
             'state' => $state,
             'message' => $queued
-                ? __('Import queued in OctavaWMS.', 'izprati-bg-shipping')
-                : __('Order synced', 'izprati-bg-shipping'),
+                ? __('Import queued in OctavaWMS.', 'izprati-bulgaria-shipping')
+                : __('Order synced', 'izprati-bulgaria-shipping'),
         ]);
     }
 
@@ -392,24 +392,24 @@ class LabelAjax
     {
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer('octavawms_import_status_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
 
         $importId = isset($_POST['import_id']) ? absint(wp_unslash($_POST['import_id'])) : 0;
         if ($importId <= 0) {
-            wp_send_json_error(['message' => __('Invalid import.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid import.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $result = $this->apiClient->getImportStatus($importId);
         if (! $result['ok']) {
-            wp_send_json_error(['message' => $result['message'] ?? __('Could not fetch import status.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $result['message'] ?? __('Could not fetch import status.', 'izprati-bulgaria-shipping')], 502);
         }
 
         wp_send_json_success([
@@ -469,14 +469,14 @@ class LabelAjax
     {
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer('octavawms_generate_label_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
 
         $extId = $this->resolveExtIdForLabelRequest($order);
@@ -493,7 +493,7 @@ class LabelAjax
             $agg = $this->aggregateLabelMeasuresFromShipmentPlaces($shipmentIdPost);
             if ($agg === null) {
                 wp_send_json_error([
-                    'message' => __('Add at least one box before generating a label.', 'izprati-bg-shipping'),
+                    'message' => __('Add at least one box before generating a label.', 'izprati-bulgaria-shipping'),
                 ], 400);
             }
             /** @var array{0:int,1:int,2:int,3:int} $agg */
@@ -516,11 +516,11 @@ class LabelAjax
         if ($result['status'] !== 'success') {
             $order->add_order_note(sprintf(
                 /* translators: %s: error message */
-                __('OctavaWMS label generation failed: %s', 'izprati-bg-shipping'),
+                __('OctavaWMS label generation failed: %s', 'izprati-bulgaria-shipping'),
                 $result['message'] ?? 'unknown error'
             ));
             $order->save();
-            wp_send_json_error(['message' => $result['message'] ?? __('Label generation failed.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $result['message'] ?? __('Label generation failed.', 'izprati-bulgaria-shipping')], 502);
         }
 
         if (! empty($result['label_url'])) {
@@ -554,28 +554,28 @@ class LabelAjax
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer('octavawms_cancel_label_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $tasks = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
         $taskId = isset($tasks['task_id']) && is_numeric($tasks['task_id']) ? (int) $tasks['task_id'] : 0;
         if ($taskId <= 0) {
-            wp_send_json_error(['message' => __('Could not find the shipment label task.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Could not find the shipment label task.', 'izprati-bulgaria-shipping')], 404);
         }
 
         $result = $this->apiClient->createOrUpdatePreprocessingTask($taskId, ['state' => 'cancel']);
         if (! $result['ok']) {
-            wp_send_json_error(['message' => $result['message'] ?? __('Could not cancel shipment.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $result['message'] ?? __('Could not cancel shipment.', 'izprati-bulgaria-shipping')], 502);
         }
 
         $order->delete_meta_data(LabelService::ORDER_META_LABEL_URL);
@@ -590,21 +590,21 @@ class LabelAjax
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $detail = $this->apiClient->getShipmentById($shipmentId);
         if ($detail === null) {
-            wp_send_json_error(['message' => __('Could not load shipment.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => __('Could not load shipment.', 'izprati-bulgaria-shipping')], 502);
         }
 
         wp_send_json_success(['detail' => $this->buildShipmentDetailPayload($detail)]);
@@ -615,16 +615,16 @@ class LabelAjax
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $localityId = isset($_POST['locality_id']) ? absint(wp_unslash($_POST['locality_id'])) : 0;
@@ -669,21 +669,21 @@ class LabelAjax
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         $servicePointId = isset($_POST['service_point_id']) ? absint(wp_unslash($_POST['service_point_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || $servicePointId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment or service point.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment or service point.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $detail = $this->apiClient->getShipmentById($shipmentId);
         if ($detail === null) {
-            wp_send_json_error(['message' => __('Could not load shipment.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => __('Could not load shipment.', 'izprati-bulgaria-shipping')], 502);
         }
         $selfHref = $this->extractShipmentSelfHref($detail);
         $payload = ['servicePoint' => $servicePointId];
@@ -691,7 +691,7 @@ class LabelAjax
             ? $this->apiClient->patchShipmentAtHref($selfHref, $payload)
             : $this->apiClient->patchShipment($shipmentId, $payload);
         if (! $patch['ok']) {
-            wp_send_json_error(['message' => $patch['message'] ?? __('Could not update service point.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $patch['message'] ?? __('Could not update service point.', 'izprati-bulgaria-shipping')], 502);
         }
 
         $fresh = $this->apiClient->getShipmentById($shipmentId);
@@ -706,21 +706,21 @@ class LabelAjax
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         $kind = isset($_POST['patch_kind']) ? sanitize_key((string) wp_unslash($_POST['patch_kind'])) : '';
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $detail = $this->apiClient->getShipmentById($shipmentId);
         if ($detail === null) {
-            wp_send_json_error(['message' => __('Could not load shipment.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => __('Could not load shipment.', 'izprati-bulgaria-shipping')], 502);
         }
 
         $selfHref = $this->extractShipmentSelfHref($detail);
@@ -730,7 +730,7 @@ class LabelAjax
         if ($kind === 'delivery_service') {
             $dsId = isset($_POST['delivery_service_id']) ? absint(wp_unslash($_POST['delivery_service_id'])) : 0;
             if ($dsId <= 0) {
-                wp_send_json_error(['message' => __('Choose a delivery carrier.', 'izprati-bg-shipping')], 400);
+                wp_send_json_error(['message' => __('Choose a delivery carrier.', 'izprati-bulgaria-shipping')], 400);
             }
             $payload['deliveryService'] = $dsId;
             $payload['servicePoint'] = null;
@@ -743,14 +743,14 @@ class LabelAjax
                 ? sanitize_textarea_field((string) wp_unslash($_POST['strategy']))
                 : '';
             if (! self::isAllowedStrategySelection($strategy)) {
-                wp_send_json_error(['message' => __('Invalid delivery strategy.', 'izprati-bg-shipping')], 400);
+                wp_send_json_error(['message' => __('Invalid delivery strategy.', 'izprati-bulgaria-shipping')], 400);
             }
             if ($strategy === '' || $strategy === self::DELIVERY_STRATEGY_MANUAL) {
                 $payload['eav'] = null;
             } else {
                 $parsed = json_decode($strategy, true);
                 if (! is_array($parsed)) {
-                    wp_send_json_error(['message' => __('Invalid delivery strategy.', 'izprati-bg-shipping')], 400);
+                    wp_send_json_error(['message' => __('Invalid delivery strategy.', 'izprati-bulgaria-shipping')], 400);
                 }
                 $payload['eav'] = $parsed['updateData']['eav'] ?? null;
                 $payload['servicePoint'] = null;
@@ -758,20 +758,20 @@ class LabelAjax
         } elseif ($kind === self::PATCH_KIND_RETRY_PENDING_ERROR) {
             $state = isset($detail['state']) && is_string($detail['state']) ? $detail['state'] : '';
             if ($state !== 'pending_error') {
-                wp_send_json_error(['message' => __('Only a failed shipment (pending_error) can be retried this way.', 'izprati-bg-shipping')], 400);
+                wp_send_json_error(['message' => __('Only a failed shipment (pending_error) can be retried this way.', 'izprati-bulgaria-shipping')], 400);
             }
             $payload['state'] = 'pending_queued';
         } elseif ($kind === self::PATCH_KIND_REQUEUE_ENDING_QUEUED) {
             $payload['state'] = 'pending_queued';
         } else {
-            wp_send_json_error(['message' => __('Invalid request.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid request.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $patch = $selfHref !== ''
             ? $this->apiClient->patchShipmentAtHref($selfHref, $payload)
             : $this->patchShipmentWithoutSelfHref($shipmentId, $payload);
         if (! $patch['ok']) {
-            wp_send_json_error(['message' => $patch['message'] ?? __('Could not update shipment.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $patch['message'] ?? __('Could not update shipment.', 'izprati-bulgaria-shipping')], 502);
         }
 
         $fresh = $this->apiClient->getShipmentById($shipmentId);
@@ -784,7 +784,7 @@ class LabelAjax
     {
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
@@ -812,7 +812,7 @@ class LabelAjax
     {
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
@@ -842,16 +842,16 @@ class LabelAjax
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $out = $this->collectUiPlaceRowsForShipment($shipmentId);
@@ -912,21 +912,21 @@ class LabelAjax
         $orderId = isset($_POST['order_id']) ? absint(wp_unslash($_POST['order_id'])) : 0;
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $r = $this->apiClient->addPlace($shipmentId);
         if (! $r['ok']) {
-            wp_send_json_error(['message' => $r['message'] ?? __('Could not add place.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $r['message'] ?? __('Could not add place.', 'izprati-bulgaria-shipping')], 502);
         }
 
         $placeId = 0;
@@ -953,7 +953,7 @@ class LabelAjax
         ]);
         if (! $ur['ok']) {
             wp_send_json_error([
-                'message' => $ur['message'] ?? __('Box was created but default size could not be applied.', 'izprati-bg-shipping'),
+                'message' => $ur['message'] ?? __('Box was created but default size could not be applied.', 'izprati-bulgaria-shipping'),
             ], 502);
         }
 
@@ -969,19 +969,19 @@ class LabelAjax
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         $placeId = isset($_POST['place_id']) ? absint(wp_unslash($_POST['place_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || $placeId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment or place.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment or place.', 'izprati-bulgaria-shipping')], 400);
         }
         if (! $this->placeBelongsToShipment($shipmentId, $placeId)) {
-            wp_send_json_error(['message' => __('Invalid place.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid place.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $weight = isset($_POST['weight']) ? (float) sanitize_text_field((string) wp_unslash($_POST['weight'])) : 0.0;
@@ -999,7 +999,7 @@ class LabelAjax
             ],
         ]);
         if (! $r['ok']) {
-            wp_send_json_error(['message' => $r['message'] ?? __('Could not update place.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $r['message'] ?? __('Could not update place.', 'izprati-bulgaria-shipping')], 502);
         }
 
         wp_send_json_success(['ok' => true]);
@@ -1011,16 +1011,16 @@ class LabelAjax
         $shipmentId = isset($_POST['shipment_id']) ? absint(wp_unslash($_POST['shipment_id'])) : 0;
         $placeId = isset($_POST['place_id']) ? absint(wp_unslash($_POST['place_id'])) : 0;
         if ($orderId <= 0 || ! current_user_can('edit_shop_orders', $orderId)) {
-            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('Invalid order.', 'izprati-bulgaria-shipping')], 403);
         }
         check_ajax_referer('octavawms_connector_' . (string) $orderId, 'nonce');
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_send_json_error(['message' => __('Order not found.', 'izprati-bg-shipping')], 404);
+            wp_send_json_error(['message' => __('Order not found.', 'izprati-bulgaria-shipping')], 404);
         }
         if ($shipmentId <= 0 || $placeId <= 0 || ! $this->shipmentBelongsToOrder($order, $shipmentId)) {
-            wp_send_json_error(['message' => __('Invalid shipment or place.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid shipment or place.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $places = $this->apiClient->fetchPlacesForDeliveryRequest($shipmentId);
@@ -1032,15 +1032,15 @@ class LabelAjax
             }
         }
         if ($target === null) {
-            wp_send_json_error(['message' => __('Invalid place.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Invalid place.', 'izprati-bulgaria-shipping')], 400);
         }
         if (self::placeItemsCount($target) > 0) {
-            wp_send_json_error(['message' => __('Cannot remove a place that still has items.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Cannot remove a place that still has items.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $r = $this->apiClient->deletePlace($placeId);
         if (! $r['ok']) {
-            wp_send_json_error(['message' => $r['message'] ?? __('Could not remove place.', 'izprati-bg-shipping')], 502);
+            wp_send_json_error(['message' => $r['message'] ?? __('Could not remove place.', 'izprati-bulgaria-shipping')], 502);
         }
 
         wp_send_json_success(['ok' => true]);
@@ -1248,11 +1248,11 @@ class LabelAjax
     public static function deliveryStrategyOptionsForScript(): array
     {
         return [
-            ['label' => __('Address (to door)', 'izprati-bg-shipping'), 'value' => ''],
-            ['label' => __('Office — AI picks closest office', 'izprati-bg-shipping'), 'value' => self::STRATEGY_JSON_OFFICE],
-            ['label' => __('Locker — AI picks closest locker', 'izprati-bg-shipping'), 'value' => self::STRATEGY_JSON_LOCKER],
-            ['label' => __('Office + locker — AI picks closest', 'izprati-bg-shipping'), 'value' => self::STRATEGY_JSON_OFFICE_AND_LOCKER],
-            ['label' => __('Manual — choose service point yourself', 'izprati-bg-shipping'), 'value' => self::DELIVERY_STRATEGY_MANUAL],
+            ['label' => __('Address (to door)', 'izprati-bulgaria-shipping'), 'value' => ''],
+            ['label' => __('Office — AI picks closest office', 'izprati-bulgaria-shipping'), 'value' => self::STRATEGY_JSON_OFFICE],
+            ['label' => __('Locker — AI picks closest locker', 'izprati-bulgaria-shipping'), 'value' => self::STRATEGY_JSON_LOCKER],
+            ['label' => __('Office + locker — AI picks closest', 'izprati-bulgaria-shipping'), 'value' => self::STRATEGY_JSON_OFFICE_AND_LOCKER],
+            ['label' => __('Manual — choose service point yourself', 'izprati-bulgaria-shipping'), 'value' => self::DELIVERY_STRATEGY_MANUAL],
         ];
     }
 

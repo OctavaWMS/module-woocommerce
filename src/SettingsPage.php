@@ -16,7 +16,7 @@ class SettingsPage extends \WC_Integration
         $this->method_title = UiBranding::integrationTitle();
         $this->method_description = __(
             'Connect your store to OctavaWMS for shipping label generation and order management.',
-            'izprati-bg-shipping'
+            'izprati-bulgaria-shipping'
         );
 
         // WC_Settings_API / WC_Integration do not declare __construct(); calling parent::__construct() fatal-errors on PHP.
@@ -46,47 +46,54 @@ class SettingsPage extends \WC_Integration
     {
         $this->form_fields = [
             'section_advanced' => [
-                'title' => __('Advanced (manual configuration)', 'izprati-bg-shipping'),
+                'title' => __('Advanced (manual configuration)', 'izprati-bulgaria-shipping'),
                 'type' => 'title',
             ],
             'api_base' => [
-                'title' => __('API base URL (override)', 'izprati-bg-shipping'),
+                'title' => __('API base URL (override)', 'izprati-bulgaria-shipping'),
                 'type' => 'text',
                 'description' => __(
                     'Optional. Scheme and hostname only (e.g. https://pro.oawms.com). When set, all REST, OAuth, connect, and label requests use this host. Leave empty for the cloud default or to follow the hostname from Label endpoint after connect.',
-                    'izprati-bg-shipping'
+                    'izprati-bulgaria-shipping'
                 ),
                 'desc_tip' => true,
                 'placeholder' => 'https://pro.oawms.com',
                 'default' => '',
             ],
             'api_key' => [
-                'title' => __('API key (Bearer token)', 'izprati-bg-shipping'),
+                'title' => __('API key (Bearer token)', 'izprati-bulgaria-shipping'),
                 'type' => 'password',
-                'description' => __('Set automatically after you connect. You can also paste it manually.', 'izprati-bg-shipping'),
+                'description' => __('Set automatically after you connect. You can also paste it manually.', 'izprati-bulgaria-shipping'),
                 'desc_tip' => true,
                 'default' => '',
             ],
             'sync_new_orders' => [
-                'title' => __('Auto-sync new orders', 'izprati-bg-shipping'),
+                'title' => __('Auto-sync new orders', 'izprati-bulgaria-shipping'),
                 'type' => 'checkbox',
-                'label' => __('Send new orders to OctavaWMS automatically', 'izprati-bg-shipping'),
+                'label' => __('Send new orders to OctavaWMS automatically', 'izprati-bulgaria-shipping'),
                 'default' => 'yes',
             ],
             'sync_order_updates' => [
-                'title' => __('Auto-sync order updates', 'izprati-bg-shipping'),
+                'title' => __('Auto-sync order updates', 'izprati-bulgaria-shipping'),
                 'type' => 'checkbox',
-                'label' => __('Re-import orders when they are updated (debounced)', 'izprati-bg-shipping'),
+                'label' => __('Re-import orders when they are updated (debounced)', 'izprati-bulgaria-shipping'),
                 'default' => 'yes',
             ],
             'import_async' => [
-                'title' => __('Async import', 'izprati-bg-shipping'),
+                'title' => __('Async import', 'izprati-bulgaria-shipping'),
                 'type' => 'checkbox',
                 'label' => __(
                     'Run OctavaWMS import asynchronously (recommended; avoids long HTTP waits and timeouts)',
-                    'izprati-bg-shipping'
+                    'izprati-bulgaria-shipping'
                 ),
                 'default' => 'yes',
+            ],
+            'show_checkout_attribution' => [
+                'title' => __('Checkout attribution', 'izprati-bulgaria-shipping'),
+                'type' => 'checkbox',
+                'label' => __('Show “Powered by Изпрати.БГ” beside the shipping heading', 'izprati-bulgaria-shipping'),
+                'description' => __('Optional. Disabled by default.', 'izprati-bulgaria-shipping'),
+                'default' => 'no',
             ],
         ];
     }
@@ -98,8 +105,8 @@ class SettingsPage extends \WC_Integration
         $connected = $ak !== '';
         $statusClass = $connected ? 'octavawms-badge--ok' : 'octavawms-badge--off';
         $statusText = $connected
-            ? esc_html__('Connected to OctavaWMS', 'izprati-bg-shipping')
-            : esc_html__('Not connected', 'izprati-bg-shipping');
+            ? esc_html__('Connected to OctavaWMS', 'izprati-bulgaria-shipping')
+            : esc_html__('Not connected', 'izprati-bulgaria-shipping');
 
         ob_start();
         ?>
@@ -113,17 +120,17 @@ class SettingsPage extends \WC_Integration
             </p>
             <p>
                 <button type="button" class="button button-primary" id="octavawms-connect-btn">
-                    <?php esc_html_e('Connect to OctavaWMS', 'izprati-bg-shipping'); ?>
+                    <?php esc_html_e('Connect to OctavaWMS', 'izprati-bulgaria-shipping'); ?>
                 </button>
                 <button type="button" class="button button-secondary" id="octavawms-panel-login-btn">
-                    <?php esc_html_e('Login to the panel', 'izprati-bg-shipping'); ?>
+                    <?php esc_html_e('Login to the panel', 'izprati-bulgaria-shipping'); ?>
                 </button>
                 <span class="spinner" id="octavawms-connect-spinner" style="float:none;visibility:hidden"></span>
             </p>
             <p class="description" id="octavawms-connect-message" style="min-height:1.5em" aria-live="polite"></p>
         </div>
         <hr>
-        <p class="description"><?php esc_html_e('Advanced: you can paste the API key manually below if needed.', 'izprati-bg-shipping'); ?></p>
+        <p class="description"><?php esc_html_e('Advanced: you can paste the API key manually below if needed.', 'izprati-bulgaria-shipping'); ?></p>
         <?php
         return (string) ob_get_clean();
     }
@@ -182,14 +189,14 @@ class SettingsPage extends \WC_Integration
         $raw = sanitize_textarea_field((string) wp_unslash($_POST[$postKey]));
         $decoded = json_decode($raw, true);
         if (! is_array($decoded) || $decoded !== array_values($decoded)) {
-            $this->addAdminError(__('Cash on delivery rules must be a JSON array.', 'izprati-bg-shipping'));
+            $this->addAdminError(__('Cash on delivery rules must be a JSON array.', 'izprati-bulgaria-shipping'));
 
             return;
         }
 
         $normalized = CodVisibilityRules::validateAndNormalizeRows($decoded);
         if ($normalized === null) {
-            $this->addAdminError(__('Invalid cash on delivery rule(s). Check delivery service, delivery type, rate, and action.', 'izprati-bg-shipping'));
+            $this->addAdminError(__('Invalid cash on delivery rule(s). Check delivery service, delivery type, rate, and action.', 'izprati-bulgaria-shipping'));
 
             return;
         }
@@ -214,7 +221,7 @@ class SettingsPage extends \WC_Integration
         $raw = sanitize_textarea_field((string) wp_unslash($_POST[$postKey]));
         $decoded = json_decode($raw, true);
         if (! is_array($decoded) || $decoded !== array_values($decoded)) {
-            $this->addAdminError(__('Carrier mapping must be a JSON array.', 'izprati-bg-shipping'));
+            $this->addAdminError(__('Carrier mapping must be a JSON array.', 'izprati-bulgaria-shipping'));
 
             return null;
         }
@@ -237,7 +244,7 @@ class SettingsPage extends \WC_Integration
 
         $normalized = SettingsAjax::validateAndNormalizeRows($nonEmpty);
         if ($normalized === null) {
-            $this->addAdminError(__('Invalid carrier mapping row(s). Check meta key, meta value, type, carrier, and rate.', 'izprati-bg-shipping'));
+            $this->addAdminError(__('Invalid carrier mapping row(s). Check meta key, meta value, type, carrier, and rate.', 'izprati-bulgaria-shipping'));
 
             return null;
         }
@@ -262,7 +269,7 @@ class SettingsPage extends \WC_Integration
         $apiClient = $this->createBackendApiClient();
         $source = $apiClient->getIntegrationSource($sourceId);
         if ($source === null) {
-            $this->addAdminError(__('Carrier mapping was saved in WordPress, but OctavaWMS integration source could not be loaded.', 'izprati-bg-shipping'));
+            $this->addAdminError(__('Carrier mapping was saved in WordPress, but OctavaWMS integration source could not be loaded.', 'izprati-bulgaria-shipping'));
 
             return;
         }
@@ -285,7 +292,7 @@ class SettingsPage extends \WC_Integration
                 if (isset($patch['data'][$key]) && is_string($patch['data'][$key]) && trim($patch['data'][$key]) !== '') {
                     return sprintf(
                         /* translators: %s backend error. */
-                        __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed: %s', 'izprati-bg-shipping'),
+                        __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed: %s', 'izprati-bulgaria-shipping'),
                         trim($patch['data'][$key])
                     );
                 }
@@ -296,12 +303,12 @@ class SettingsPage extends \WC_Integration
         if ($raw !== '') {
             return sprintf(
                 /* translators: %s backend response excerpt. */
-                __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed: %s', 'izprati-bg-shipping'),
+                __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed: %s', 'izprati-bulgaria-shipping'),
                 mb_substr($raw, 0, 300)
             );
         }
 
-        return __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed.', 'izprati-bg-shipping');
+        return __('Carrier mapping was saved in WordPress, but OctavaWMS sync failed.', 'izprati-bulgaria-shipping');
     }
 
     private function addAdminError(string $message): void
@@ -340,17 +347,17 @@ class SettingsPage extends \WC_Integration
         ?>
         <div id="octavawms-carrier-matrix-root" class="octavawms-carrier-matrix" style="margin:1.25em 0 2em;max-width:1280px;">
             <h2 style="font-size:1.1em;margin-bottom:0.5em;">
-                <?php esc_html_e('Carrier meta mapping (Woo → Octava)', 'izprati-bg-shipping'); ?>
+                <?php esc_html_e('Carrier meta mapping (Woo → Octava)', 'izprati-bulgaria-shipping'); ?>
             </h2>
             <p class="description" style="max-width:960px;">
                 <?php esc_html_e(
                     'Map WooCommerce order meta (e.g. courierName, courierID) and optional delivery_type to a carrier service, rate, pickup strategy, and optional locker markers. Saved to your OctavaWMS integration source (same as Orderadmin settings).',
-                    'izprati-bg-shipping'
+                    'izprati-bulgaria-shipping'
                 ); ?>
             </p>
             <p>
                 <button type="button" class="button" id="octavawms-matrix-toggle-mode">
-                    <?php esc_html_e('Switch to JSON', 'izprati-bg-shipping'); ?>
+                    <?php esc_html_e('Switch to JSON', 'izprati-bulgaria-shipping'); ?>
                 </button>
             </p>
             <input type="hidden"
@@ -362,13 +369,13 @@ class SettingsPage extends \WC_Integration
                 <table class="widefat striped" id="octavawms-matrix-table" style="margin-top:0.5em;">
                     <thead>
                         <tr>
-                            <th><?php esc_html_e('WC meta key', 'izprati-bg-shipping'); ?></th>
-                            <th><?php esc_html_e('WC meta value', 'izprati-bg-shipping'); ?></th>
-                            <th><?php esc_html_e('WC delivery_type (optional)', 'izprati-bg-shipping'); ?></th>
-                            <th><?php esc_html_e('Strategy for AI', 'izprati-bg-shipping'); ?></th>
-                            <th><?php esc_html_e('Locker markers', 'izprati-bg-shipping'); ?></th>
-                            <th><?php esc_html_e('Carrier', 'izprati-bg-shipping'); ?></th>
-                            <th><?php esc_html_e('Rate', 'izprati-bg-shipping'); ?></th>
+                            <th><?php esc_html_e('WC meta key', 'izprati-bulgaria-shipping'); ?></th>
+                            <th><?php esc_html_e('WC meta value', 'izprati-bulgaria-shipping'); ?></th>
+                            <th><?php esc_html_e('WC delivery_type (optional)', 'izprati-bulgaria-shipping'); ?></th>
+                            <th><?php esc_html_e('Strategy for AI', 'izprati-bulgaria-shipping'); ?></th>
+                            <th><?php esc_html_e('Locker markers', 'izprati-bulgaria-shipping'); ?></th>
+                            <th><?php esc_html_e('Carrier', 'izprati-bulgaria-shipping'); ?></th>
+                            <th><?php esc_html_e('Rate', 'izprati-bulgaria-shipping'); ?></th>
                             <th style="width:48px;"></th>
                         </tr>
                     </thead>
@@ -376,12 +383,12 @@ class SettingsPage extends \WC_Integration
                 </table>
                 <p style="margin:0.75em 0 0;text-align:right;">
                     <button type="button" class="button" id="octavawms-matrix-add-row">
-                        <?php esc_html_e('Add row', 'izprati-bg-shipping'); ?>
+                        <?php esc_html_e('Add row', 'izprati-bulgaria-shipping'); ?>
                     </button>
                 </p>
             </div>
             <div id="octavawms-matrix-json-wrap" style="display:none;">
-                <label for="octavawms-matrix-json" class="screen-reader-text"><?php esc_html_e('JSON', 'izprati-bg-shipping'); ?></label>
+                <label for="octavawms-matrix-json" class="screen-reader-text"><?php esc_html_e('JSON', 'izprati-bulgaria-shipping'); ?></label>
                 <textarea id="octavawms-matrix-json" rows="16" class="large-text code" style="width:100%;font-family:monospace;"></textarea>
             </div>
         </div>
@@ -401,12 +408,12 @@ class SettingsPage extends \WC_Integration
         ?>
         <div id="octavawms-cod-rules-root" class="octavawms-cod-rules" style="margin:1.25em 0 2em;max-width:1280px;">
             <h2 style="font-size:1.1em;margin-bottom:0.5em;">
-                <?php esc_html_e('Cash on delivery rules', 'izprati-bg-shipping'); ?>
+                <?php esc_html_e('Cash on delivery rules', 'izprati-bulgaria-shipping'); ?>
             </h2>
             <p class="description" style="max-width:960px;">
                 <?php esc_html_e(
                     'Hide or allow Cash on delivery for OctavaWMS checkout shipments by delivery service, delivery type, or exact rate. More specific rules override broader ones.',
-                    'izprati-bg-shipping'
+                    'izprati-bulgaria-shipping'
                 ); ?>
             </p>
             <input type="hidden"
@@ -417,11 +424,11 @@ class SettingsPage extends \WC_Integration
             <table class="widefat striped" id="octavawms-cod-rules-table" style="margin-top:0.5em;">
                 <thead>
                     <tr>
-                        <th style="width:84px;"><?php esc_html_e('Enabled', 'izprati-bg-shipping'); ?></th>
-                        <th><?php esc_html_e('Action', 'izprati-bg-shipping'); ?></th>
-                        <th><?php esc_html_e('Delivery service', 'izprati-bg-shipping'); ?></th>
-                        <th><?php esc_html_e('Delivery type', 'izprati-bg-shipping'); ?></th>
-                        <th><?php esc_html_e('Rate', 'izprati-bg-shipping'); ?></th>
+                        <th style="width:84px;"><?php esc_html_e('Enabled', 'izprati-bulgaria-shipping'); ?></th>
+                        <th><?php esc_html_e('Action', 'izprati-bulgaria-shipping'); ?></th>
+                        <th><?php esc_html_e('Delivery service', 'izprati-bulgaria-shipping'); ?></th>
+                        <th><?php esc_html_e('Delivery type', 'izprati-bulgaria-shipping'); ?></th>
+                        <th><?php esc_html_e('Rate', 'izprati-bulgaria-shipping'); ?></th>
                         <th style="width:48px;"></th>
                     </tr>
                 </thead>
@@ -429,7 +436,7 @@ class SettingsPage extends \WC_Integration
             </table>
             <p style="margin:0.75em 0 0;text-align:right;">
                 <button type="button" class="button" id="octavawms-cod-rules-add-row">
-                    <?php esc_html_e('Add COD rule', 'izprati-bg-shipping'); ?>
+                    <?php esc_html_e('Add COD rule', 'izprati-bulgaria-shipping'); ?>
                 </button>
             </p>
         </div>

@@ -50,7 +50,7 @@ final class BrandedStringsTest extends TestCase
             BrandedStrings::filterGettext(
                 'OctavaWMS Connector',
                 'OctavaWMS Connector',
-                'izprati-bg-shipping'
+                'izprati-bulgaria-shipping'
             )
         );
     }

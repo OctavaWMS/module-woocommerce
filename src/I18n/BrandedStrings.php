@@ -25,7 +25,7 @@ final class BrandedStrings
      */
     public static function filterGettext($translation, string $text, string $domain)
     {
-        if ($domain !== 'izprati-bg-shipping') {
+        if ($domain !== 'izprati-bulgaria-shipping') {
             return $translation;
         }
 

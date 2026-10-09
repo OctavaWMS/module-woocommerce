@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-10-09
+
+### WordPress.org review fixes
+- Bundled readable Leaflet 1.9.4 source, styles, images, source map, and BSD license instead of loading executable assets from a CDN.
+- Disclosed optional OpenStreetMap tile requests and browser geolocation use.
+- Made checkout attribution a merchant-controlled opt-in that is disabled by default.
+- Removed the unsupported WordPress `Tested up to` plugin header while keeping the value in `readme.txt`.
+- Updated the tested WooCommerce version to 11.2 after compatibility validation.
+- Split translation packaging so WordPress.org uses community language packs while Marketplace builds retain the bundled catalogs.
+- Aligned the package directory and text domain with the requested `izprati-bulgaria-shipping` slug.
+
 ## [1.6.2] — 2026-10-07
 
 ### WordPress.org preparation
@@ -13,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Made support guidance appropriate for both the WordPress.org and WooCommerce Marketplace distribution channels.
 - Added WordPress.org directory-asset and SVN publication guidance while keeping those assets out of the installable plugin archive.
 - Added focused metadata and package regression checks for the WordPress.org release.
-- Aligned the translation text domain with the requested `izprati-bg-shipping` directory slug.
+- Aligned the translation text domain with the initial `izprati-bg-shipping` directory slug.
 - Corrected the minimum WordPress version to 6.2, which the existing `%i` database placeholders already require.
 
 ## [1.6.1] — 2026-10-02
@@ -27,7 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Changed the distributable license to **GPL-2.0-or-later**.
 - Added explicit HPOS and Cart and Checkout blocks compatibility declarations.
 - Added Woo Marketplace `readme.txt` and `changelog.txt` metadata plus synchronized package-version validation.
-- Changed the Marketplace archive and plugin-directory slug to `izprati-bg-shipping`.
+- Changed the Marketplace archive and plugin-directory slug to `izprati-bulgaria-shipping`.
 
 ### Added
 - `OctavaWMS\WooCommerce\PluginLog` — WooCommerce logger (`octavawms-connect` source) for failed connect attempts; logs **request headers** (Authorization redacted), **response headers** (Set-Cookie redacted), response body, and JSON when parseable. README documents **WooCommerce → Status → Logs** and `wp-content/uploads/wc-logs/` paths.

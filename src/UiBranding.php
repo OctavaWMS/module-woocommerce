@@ -14,19 +14,19 @@ final class UiBranding
 
     public static function appName(): string
     {
-        return __('OctavaWMS', 'izprati-bg-shipping');
+        return __('OctavaWMS', 'izprati-bulgaria-shipping');
     }
 
     public static function integrationTitle(): string
     {
-        return __('OctavaWMS Connector', 'izprati-bg-shipping');
+        return __('OctavaWMS Connector', 'izprati-bulgaria-shipping');
     }
 
     public static function appActionLabel(string $actionLabel): string
     {
         return sprintf(
             /* translators: 1: application name, 2: action label. */
-            __('%1$s: %2$s', 'izprati-bg-shipping'),
+            __('%1$s: %2$s', 'izprati-bulgaria-shipping'),
             self::appName(),
             $actionLabel
         );
@@ -34,7 +34,7 @@ final class UiBranding
 
     public static function shipmentHeadingWord(): string
     {
-        return __('Shipment', 'izprati-bg-shipping');
+        return __('Shipment', 'izprati-bulgaria-shipping');
     }
 
     /** Current brand pack or null when no tenant/distribution catalog applies. */

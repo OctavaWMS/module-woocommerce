@@ -41,7 +41,7 @@ final class CheckoutCalculator
             $this->logCalculator('warning', 'api_error', $logContext + [
                 'message' => PluginLog::userMessageFromApiJson(
                     is_array($result['data'] ?? null) ? $result['data'] : null,
-                    (string) ($result['raw'] ?? __('Calculator request failed.', 'izprati-bg-shipping'))
+                    (string) ($result['raw'] ?? __('Calculator request failed.', 'izprati-bulgaria-shipping'))
                 ),
             ]);
 

@@ -4,7 +4,7 @@ Tags: shipping, fulfillment, labels, pickup points, couriers
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.6.2
+Stable tag: 1.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -45,6 +45,10 @@ Communication occurs after a store administrator connects the plugin and then wh
 
 Use of the service is subject to the Изпрати.БГ [Terms and Conditions](https://izprati.bg/terms-conditions/) and [Privacy Policy](https://izprati.bg/privacy-policy/).
 
+The optional pickup-point map uses OpenStreetMap tiles from https://tile.openstreetmap.org/. Tiles are requested only when the customer opens the map. The tile server receives the customer's IP address, browser request information, and requested map area. See the [OpenStreetMap Foundation Privacy Policy](https://osmfoundation.org/wiki/Privacy_Policy) and [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/). Leaflet JavaScript, styles, and marker images are bundled locally with the plugin.
+
+The "Near me" action requests browser location permission. If granted, latitude and longitude are sent to the connected shipping service to find nearby pickup points. The map may also show that location.
+
 == Installation ==
 
 1. Install and activate the extension.
@@ -72,6 +76,14 @@ Yes. The extension supports both classic checkout and WooCommerce Cart and Check
 Use the support channel where you obtained the plugin: its WordPress.org support forum or the WooCommerce Marketplace support channel. General Изпрати.БГ documentation is available at https://izprati.bg/docs/.
 
 == Changelog ==
+
+= 1.6.3 - 2026-10-09 =
+
+* Bundled Leaflet locally and documented optional OpenStreetMap tile and browser-location use.
+* Made checkout attribution an explicit merchant opt-in that is disabled by default.
+* Corrected WordPress.org compatibility metadata and translation packaging.
+* Verified compatibility metadata against WooCommerce 11.2.
+* Aligned the text domain and package directory with the requested izprati-bulgaria-shipping slug.
 
 = 1.6.2 - 2026-10-07 =
 

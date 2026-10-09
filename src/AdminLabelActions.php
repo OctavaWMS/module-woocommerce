@@ -74,7 +74,7 @@ class AdminLabelActions
                 admin_url('admin.php?action=octavawms_generate_label&order_id=' . $orderId),
                 'octavawms_generate_label_' . $orderId
             ),
-            'name' => $hasLabel ? __('Re-generate Label', 'izprati-bg-shipping') : __('Generate Label', 'izprati-bg-shipping'),
+            'name' => $hasLabel ? __('Re-generate Label', 'izprati-bulgaria-shipping') : __('Generate Label', 'izprati-bulgaria-shipping'),
             'action' => 'view octavawms-generate-label',
         ];
 
@@ -96,8 +96,8 @@ class AdminLabelActions
             || (bool) $order->get_meta(LabelService::ORDER_META_LABEL_FILE, true);
 
         $actions['octavawms_generate_label'] = $hasLabel
-            ? __('Re-generate shipping label', 'izprati-bg-shipping')
-            : __('Generate shipping label', 'izprati-bg-shipping');
+            ? __('Re-generate shipping label', 'izprati-bulgaria-shipping')
+            : __('Generate shipping label', 'izprati-bulgaria-shipping');
 
         return $actions;
     }
@@ -112,7 +112,7 @@ class AdminLabelActions
 
         if (! $success && class_exists(\WC_Admin_Meta_Boxes::class, false)) {
             \WC_Admin_Meta_Boxes::add_error(
-                __('OctavaWMS could not generate a shipping label. See order notes.', 'izprati-bg-shipping')
+                __('OctavaWMS could not generate a shipping label. See order notes.', 'izprati-bulgaria-shipping')
             );
         }
     }
@@ -122,14 +122,14 @@ class AdminLabelActions
         $orderId = isset($_GET['order_id']) ? absint(wp_unslash($_GET['order_id'])) : 0;
 
         if (! $orderId || ! current_user_can('edit_shop_orders')) {
-            wp_die(esc_html__('You are not allowed to generate labels.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('You are not allowed to generate labels.', 'izprati-bulgaria-shipping'));
         }
 
         check_admin_referer('octavawms_generate_label_' . $orderId);
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_die(esc_html__('Order not found.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Order not found.', 'izprati-bulgaria-shipping'));
         }
 
         $success = $this->executeLabelGeneration($order);
@@ -148,9 +148,9 @@ class AdminLabelActions
             return $actions;
         }
 
-        $actions[self::BULK_CREATE_ACTION] = $this->appPrefixedBulkActionLabel(__('Create labels', 'izprati-bg-shipping'));
-        $actions[self::BULK_PRINT_ACTION] = $this->appPrefixedBulkActionLabel(__('Print labels', 'izprati-bg-shipping'));
-        $actions[self::BULK_CREATE_PRINT_ACTION] = $this->appPrefixedBulkActionLabel(__('Create and print labels', 'izprati-bg-shipping'));
+        $actions[self::BULK_CREATE_ACTION] = $this->appPrefixedBulkActionLabel(__('Create labels', 'izprati-bulgaria-shipping'));
+        $actions[self::BULK_PRINT_ACTION] = $this->appPrefixedBulkActionLabel(__('Print labels', 'izprati-bulgaria-shipping'));
+        $actions[self::BULK_CREATE_PRINT_ACTION] = $this->appPrefixedBulkActionLabel(__('Create and print labels', 'izprati-bulgaria-shipping'));
 
         return $actions;
     }
@@ -172,9 +172,9 @@ class AdminLabelActions
         $ids = $this->normalizeOrderIds($orderIds);
         if (! current_user_can('edit_shop_orders')) {
             $this->storeBulkNotice($this->emptyBulkSummary(
-                __('OctavaWMS bulk labels', 'izprati-bg-shipping'),
+                __('OctavaWMS bulk labels', 'izprati-bulgaria-shipping'),
                 'error',
-                __('You are not allowed to manage labels.', 'izprati-bg-shipping')
+                __('You are not allowed to manage labels.', 'izprati-bulgaria-shipping')
             ));
 
             return $redirectTo;
@@ -182,19 +182,19 @@ class AdminLabelActions
 
         if ($ids === []) {
             $this->storeBulkNotice($this->emptyBulkSummary(
-                __('OctavaWMS bulk labels', 'izprati-bg-shipping'),
+                __('OctavaWMS bulk labels', 'izprati-bulgaria-shipping'),
                 'warning',
-                __('No orders selected.', 'izprati-bg-shipping')
+                __('No orders selected.', 'izprati-bulgaria-shipping')
             ));
 
             return $redirectTo;
         }
 
         $summary = match ($action) {
-            self::BULK_CREATE_ACTION => $this->bulkCreateLabels($ids, __('OctavaWMS bulk label creation', 'izprati-bg-shipping')),
-            self::BULK_PRINT_ACTION => $this->bulkPrintLabels($ids, __('OctavaWMS bulk label printing', 'izprati-bg-shipping')),
+            self::BULK_CREATE_ACTION => $this->bulkCreateLabels($ids, __('OctavaWMS bulk label creation', 'izprati-bulgaria-shipping')),
+            self::BULK_PRINT_ACTION => $this->bulkPrintLabels($ids, __('OctavaWMS bulk label printing', 'izprati-bulgaria-shipping')),
             self::BULK_CREATE_PRINT_ACTION => $this->bulkCreateAndPrintLabels($ids),
-            default => $this->emptyBulkSummary(__('OctavaWMS bulk labels', 'izprati-bg-shipping'), 'warning', ''),
+            default => $this->emptyBulkSummary(__('OctavaWMS bulk labels', 'izprati-bulgaria-shipping'), 'warning', ''),
         };
 
         $this->storeBulkNotice($summary);
@@ -246,12 +246,12 @@ class AdminLabelActions
         if ($result['status'] !== 'success') {
             $order->add_order_note(sprintf(
                 /* translators: %s: error message returned by the shipping service. */
-                __('OctavaWMS label generation failed: %s', 'izprati-bg-shipping'),
+                __('OctavaWMS label generation failed: %s', 'izprati-bulgaria-shipping'),
                 $result['message'] ?? 'unknown error'
             ));
             $order->save();
 
-            return ['status' => 'failed', 'message' => (string) ($result['message'] ?? __('Unknown error.', 'izprati-bg-shipping'))];
+            return ['status' => 'failed', 'message' => (string) ($result['message'] ?? __('Unknown error.', 'izprati-bulgaria-shipping'))];
         }
 
         $this->storeLabelResult($order, $result);
@@ -267,7 +267,7 @@ class AdminLabelActions
         );
         $order->save();
 
-        return ['status' => 'created', 'message' => __('Label created.', 'izprati-bg-shipping')];
+        return ['status' => 'created', 'message' => __('Label created.', 'izprati-bulgaria-shipping')];
     }
 
     /**
@@ -304,17 +304,17 @@ class AdminLabelActions
         foreach ($orderIds as $orderId) {
             $order = wc_get_order($orderId);
             if (! $order instanceof WC_Order) {
-                $this->appendBulkRow($summary, $orderId, '#' . (string) $orderId, 'failed', __('Order not found.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, $orderId, '#' . (string) $orderId, 'failed', __('Order not found.', 'izprati-bulgaria-shipping'));
                 continue;
             }
 
             if (! current_user_can('edit_shop_orders', $orderId)) {
-                $this->appendBulkRow($summary, $orderId, $this->orderDisplayLabel($order), 'failed', __('You are not allowed to edit this order.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, $orderId, $this->orderDisplayLabel($order), 'failed', __('You are not allowed to edit this order.', 'izprati-bulgaria-shipping'));
                 continue;
             }
 
             if ($this->hasStoredLabel($order)) {
-                $this->appendBulkRow($summary, $orderId, $this->orderDisplayLabel($order), 'skipped', __('Order already has a label.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, $orderId, $this->orderDisplayLabel($order), 'skipped', __('Order already has a label.', 'izprati-bulgaria-shipping'));
                 continue;
             }
 
@@ -340,12 +340,12 @@ class AdminLabelActions
         foreach ($orderIds as $orderId) {
             $order = wc_get_order($orderId);
             if (! $order instanceof WC_Order) {
-                $this->appendBulkRow($summary, $orderId, '#' . (string) $orderId, 'not_printable', __('Order not found.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, $orderId, '#' . (string) $orderId, 'not_printable', __('Order not found.', 'izprati-bulgaria-shipping'));
                 continue;
             }
 
             if (! current_user_can('edit_shop_orders', $orderId)) {
-                $this->appendBulkRow($summary, $orderId, $this->orderDisplayLabel($order), 'not_printable', __('You are not allowed to edit this order.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, $orderId, $this->orderDisplayLabel($order), 'not_printable', __('You are not allowed to edit this order.', 'izprati-bulgaria-shipping'));
                 continue;
             }
 
@@ -366,16 +366,16 @@ class AdminLabelActions
         }
 
         if ($shipmentIds === []) {
-            $summary['message'] = __('No printable labels found for the selected orders.', 'izprati-bg-shipping');
+            $summary['message'] = __('No printable labels found for the selected orders.', 'izprati-bulgaria-shipping');
 
             return $this->finalizeBulkSummaryTone($summary);
         }
 
         if ($senderId === null) {
             foreach ($printableRows as $row) {
-                $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'failed', __('Could not resolve sender for bulk printing.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'failed', __('Could not resolve sender for bulk printing.', 'izprati-bulgaria-shipping'));
             }
-            $summary['message'] = __('Could not resolve sender for bulk printing.', 'izprati-bg-shipping');
+            $summary['message'] = __('Could not resolve sender for bulk printing.', 'izprati-bulgaria-shipping');
 
             return $this->finalizeBulkSummaryTone($summary);
         }
@@ -397,7 +397,7 @@ class AdminLabelActions
         ]);
 
         if (! $import['ok']) {
-            $message = (string) ($import['message'] ?? __('Bulk label import failed.', 'izprati-bg-shipping'));
+            $message = (string) ($import['message'] ?? __('Bulk label import failed.', 'izprati-bulgaria-shipping'));
             foreach ($printableRows as $row) {
                 $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'failed', $message);
             }
@@ -421,17 +421,17 @@ class AdminLabelActions
 
         if (! empty($readyImport['file_url'])) {
             foreach ($printableRows as $row) {
-                $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'printed', __('Added to merged label PDF.', 'izprati-bg-shipping'));
+                $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'printed', __('Added to merged label PDF.', 'izprati-bulgaria-shipping'));
             }
             $summary['download_url'] = (string) $readyImport['file_url'];
             $summary['import_id'] = $readyImport['import_id'] ?? $import['import_id'] ?? null;
-            $summary['message'] = __('Merged label PDF is ready.', 'izprati-bg-shipping');
+            $summary['message'] = __('Merged label PDF is ready.', 'izprati-bulgaria-shipping');
 
             return $this->finalizeBulkSummaryTone($summary);
         }
 
         if (($readyImport['state'] ?? null) === 'error') {
-            $message = (string) ($readyImport['message'] ?? __('Bulk label import failed.', 'izprati-bg-shipping'));
+            $message = (string) ($readyImport['message'] ?? __('Bulk label import failed.', 'izprati-bulgaria-shipping'));
             foreach ($printableRows as $row) {
                 $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'failed', $message);
             }
@@ -442,16 +442,16 @@ class AdminLabelActions
 
         $importId = $readyImport['import_id'] ?? $import['import_id'] ?? null;
         foreach ($printableRows as $row) {
-            $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'pending', __('Merged PDF is still being prepared.', 'izprati-bg-shipping'));
+            $this->appendBulkRow($summary, (int) $row['order_id'], (string) $row['label'], 'pending', __('Merged PDF is still being prepared.', 'izprati-bulgaria-shipping'));
         }
         $summary['import_id'] = $importId;
         $summary['message'] = $importId !== null
             ? sprintf(
                 /* translators: %d: bulk label import identifier. */
-                __('Merged PDF is still being prepared. Import ID: %d.', 'izprati-bg-shipping'),
+                __('Merged PDF is still being prepared. Import ID: %d.', 'izprati-bulgaria-shipping'),
                 (int) $importId
             )
-            : __('Merged PDF is still being prepared.', 'izprati-bg-shipping');
+            : __('Merged PDF is still being prepared.', 'izprati-bulgaria-shipping');
 
         return $this->finalizeBulkSummaryTone($summary);
     }
@@ -463,9 +463,9 @@ class AdminLabelActions
      */
     private function bulkCreateAndPrintLabels(array $orderIds): array
     {
-        $create = $this->bulkCreateLabels($orderIds, __('OctavaWMS create and print labels', 'izprati-bg-shipping'));
-        $print = $this->bulkPrintLabels($orderIds, __('OctavaWMS create and print labels', 'izprati-bg-shipping'));
-        $summary = $this->emptyBulkSummary(__('OctavaWMS create and print labels', 'izprati-bg-shipping'), 'success', '');
+        $create = $this->bulkCreateLabels($orderIds, __('OctavaWMS create and print labels', 'izprati-bulgaria-shipping'));
+        $print = $this->bulkPrintLabels($orderIds, __('OctavaWMS create and print labels', 'izprati-bulgaria-shipping'));
+        $summary = $this->emptyBulkSummary(__('OctavaWMS create and print labels', 'izprati-bulgaria-shipping'), 'success', '');
         $summary['rows'] = array_merge($create['rows'] ?? [], $print['rows'] ?? []);
         $summary['download_url'] = $print['download_url'] ?? null;
         $summary['import_id'] = $print['import_id'] ?? null;
@@ -523,7 +523,7 @@ class AdminLabelActions
                 'candidates' => $candidates,
             ]);
 
-            return ['ok' => false, 'message' => __('Order not found in OctavaWMS.', 'izprati-bg-shipping')];
+            return ['ok' => false, 'message' => __('Order not found in OctavaWMS.', 'izprati-bulgaria-shipping')];
         }
 
         PluginLog::log('debug', 'bulk_labels_resolve_backend_order', [
@@ -548,7 +548,7 @@ class AdminLabelActions
 
         $shipment = $shipments[0] ?? null;
         if (! is_array($shipment) || ! isset($shipment['id']) || ! is_numeric($shipment['id'])) {
-            return ['ok' => false, 'message' => __('No shipment found for this order.', 'izprati-bg-shipping')];
+            return ['ok' => false, 'message' => __('No shipment found for this order.', 'izprati-bulgaria-shipping')];
         }
 
         $shipmentId = (int) $shipment['id'];
@@ -563,7 +563,7 @@ class AdminLabelActions
         ]);
 
         if ($taskId <= 0) {
-            return ['ok' => false, 'message' => __('No label task found for this order.', 'izprati-bg-shipping')];
+            return ['ok' => false, 'message' => __('No label task found for this order.', 'izprati-bulgaria-shipping')];
         }
 
         $detail = $this->apiClient->getShipmentById($shipmentId);
@@ -711,7 +711,7 @@ class AdminLabelActions
             'error' => 'notice-error',
             default => 'notice-warning',
         };
-        $title = isset($summary['title']) && is_string($summary['title']) ? $summary['title'] : __('OctavaWMS bulk labels', 'izprati-bg-shipping');
+        $title = isset($summary['title']) && is_string($summary['title']) ? $summary['title'] : __('OctavaWMS bulk labels', 'izprati-bulgaria-shipping');
         $message = isset($summary['message']) && is_string($summary['message']) ? $summary['message'] : '';
         $counts = is_array($summary['counts'] ?? null) ? $summary['counts'] : [];
         $rows = is_array($summary['rows'] ?? null) ? $summary['rows'] : [];
@@ -734,12 +734,12 @@ class AdminLabelActions
             echo '<p>' . esc_html($message) . '</p>';
         }
         if (! empty($summary['download_url']) && is_string($summary['download_url'])) {
-            echo '<p><a class="button button-primary" href="' . esc_url($summary['download_url']) . '" target="_blank" rel="noopener">' . esc_html__('Download labels PDF', 'izprati-bg-shipping') . '</a></p>';
+            echo '<p><a class="button button-primary" href="' . esc_url($summary['download_url']) . '" target="_blank" rel="noopener">' . esc_html__('Download labels PDF', 'izprati-bulgaria-shipping') . '</a></p>';
         }
         if (! empty($summary['import_id']) && empty($summary['download_url'])) {
             echo '<p>' . esc_html(sprintf(
                 /* translators: %d: bulk label import identifier. */
-                __('Import ID: %d', 'izprati-bg-shipping'),
+                __('Import ID: %d', 'izprati-bulgaria-shipping'),
                 (int) $summary['import_id']
             )) . '</p>';
         }
@@ -757,7 +757,7 @@ class AdminLabelActions
             if (count($rows) > 25) {
                 echo '<li>' . esc_html(sprintf(
                     /* translators: %d: number of additional orders not shown. */
-                    __('And %d more orders.', 'izprati-bg-shipping'),
+                    __('And %d more orders.', 'izprati-bulgaria-shipping'),
                     count($rows) - 25
                 )) . '</li>';
             }
@@ -774,12 +774,12 @@ class AdminLabelActions
     private function bulkStatusLabel(string $status): string
     {
         return match ($status) {
-            'created' => __('Created', 'izprati-bg-shipping'),
-            'skipped' => __('Skipped', 'izprati-bg-shipping'),
-            'printed' => __('Printed', 'izprati-bg-shipping'),
-            'pending' => __('Pending', 'izprati-bg-shipping'),
-            'not_printable' => __('Not printable', 'izprati-bg-shipping'),
-            'failed' => __('Failed', 'izprati-bg-shipping'),
+            'created' => __('Created', 'izprati-bulgaria-shipping'),
+            'skipped' => __('Skipped', 'izprati-bulgaria-shipping'),
+            'printed' => __('Printed', 'izprati-bulgaria-shipping'),
+            'pending' => __('Pending', 'izprati-bulgaria-shipping'),
+            'not_printable' => __('Not printable', 'izprati-bulgaria-shipping'),
+            'failed' => __('Failed', 'izprati-bulgaria-shipping'),
             default => $status,
         };
     }
@@ -789,14 +789,14 @@ class AdminLabelActions
         $orderId = isset($_GET['order_id']) ? absint(wp_unslash($_GET['order_id'])) : 0;
 
         if (! $orderId || ! current_user_can('edit_shop_orders')) {
-            wp_die(esc_html__('Unauthorized label download request.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Unauthorized label download request.', 'izprati-bulgaria-shipping'));
         }
 
         check_admin_referer('octavawms_download_label_' . $orderId);
 
         $order = wc_get_order($orderId);
         if (! $order instanceof WC_Order) {
-            wp_die(esc_html__('Order not found.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Order not found.', 'izprati-bulgaria-shipping'));
         }
 
         $inline = ! empty($_GET['inline']);
@@ -821,7 +821,7 @@ class AdminLabelActions
 
         $shipmentId = isset($_GET['shipment_id']) ? absint(wp_unslash($_GET['shipment_id'])) : 0;
         if ($shipmentId <= 0) {
-            wp_die(esc_html__('Label file unavailable.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Label file unavailable.', 'izprati-bulgaria-shipping'));
         }
 
         $backendOrder = null;
@@ -842,19 +842,19 @@ class AdminLabelActions
             }
         }
         if ($shipment === null) {
-            wp_die(esc_html__('Invalid shipment.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Invalid shipment.', 'izprati-bulgaria-shipping'));
         }
 
         $tasks = $this->apiClient->findPreprocessingTasksForShipment($shipmentId);
         $taskId = isset($tasks['task_id']) && is_numeric($tasks['task_id']) ? (int) $tasks['task_id'] : 0;
         if ($taskId <= 0) {
-            wp_die(esc_html__('Label file unavailable.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Label file unavailable.', 'izprati-bulgaria-shipping'));
         }
 
         $download = $this->apiClient->downloadPreprocessingTaskLabel($taskId);
         $body = isset($download['pdf']) && is_string($download['pdf']) ? $download['pdf'] : '';
         if (! $download['ok'] || $body === '') {
-            wp_die(esc_html__('Label file unavailable.', 'izprati-bg-shipping'));
+            wp_die(esc_html__('Label file unavailable.', 'izprati-bulgaria-shipping'));
         }
 
         [$body, $decodedMime] = self::decodeDataUriIfNeeded($body);

@@ -49,7 +49,7 @@ final class IntegrationSourceImportAsyncSync
         if ($source === null) {
             return [
                 'ok' => false,
-                'message' => __('Could not load integration source from OctavaWMS.', 'izprati-bg-shipping'),
+                'message' => __('Could not load integration source from OctavaWMS.', 'izprati-bulgaria-shipping'),
             ];
         }
 
@@ -60,7 +60,7 @@ final class IntegrationSourceImportAsyncSync
             return ['ok' => true, 'message' => ''];
         }
 
-        $msg = __('Could not save async import setting on OctavaWMS.', 'izprati-bg-shipping');
+        $msg = __('Could not save async import setting on OctavaWMS.', 'izprati-bulgaria-shipping');
         if (is_array($patch['data']) && isset($patch['data']['detail']) && is_string($patch['data']['detail'])) {
             $msg = $patch['data']['detail'];
         } elseif (is_string($patch['raw'] ?? null) && $patch['raw'] !== '') {

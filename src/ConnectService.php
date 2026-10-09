@@ -78,11 +78,11 @@ class ConnectService
             'nonce' => wp_create_nonce(self::ACTION),
             'panelLoginNonce' => wp_create_nonce(self::PANEL_LOGIN_NONCE_ACTION),
             'strings' => [
-                'connected' => __('Connected to OctavaWMS', 'izprati-bg-shipping'),
-                'notConnected' => __('Not connected', 'izprati-bg-shipping'),
-                'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'izprati-bg-shipping'),
-                'panelLogin' => __('Login to the panel', 'izprati-bg-shipping'),
-                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'izprati-bg-shipping'),
+                'connected' => __('Connected to OctavaWMS', 'izprati-bulgaria-shipping'),
+                'notConnected' => __('Not connected', 'izprati-bulgaria-shipping'),
+                'error' => __('Connect request failed. Check your site can reach the OctavaWMS service.', 'izprati-bulgaria-shipping'),
+                'panelLogin' => __('Login to the panel', 'izprati-bulgaria-shipping'),
+                'panelLoginError' => __('Could not open Octava panel. Try connecting again or check logs.', 'izprati-bulgaria-shipping'),
             ],
         ]);
 
@@ -106,26 +106,26 @@ class ConnectService
             'action' => SettingsAjax::ACTION,
             'initialRows' => Options::getCarrierMappingRows(),
             'strings' => [
-                'switchJson' => __('Switch to JSON', 'izprati-bg-shipping'),
-                'switchVisual' => __('Switch to Visual', 'izprati-bg-shipping'),
-                'loadFailed' => __('Could not load mapping.', 'izprati-bg-shipping'),
-                'invalidJson' => __('Invalid JSON. Fix errors before switching to Visual.', 'izprati-bg-shipping'),
-                'pickCarrier' => __('Search carrier…', 'izprati-bg-shipping'),
-                'pickRate' => __('Rate (optional)', 'izprati-bg-shipping'),
-                'anyRate' => __('— Any / none —', 'izprati-bg-shipping'),
+                'switchJson' => __('Switch to JSON', 'izprati-bulgaria-shipping'),
+                'switchVisual' => __('Switch to Visual', 'izprati-bulgaria-shipping'),
+                'loadFailed' => __('Could not load mapping.', 'izprati-bulgaria-shipping'),
+                'invalidJson' => __('Invalid JSON. Fix errors before switching to Visual.', 'izprati-bulgaria-shipping'),
+                'pickCarrier' => __('Search carrier…', 'izprati-bulgaria-shipping'),
+                'pickRate' => __('Rate (optional)', 'izprati-bulgaria-shipping'),
+                'anyRate' => __('— Any / none —', 'izprati-bulgaria-shipping'),
             ],
         ]);
         wp_localize_script('octavawms-admin-settings-matrix', 'octavawmsCodRules', [
             'initialRows' => Options::getCodVisibilityRules(),
             'strings' => [
-                'invalidRules' => __('Invalid cash on delivery rules.', 'izprati-bg-shipping'),
-                'hideCod' => __('Hide COD', 'izprati-bg-shipping'),
-                'allowCod' => __('Allow COD', 'izprati-bg-shipping'),
-                'anyType' => __('Any', 'izprati-bg-shipping'),
-                'address' => __('Address', 'izprati-bg-shipping'),
-                'office' => __('Office', 'izprati-bg-shipping'),
-                'locker' => __('Locker', 'izprati-bg-shipping'),
-                'officeLocker' => __('Office or locker', 'izprati-bg-shipping'),
+                'invalidRules' => __('Invalid cash on delivery rules.', 'izprati-bulgaria-shipping'),
+                'hideCod' => __('Hide COD', 'izprati-bulgaria-shipping'),
+                'allowCod' => __('Allow COD', 'izprati-bulgaria-shipping'),
+                'anyType' => __('Any', 'izprati-bulgaria-shipping'),
+                'address' => __('Address', 'izprati-bulgaria-shipping'),
+                'office' => __('Office', 'izprati-bulgaria-shipping'),
+                'locker' => __('Locker', 'izprati-bulgaria-shipping'),
+                'officeLocker' => __('Office or locker', 'izprati-bulgaria-shipping'),
             ],
         ]);
         wp_enqueue_script('octavawms-admin-settings-matrix');
@@ -134,13 +134,13 @@ class ConnectService
     public function handleAjaxConnect(): void
     {
         if (! current_user_can('manage_woocommerce')) {
-            wp_send_json_error(['message' => __('You do not have permission to connect.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('You do not have permission to connect.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer(self::ACTION, 'security');
 
         if (! function_exists('home_url') || ! function_exists('get_bloginfo') || ! function_exists('get_option')) {
-            wp_send_json_error(['message' => __('WordPress is not available.', 'izprati-bg-shipping')], 500);
+            wp_send_json_error(['message' => __('WordPress is not available.', 'izprati-bulgaria-shipping')], 500);
         }
 
         $url = (string) apply_filters(
@@ -149,7 +149,7 @@ class ConnectService
             (string) home_url()
         );
         if ($url === '') {
-            wp_send_json_error(['message' => __('Connect service URL is not set.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Connect service URL is not set.', 'izprati-bulgaria-shipping')], 400);
         }
 
         $body = [
@@ -158,7 +158,7 @@ class ConnectService
             'storeName' => (string) get_bloginfo('name', 'display'),
         ];
         if ($body['adminEmail'] === '' || $body['siteUrl'] === '') {
-            wp_send_json_error(['message' => __('Site URL and admin email are required.', 'izprati-bg-shipping')], 400);
+            wp_send_json_error(['message' => __('Site URL and admin email are required.', 'izprati-bulgaria-shipping')], 400);
         }
 
         if (! is_ssl() && ! in_array(
@@ -170,7 +170,7 @@ class ConnectService
                 [
                     'message' => __(
                         'Store must use HTTPS (SSL) to connect, except on localhost. Enable SSL and try again.',
-                        'izprati-bg-shipping'
+                        'izprati-bulgaria-shipping'
                     ),
                 ],
                 400
@@ -227,7 +227,7 @@ class ConnectService
                 [
                     'message' => sprintf(
                         // translators: %d HTTP status, %s response excerpt.
-                        __('Invalid response from connect service (HTTP %1$d).', 'izprati-bg-shipping'),
+                        __('Invalid response from connect service (HTTP %1$d).', 'izprati-bulgaria-shipping'),
                         $code
                     ) . ' ' . mb_substr($raw, 0, 200),
                 ],
@@ -240,7 +240,7 @@ class ConnectService
             wp_send_json_success(
                 [
                     'connected' => true,
-                    'message' => __('Connected. Your credentials are saved.', 'izprati-bg-shipping'),
+                    'message' => __('Connected. Your credentials are saved.', 'izprati-bulgaria-shipping'),
                     'api_key' => Options::getApiKey(),
                 ]
             );
@@ -263,7 +263,7 @@ class ConnectService
             )
         );
 
-        $err = (string) ($data['message'] ?? __('Connection failed.', 'izprati-bg-shipping'));
+        $err = (string) ($data['message'] ?? __('Connection failed.', 'izprati-bulgaria-shipping'));
         wp_send_json_error(
             [
                 'message' => $err,
@@ -275,7 +275,7 @@ class ConnectService
     public function handleAjaxPanelLoginUrl(): void
     {
         if (! current_user_can('manage_woocommerce')) {
-            wp_send_json_error(['message' => __('You do not have permission to open the panel.', 'izprati-bg-shipping')], 403);
+            wp_send_json_error(['message' => __('You do not have permission to open the panel.', 'izprati-bulgaria-shipping')], 403);
         }
 
         check_ajax_referer(self::PANEL_LOGIN_NONCE_ACTION, 'security');
@@ -287,7 +287,7 @@ class ConnectService
                 [
                     'message' => $resolved['message'] !== ''
                         ? $resolved['message']
-                        : __('Could not open Octava panel.', 'izprati-bg-shipping'),
+                        : __('Could not open Octava panel.', 'izprati-bulgaria-shipping'),
                 ],
                 400
             );

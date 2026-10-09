@@ -30,7 +30,7 @@ final class CheckoutDeliveryServiceTest extends TestCase
         Functions\when('esc_attr')->alias(static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8'));
     }
 
-    public function testCheckoutAssetsExposeIzpratiAttributionWhenNoRemoveBrandingPlan(): void
+    public function testCheckoutAttributionIsDisabledByDefault(): void
     {
         $localized = null;
 
@@ -57,10 +57,42 @@ final class CheckoutDeliveryServiceTest extends TestCase
         (new CheckoutDeliveryService(new BackendApiClient()))->enqueueAssets();
 
         self::assertIsArray($localized);
-        self::assertTrue($localized['showIzpratiAttribution'] ?? false);
+        self::assertFalse($localized['showIzpratiAttribution'] ?? true);
         self::assertSame('Работи с ', $localized['strings']['poweredByPrefix'] ?? null);
         self::assertSame('ИЗПРАТИ.БГ', $localized['strings']['poweredByMarkWord'] ?? null);
         self::assertArrayNotHasKey('attributionUrl', $localized['strings']);
+    }
+
+    public function testCheckoutAttributionCanBeEnabledByMerchant(): void
+    {
+        $localized = null;
+        Filters\expectApplied('octavawms_brand_pack')->andReturn(UiBranding::PACK_IZPRATI);
+        Functions\when('is_checkout')->justReturn(true);
+        Functions\when('is_cart')->justReturn(false);
+        Functions\when('is_order_received_page')->justReturn(false);
+        Functions\when('get_option')->alias(static fn (string $name, mixed $default = false): mixed =>
+            $name === 'woocommerce_octavawms_settings'
+                ? ['show_checkout_attribution' => 'yes']
+                : $default
+        );
+        Functions\when('plugins_url')->alias(static fn (string $path, string $pluginFile): string => $pluginFile . '/' . $path);
+        Functions\when('wp_enqueue_style')->justReturn(null);
+        Functions\when('wp_enqueue_script')->justReturn(null);
+        Functions\when('admin_url')->justReturn('https://shop.test/wp-admin/admin-ajax.php');
+        Functions\when('wp_create_nonce')->justReturn('nonce');
+        Functions\expect('wp_localize_script')
+            ->once()
+            ->with('octavawms-checkout-delivery', 'octavawmsCheckoutDelivery', \Mockery::on(static function (array $payload) use (&$localized): bool {
+                $localized = $payload;
+
+                return true;
+            }))
+            ->andReturn(null);
+
+        (new CheckoutDeliveryService(new BackendApiClient()))->enqueueAssets();
+
+        self::assertIsArray($localized);
+        self::assertTrue($localized['showIzpratiAttribution'] ?? false);
     }
 
     public function testValidationRequiresPickupPointForOfficeRate(): void

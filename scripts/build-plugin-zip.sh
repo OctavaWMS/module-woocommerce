@@ -5,12 +5,17 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-PLUGIN_SLUG="izprati-bg-shipping"
+PLUGIN_SLUG="izprati-bulgaria-shipping"
 PLUGIN_FILE="$DIR/octavawms-woocommerce.php"
 CHANGELOG_FILE="$DIR/changelog.txt"
 README_FILE="$DIR/readme.txt"
 DIST_FILE="$DIR/src/Distribution.php"
 VERSION="${1:-}"
+CHANNEL="${2:-wordpress-org}"
+case "$CHANNEL" in
+    wordpress-org|marketplace) ;;
+    *) echo "Unknown distribution channel: $CHANNEL (use wordpress-org or marketplace)." >&2; exit 1 ;;
+esac
 if [[ -z "$VERSION" ]]; then
 	VERSION="$(sed -n -E 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' "$PLUGIN_FILE" | head -1)"
 fi
@@ -32,6 +37,9 @@ if ! grep -q -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} - version ${VERSION//./\\.}$" "$CHA
 fi
 
 DEST="$DIR/dist/${PLUGIN_SLUG}-${VERSION}.zip"
+if [[ "$CHANNEL" == "marketplace" ]]; then
+    DEST="$DIR/dist/${PLUGIN_SLUG}-${VERSION}-marketplace.zip"
+fi
 mkdir -p "$DIR/dist"
 
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/izprati-bg-pkg.XXXXXX")"
@@ -72,6 +80,12 @@ rsync -a \
 
 # Not shipped to merchants (AI / internal workflow); keep in git only.
 rm -f "$TARGET/AGENTS.md"
+
+# WordPress.org distributes community translations as language packs. Keep the
+# bundled catalogs available only for independently distributed Marketplace ZIPs.
+if [[ "$CHANNEL" == "wordpress-org" ]]; then
+    find "$TARGET/languages" -type f \( -name '*.po' -o -name '*.mo' \) -delete
+fi
 
 if [[ ! -f "$TARGET/octavawms-woocommerce.php" ]]; then
 	echo "❌ Staging failed: octavawms-woocommerce.php missing" >&2

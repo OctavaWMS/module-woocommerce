@@ -7,11 +7,11 @@ namespace OctavaWMS\WooCommerce;
 /** Marketplace distribution identity while internal identifiers stay backward compatible. */
 final class Distribution
 {
-    public const VERSION = '1.6.2';
+    public const VERSION = '1.6.3';
 
     public const PRODUCT_NAME = 'Изпрати.БГ Shipping for WooCommerce';
 
-    public const PLUGIN_SLUG = 'izprati-bg-shipping';
+    public const PLUGIN_SLUG = 'izprati-bulgaria-shipping';
 
     public const CONNECT_URL = 'https://api.izprati.bg/apps/woocommerce/connect';
 

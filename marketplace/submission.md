@@ -11,7 +11,7 @@
 - **Terms:** https://izprati.bg/terms-conditions/
 - **Version:** 1.6.0
 - **License:** GPL-2.0-or-later
-- **Package:** `dist/izprati-bg-shipping-1.6.0.zip`
+- **Package:** `dist/izprati-bulgaria-shipping-1.6.0.zip`
 
 ## Short description
 
@@ -54,7 +54,7 @@ Prerequisites:
 
 Install and connect:
 
-1. Upload `izprati-bg-shipping-1.6.0.zip` in **Plugins > Add New > Upload Plugin**.
+1. Upload `izprati-bulgaria-shipping-1.6.0.zip` in **Plugins > Add New > Upload Plugin**.
 2. Activate **Изпрати.БГ Shipping for WooCommerce**.
 3. Go to **WooCommerce > Settings > Integrations > Изпрати.БГ**.
 4. Select **Connect to Изпрати.БГ** and complete the reviewer test-account connection.

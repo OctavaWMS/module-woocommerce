@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace OctavaWMS\WooCommerce\I18n;
 
 /**
- * Loads {@see izprati-bg-shipping} MO files from {@see /languages}
- * (e.g. izprati-bg-shipping-bg_BG.mo).
+ * Loads {@see izprati-bulgaria-shipping} MO files from {@see /languages}
+ * (e.g. izprati-bulgaria-shipping-bg_BG.mo).
  */
 final class TextDomainLoader
 {
@@ -22,6 +22,6 @@ final class TextDomainLoader
         }
 
         $rel = dirname(plugin_basename(OCTAVAWMS_PLUGIN_FILE)) . '/languages';
-        load_plugin_textdomain('izprati-bg-shipping', false, $rel);
+        load_plugin_textdomain('izprati-bulgaria-shipping', false, $rel);
     }
 }

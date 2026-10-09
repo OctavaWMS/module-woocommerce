@@ -59,12 +59,12 @@ final class CheckoutBlocksService
             'methodPrefix' => ShippingMethod::METHOD_ID,
             'updateNamespace' => self::UPDATE_NAMESPACE,
             'strings' => [
-                'pickupTitle' => __('Pickup point', 'izprati-bg-shipping'),
-                'choosePickup' => __('Choose pickup point', 'izprati-bg-shipping'),
-                'loading' => __('Loading pickup points...', 'izprati-bg-shipping'),
-                'noPoints' => __('No pickup points were found for this address.', 'izprati-bg-shipping'),
-                'saving' => __('Saving pickup point...', 'izprati-bg-shipping'),
-                'error' => __('Could not update the pickup point. Please try again.', 'izprati-bg-shipping'),
+                'pickupTitle' => __('Pickup point', 'izprati-bulgaria-shipping'),
+                'choosePickup' => __('Choose pickup point', 'izprati-bulgaria-shipping'),
+                'loading' => __('Loading pickup points...', 'izprati-bulgaria-shipping'),
+                'noPoints' => __('No pickup points were found for this address.', 'izprati-bulgaria-shipping'),
+                'saving' => __('Saving pickup point...', 'izprati-bulgaria-shipping'),
+                'error' => __('Could not update the pickup point. Please try again.', 'izprati-bulgaria-shipping'),
             ],
         ]);
     }
@@ -111,12 +111,12 @@ final class CheckoutBlocksService
         $rate = CheckoutSession::rate($rateId);
         $selection = CheckoutSession::selection();
         if ($rate === null || ($selection['rateId'] ?? '') !== $rateId) {
-            $this->rejectCheckout(__('Please choose a delivery option again.', 'izprati-bg-shipping'));
+            $this->rejectCheckout(__('Please choose a delivery option again.', 'izprati-bulgaria-shipping'));
         }
         if (CheckoutDeliveryService::rateRequiresPickupPoint($rate)) {
             $pointId = isset($selection['servicePoint']) ? (int) $selection['servicePoint'] : 0;
             if ($pointId <= 0) {
-                $this->rejectCheckout(__('Choose a pickup point before placing the order.', 'izprati-bg-shipping'));
+                $this->rejectCheckout(__('Choose a pickup point before placing the order.', 'izprati-bulgaria-shipping'));
             }
         }
 

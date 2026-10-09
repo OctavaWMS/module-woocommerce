@@ -1,10 +1,19 @@
 *** Изпрати.БГ Shipping for WooCommerce Changelog ***
 
+2026-10-09 - version 1.6.3
+
+* Fixed - Bundled Leaflet locally and disclosed optional OpenStreetMap tile requests and browser location use
+* Fixed - Made storefront attribution an optional merchant setting that is disabled by default
+* Fixed - Removed the unsupported Tested up to PHP header and kept it in readme.txt only
+* Update - Verified compatibility metadata against WooCommerce 11.2
+* Update - Aligned the text domain and package directory with the requested izprati-bulgaria-shipping slug
+* Update - WordPress.org builds now omit bundled translation files in favor of language packs
+
 2026-10-07 - version 1.6.2
 
 * Added - External-service and data-transfer disclosure for WordPress.org publication
 * Update - Channel-neutral support guidance and WordPress.org publication packaging safeguards
-* Update - Aligned the text domain with the WordPress.org slug and corrected the minimum WordPress version to 6.2
+* Update - Aligned the text domain with the initial WordPress.org slug and corrected the minimum WordPress version to 6.2
 
 2026-10-02 - version 1.6.1
 

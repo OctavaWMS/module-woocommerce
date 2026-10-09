@@ -18,9 +18,9 @@ final class UiBrandingTest extends TestCase
         Functions\when('apply_filters')->alias(static function (string $_hook, $value, ...$_args) {
             return $value;
         });
-        Functions\when('__')->alias(static function ($text, $domain = 'izprati-bg-shipping') {
-            $d = is_string($domain) ? $domain : 'izprati-bg-shipping';
-            if ($d !== 'izprati-bg-shipping') {
+        Functions\when('__')->alias(static function ($text, $domain = 'izprati-bulgaria-shipping') {
+            $d = is_string($domain) ? $domain : 'izprati-bulgaria-shipping';
+            if ($d !== 'izprati-bulgaria-shipping') {
                 return $text;
             }
             $pack = UiBranding::currentBrandPack();
@@ -66,7 +66,7 @@ final class UiBrandingTest extends TestCase
         self::assertSame(UiBranding::PACK_IZPRATI, UiBranding::currentBrandPack());
         self::assertSame('Изпрати.БГ', UiBranding::appName());
         self::assertSame('Изпрати.БГ', UiBranding::integrationTitle());
-        self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::appActionLabel(__('Create shipping label', 'izprati-bg-shipping')));
+        self::assertSame('Изпрати.БГ: Създай товарителница', UiBranding::appActionLabel(__('Create shipping label', 'izprati-bulgaria-shipping')));
         self::assertSame('Пратка', UiBranding::shipmentHeadingWord());
     }
 

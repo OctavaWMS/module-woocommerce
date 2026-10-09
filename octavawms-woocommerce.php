@@ -3,18 +3,17 @@
  * Plugin Name: Изпрати.БГ Shipping for WooCommerce
  * Plugin URI: https://izprati.bg/
  * Description: Connect WooCommerce to Изпрати.БГ for carrier rates, pickup points, order synchronization, and shipping labels.
- * Version: 1.6.2
+ * Version: 1.6.3
  * Author: TagOnTrack
  * Author URI: https://tagontrack.com/
  * Requires at least: 6.2
- * Tested up to: 7.1
  * Requires PHP: 8.1
  * Requires Plugins: woocommerce
  * WC requires at least: 7.1
- * WC tested up to: 11.1
+ * WC tested up to: 11.2
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * Text Domain: izprati-bg-shipping
+ * Text Domain: izprati-bulgaria-shipping
  * Domain Path: /languages
  */
 

@@ -62,6 +62,14 @@ class Options
         return self::OAUTH_DOMAIN_CLIENT_IDS[$domain] ?? 'orderadmin';
     }
 
+    public static function isCheckoutAttributionEnabled(): bool
+    {
+        $settings = (array) get_option('woocommerce_' . self::INTEGRATION_ID . '_settings', []);
+
+        return isset($settings['show_checkout_attribution'])
+            && $settings['show_checkout_attribution'] === 'yes';
+    }
+
     /**
      * @return string[]
      */
