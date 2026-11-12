@@ -101,3 +101,15 @@ Use the support channel where you obtained the plugin: its WordPress.org support
 * Added explicit HPOS and Cart and Checkout blocks compatibility declarations.
 * Changed the extension license to GPL-2.0-or-later.
 * Added Marketplace-ready packaging and version validation.
+
+== Optional installation reporting ==
+
+Settings > Izprati reporting provides an optional, unchecked installation-reporting choice. No report is sent before an administrator opts in. All local features remain available without reporting.
+
+When enabled, the plugin sends the site URL, store name, an optional administrator-supplied contact email, software versions (plugin, WordPress, WooCommerce and PHP), locale, store country/currency, connection state, consent version/time, and event identifiers/times to https://account.tagontrack.app/api/v1/wordpress-installations. It reports after opt-in, on connection/version changes, and approximately daily when WordPress cron runs. No orders, products, credentials for shipping, passwords or customer records are included.
+
+AccountPortal records an unverified site observation and may notify internal staff through n8n. Reporting does not create a login, subscription, marketing consent, or access to an existing customer account. Account creation is a separate explicit flow. Disabling stops observations, removes queued reports and the local contact email, and attempts a minimal withdrawal notice. A silent site cannot be confirmed as uninstalled. Existing observations are subject to the service privacy policy.
+
+Service: https://account.tagontrack.app/
+Privacy: https://tagontrack.app/privacy
+Terms: https://tagontrack.app/terms
