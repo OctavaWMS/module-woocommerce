@@ -4,7 +4,7 @@ Tags: shipping, fulfillment, labels, pickup points, couriers
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.6.3
+Stable tag: 1.6.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -76,6 +76,9 @@ Yes. The extension supports both classic checkout and WooCommerce Cart and Check
 Use the support channel where you obtained the plugin: its WordPress.org support forum or the WooCommerce Marketplace support channel. General Изпрати.БГ documentation is available at https://izprati.bg/docs/.
 
 == Changelog ==
+
+= 1.6.4 - 2026-11-13 =
+* Added optional installation reporting to AccountPortal with explicit consent, durable retries, withdrawal and clone isolation. Shipping remains independent of reporting.
 
 = 1.6.3 - 2026-10-09 =
 

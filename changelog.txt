@@ -1,5 +1,9 @@
 *** Изпрати.БГ Shipping for WooCommerce Changelog ***
 
+2026-11-13 - version 1.6.4
+
+* Added - Optional installation reporting to AccountPortal with explicit consent, durable retries, withdrawal and clone isolation
+
 2026-10-09 - version 1.6.3
 
 * Fixed - Bundled Leaflet locally and disclosed optional OpenStreetMap tile requests and browser location use

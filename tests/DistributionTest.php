@@ -11,7 +11,7 @@ final class DistributionTest extends TestCase
 {
     public function testMarketplaceDefaultsAreIzpratiBranded(): void
     {
-        self::assertSame('1.6.3', Distribution::VERSION);
+        self::assertSame('1.6.4', Distribution::VERSION);
         self::assertSame('Изпрати.БГ Shipping for WooCommerce', Distribution::PRODUCT_NAME);
         self::assertSame('izprati-bulgaria-shipping', Distribution::PLUGIN_SLUG);
         self::assertSame(UiBranding::PACK_IZPRATI, Distribution::defaultBrandPack(null));
