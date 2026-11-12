@@ -55,6 +55,8 @@ add_action('before_woocommerce_init', static function (): void {
 
 \OctavaWMS\WooCommerce\I18n\TextDomainLoader::register();
 
+(new \OctavaWMS\WooCommerce\InstallationReporting())->register();
+
 register_activation_hook(__FILE__, [OctavaWMS\WooCommerce\Activation::class, 'run']);
 
 $octavawms_register_admin_ajax = static function (): void {
