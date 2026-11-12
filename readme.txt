@@ -14,6 +14,15 @@ Connect WooCommerce to Изпрати.БГ for carrier rates, pickup points, ord
 
 Изпрати.БГ Shipping for WooCommerce connects a WooCommerce store to the Изпрати.БГ shipping platform.
 
+Supported carriers include:
+
+* Bulgaria: Speedy (DPD Bulgaria), Econt, BoxNow, Sameday, Pigeon Express, Europat (Европът), and Bulgarian Posts (Български пощи);
+* Romania: Sameday Romania and DPD Romania;
+* Greece: ELTA Courier, ACS Courier, Geniki Taxydromiki, BoxNow Greece, and Speedex;
+* international and cross-border deliveries: FedEx, UPS, and DHL.
+
+Exact carrier and service availability depends on your Изпрати.БГ account, carrier agreements, origin, destination, and enabled configuration.
+
 Merchants can:
 
 * connect their store securely to an existing or new Изпрати.БГ account;
