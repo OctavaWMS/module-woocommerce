@@ -50,7 +50,7 @@ TARGET="$STAGE/$PLUGIN_SLUG"
 mkdir -p "$TARGET"
 
 rsync -a \
-	--exclude='.git/' \
+	--exclude='.git' \
 	--exclude='.gitkeep' \
 	--exclude='vendor/' \
 	--exclude='tests/' \
