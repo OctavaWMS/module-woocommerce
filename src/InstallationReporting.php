@@ -35,7 +35,7 @@ final class InstallationReporting
         $state = (array) get_option(self::OPTION, []);
         echo '<div class="wrap"><h1>' . esc_html__('Izprati installation reporting', 'izprati-bulgaria-shipping') . '</h1>';
         echo '<p>' . esc_html__('Optionally share this site URL, store name, software versions, language, store country/currency, connection status and last seen with AccountPortal. Contact email is optional and unverified. No password, user account or subscription is created. Local plugin features work without reporting.', 'izprati-bulgaria-shipping') . '</p>';
-        echo '<p><a href="https://tagontrack.app/privacy">' . esc_html__('Privacy policy', 'izprati-bulgaria-shipping') . '</a> · <a href="https://account.tagontrack.app/register">' . esc_html__('Create or sign in to your account', 'izprati-bulgaria-shipping') . '</a></p>';
+        echo '<p><a href="https://izprati.bg/privacy-policy/">' . esc_html__('Privacy policy', 'izprati-bulgaria-shipping') . '</a> · <a href="https://account.tagontrack.app/register">' . esc_html__('Create or sign in to your account', 'izprati-bulgaria-shipping') . '</a></p>';
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field(self::ACTION);
         echo '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">';

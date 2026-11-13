@@ -4,7 +4,7 @@ Tags: shipping, fulfillment, labels, pickup points, couriers
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.6.4
+Stable tag: 1.6.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -86,6 +86,9 @@ Use the support channel where you obtained the plugin: its WordPress.org support
 
 == Changelog ==
 
+= 1.6.5 - 2026-11-13 =
+* Corrected the optional installation reporting privacy link to the published Изпрати.БГ privacy policy.
+
 = 1.6.4 - 2026-11-13 =
 * Added optional installation reporting to AccountPortal with explicit consent, durable retries, withdrawal and clone isolation. Shipping remains independent of reporting.
 
@@ -123,5 +126,5 @@ When enabled, the plugin sends the site URL, store name, an optional administrat
 AccountPortal records an unverified site observation and may notify internal staff through n8n. Reporting does not create a login, subscription, marketing consent, or access to an existing customer account. Account creation is a separate explicit flow. Disabling stops observations, removes queued reports and the local contact email, and attempts a minimal withdrawal notice. A silent site cannot be confirmed as uninstalled. Existing observations are subject to the service privacy policy.
 
 Service: https://account.tagontrack.app/
-Privacy: https://tagontrack.app/privacy
+Privacy: https://izprati.bg/privacy-policy/
 Terms: https://tagontrack.app/terms

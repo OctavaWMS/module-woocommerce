@@ -1,5 +1,9 @@
 *** Изпрати.БГ Shipping for WooCommerce Changelog ***
 
+2026-11-13 - version 1.6.5
+
+* Fixed - Corrected the optional installation reporting privacy link to the published Изпрати.БГ privacy policy
+
 2026-11-13 - version 1.6.4
 
 * Added - Optional installation reporting to AccountPortal with explicit consent, durable retries, withdrawal and clone isolation
