@@ -4,7 +4,7 @@ Tags: shipping, fulfillment, labels, pickup points, couriers
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.6.5
+Stable tag: 1.6.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -86,6 +86,9 @@ Use the support channel where you obtained the plugin: its WordPress.org support
 
 == Changelog ==
 
+= 1.6.6 - 2026-11-14 =
+* Added a clear first-setup store registration choice with automatic delivery after consent; continuing without optional reporting remains available. Successful service connections also register the store automatically after the disclosed connection step.
+
 = 1.6.5 - 2026-11-13 =
 * Corrected the optional installation reporting privacy link to the published Изпрати.БГ privacy policy.
 
@@ -121,7 +124,7 @@ Use the support channel where you obtained the plugin: its WordPress.org support
 
 Settings > Izprati reporting provides an optional, unchecked installation-reporting choice. No report is sent before an administrator opts in. All local features remain available without reporting.
 
-When enabled, the plugin sends the site URL, store name, an optional administrator-supplied contact email, software versions (plugin, WordPress, WooCommerce and PHP), locale, store country/currency, connection state, consent version/time, and event identifiers/times to https://account.tagontrack.app/api/v1/wordpress-installations. It reports after opt-in, on connection/version changes, and approximately daily when WordPress cron runs. No orders, products, credentials for shipping, passwords or customer records are included.
+On the first Plugins/setup-screen visit, administrators can register and share store details or continue without reporting. No contact email is preselected. This choice is remembered per site, and a copied site must make a fresh choice. The Connect to OctavaWMS action also discloses service registration: a successful authenticated connection durably queues registration even if optional reporting was previously declined. Failed connections and manually copied API keys do not enroll the store. Service registration delivery retries automatically through WordPress cron. When enabled, the plugin sends the site URL, store name, an optional administrator-supplied contact email, software versions (plugin, WordPress, WooCommerce and PHP), locale, store country/currency, connection state, consent version/time, and event identifiers/times to https://account.tagontrack.app/api/v1/wordpress-installations. It reports after opt-in, on connection/version changes, and approximately daily when WordPress cron runs. No orders, products, credentials for shipping, passwords or customer records are included.
 
 AccountPortal records an unverified site observation and may notify internal staff through n8n. Reporting does not create a login, subscription, marketing consent, or access to an existing customer account. Account creation is a separate explicit flow. Disabling stops observations, removes queued reports and the local contact email, and attempts a minimal withdrawal notice. A silent site cannot be confirmed as uninstalled. Existing observations are subject to the service privacy policy.
 

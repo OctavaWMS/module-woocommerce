@@ -127,6 +127,7 @@ class SettingsPage extends \WC_Integration
                 </button>
                 <span class="spinner" id="octavawms-connect-spinner" style="float:none;visibility:hidden"></span>
             </p>
+            <p class="description"><?php esc_html_e('Connecting also registers this store with AccountPortal and notifies our team. It shares the store URL/name, software versions, language, country/currency, connection status and last seen. It creates no separate login or subscription.', 'izprati-bulgaria-shipping'); ?> <a href="https://izprati.bg/privacy-policy/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Privacy policy', 'izprati-bulgaria-shipping'); ?></a></p>
             <p class="description" id="octavawms-connect-message" style="min-height:1.5em" aria-live="polite"></p>
         </div>
         <hr>

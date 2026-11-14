@@ -237,6 +237,13 @@ class ConnectService
 
         $apiClient = new BackendApiClient();
         if ($apiClient->ingestConnectResponseArray($data)) {
+            if ($code >= 200 && $code < 300) {
+                try {
+                    do_action('octavawms_service_connected');
+                } catch (\Throwable $error) {
+                    PluginLog::log('warning', 'installation_registration', ['message' => 'Store registration could not be queued.']);
+                }
+            }
             wp_send_json_success(
                 [
                     'connected' => true,

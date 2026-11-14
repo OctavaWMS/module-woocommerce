@@ -12,14 +12,119 @@ final class InstallationReporting
     private const ACTION = 'octavawms_installation_reporting_save';
     private const PAGE = 'octavawms_installation-reporting';
     private const ENDPOINT = 'https://account.tagontrack.app/api/v1/wordpress-installations';
+    private const SETUP_ACTION = 'octavawms_installation_reporting_setup';
     private const CONSENT = '2026-11-12';
 
     public function register(): void
     {
+        add_action('admin_notices', [$this, 'setupNotice']);
+        add_action('admin_post_' . self::SETUP_ACTION, [$this, 'saveSetup']);
+        add_action('octavawms_service_connected', [$this, 'serviceConnected']);
         add_action('admin_menu', [$this, 'menu']);
         add_action('admin_post_' . self::ACTION, [$this, 'save']);
         add_action('admin_init', [$this, 'observe']);
         add_action(self::HOOK, [$this, 'tick']);
+    }
+
+    /** First-use choice is per site, so a copied database never inherits consent. */
+    public function needsSetup(): bool
+    {
+        $state = (array) get_option(self::OPTION, []);
+        $choice = (array) get_option(self::OPTION . '_setup', []);
+        if (($choice['siteUrl'] ?? '') === $this->siteUrl()) {
+            return false;
+        }
+        return !(($state['siteUrl'] ?? '') === $this->siteUrl() && array_key_exists('enabled', $state));
+    }
+
+    private function rememberSetup(string $choice): void
+    {
+        update_option(self::OPTION . '_setup', ['siteUrl' => $this->siteUrl(), 'choice' => $choice], false);
+    }
+
+    public function setupNotice(): void
+    {
+        if (! current_user_can('manage_options') || is_network_admin() || ! $this->needsSetup()) {
+            return;
+        }
+        $screen = get_current_screen();
+        $page = isset($_GET['page']) && is_string($_GET['page']) ? $_GET['page'] : '';
+        if (($screen->base ?? '') !== 'plugins' && ! ($page === 'wc-settings' && ($_GET['tab'] ?? '') === 'integration' && ($_GET['section'] ?? '') === Options::INTEGRATION_ID)) { return; }
+        echo '<div class="notice notice-info"><h2>' . esc_html__('Register your Izprati store', 'izprati-bulgaria-shipping') . '</h2>';
+        echo '<p>' . esc_html__('Register this store with our team to help us support your installation. This shares its URL, store name, software versions, language, country/currency, connection status and last seen with AccountPortal and notifies our team. Contact email is optional. No login or subscription is created.', 'izprati-bulgaria-shipping') . '</p>';
+        echo '<p>' . esc_html__('You can continue without optional reporting. Local plugin features remain available. Change your choice later in Settings → Izprati reporting.', 'izprati-bulgaria-shipping') . ' <a href="https://izprati.bg/privacy-policy/">' . esc_html__('Privacy policy', 'izprati-bulgaria-shipping') . '</a></p>';
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        wp_nonce_field(self::SETUP_ACTION);
+        echo '<input type="hidden" name="action" value="' . esc_attr(self::SETUP_ACTION) . '">';
+        echo '<p><label>' . esc_html__('Contact email to share (optional)', 'izprati-bulgaria-shipping') . ' <input type="email" name="setup_email" maxlength="254" value=""></label></p>';
+        echo '<p><button type="submit" class="button button-primary" name="setup_choice" value="register">' . esc_html__('Register and share store details', 'izprati-bulgaria-shipping') . '</button> ';
+        echo '<button type="submit" class="button" name="setup_choice" value="skip">' . esc_html__('Continue without reporting', 'izprati-bulgaria-shipping') . '</button></p></form></div>';
+    }
+
+    public function saveSetup(): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            wp_die(esc_html__('POST required.', 'izprati-bulgaria-shipping'), '', ['response' => 405]);
+        }
+        if (! current_user_can('manage_options')) {
+            wp_die(esc_html__('Administrator access required.', 'izprati-bulgaria-shipping'), '', ['response' => 403]);
+        }
+        check_admin_referer(self::SETUP_ACTION);
+        $choice = isset($_POST['setup_choice']) && is_string($_POST['setup_choice']) ? wp_unslash($_POST['setup_choice']) : '';
+        if (! in_array($choice, ['register', 'skip'], true)) {
+            wp_die(esc_html__('Choose whether to register this store.', 'izprati-bulgaria-shipping'), '', ['response' => 400]);
+        }
+        if ($this->needsSetup()) {
+            $email = $choice === 'register' && isset($_POST['setup_email']) && is_string($_POST['setup_email']) ? sanitize_email(wp_unslash($_POST['setup_email'])) : '';
+            if (! $this->configure($choice === 'register', $email)) {
+                wp_die(esc_html__('Registration is busy. Retry in a few seconds.', 'izprati-bulgaria-shipping'));
+            }
+            $this->rememberSetup($choice);
+            $this->tick();
+        }
+        wp_safe_redirect(admin_url('admin.php?page=wc-settings&tab=integration&section=octavawms'));
+        exit;
+    }
+
+    /** Only the authenticated, successful Connect action grants this service registration. */
+    public function serviceConnected(): void
+    {
+        if (! current_user_can('manage_woocommerce') || ! $this->connected()) {
+            return;
+        }
+        update_option(self::OPTION . '_service_pending', ['siteUrl' => $this->siteUrl(), 'consentAt' => gmdate('Y-m-d\TH:i:s\Z')], false);
+        $scheduled = wp_next_scheduled(self::HOOK);
+        if (! $scheduled || $scheduled > time() + 60) {
+            if ($scheduled) { wp_clear_scheduled_hook(self::HOOK); }
+            wp_schedule_single_event(time() + 60, self::HOOK);
+        }
+        try {
+            $this->completeServiceRegistration();
+            $this->tick(false); // Persist now; cron delivers without delaying or failing shipping connection.
+        } catch (\Throwable $error) {
+            // The durable pending intent/cron retries; reporting must not fail a service connection.
+        }
+    }
+
+    private function completeServiceRegistration(): void
+    {
+        $pending = (array) get_option(self::OPTION . '_service_pending', []);
+        if ($pending === []) {
+            return;
+        }
+        if (($pending['siteUrl'] ?? '') !== $this->siteUrl() || ! $this->connected()) {
+            delete_option(self::OPTION . '_service_pending');
+            return;
+        }
+        $state = (array) get_option(self::OPTION, []);
+        if (($state['siteUrl'] ?? '') !== $this->siteUrl() || empty($state['enabled'])) {
+            $email = ($state['siteUrl'] ?? '') === $this->siteUrl() ? (string) ($state['email'] ?? '') : '';
+            if (! $this->configure(true, $email, (string) $pending['consentAt'])) {
+                return; // Keep the intent when another request owns the queue lock.
+            }
+        }
+        $this->rememberSetup('service');
+        delete_option(self::OPTION . '_service_pending');
     }
 
     public function menu(): void
@@ -60,6 +165,7 @@ final class InstallationReporting
         if (! $this->configure($enabled, $email)) {
             wp_die(esc_html__('Reporting is busy delivering an event. Retry saving in a few seconds.', 'izprati-bulgaria-shipping'));
         }
+        $this->rememberSetup($enabled ? 'register' : 'skip');
         $this->tick();
         wp_safe_redirect(admin_url('options-general.php?page=' . self::PAGE));
         exit;
@@ -108,9 +214,9 @@ final class InstallationReporting
         return $state;
     }
 
-    public function configure(bool $enabled, string $email = ''): bool
+    public function configure(bool $enabled, string $email = '', ?string $consentAt = null): bool
     {
-        $saved = $this->locked(function () use ($enabled, $email): void {
+        $saved = $this->locked(function () use ($enabled, $email, $consentAt): void {
             $state = (array) get_option(self::OPTION, []);
             if (isset($state['siteUrl']) && $state['siteUrl'] !== $this->siteUrl()) {
                 $state = []; // A clone cannot withdraw the original site's consent.
@@ -120,7 +226,7 @@ final class InstallationReporting
                 $state = $this->identity($state);
                 $state['enabled'] = true;
                 $state['email'] = $email;
-                $state['consentAt'] = gmdate('Y-m-d\TH:i:s\Z');
+                $state['consentAt'] = $consentAt ?? gmdate('Y-m-d\TH:i:s\Z');
                 if (! $wasEnabled || empty($state['registered'])) {
                     // An unacknowledged registration must retain its exact event across retries.
                     if (empty($state['queue']) || end($state['queue'])['eventName'] === 'withdrawn') {
@@ -139,6 +245,9 @@ final class InstallationReporting
             $state['nextAttempt'] = 0;
             update_option(self::OPTION, $state, false);
         });
+        if ($saved && ! $enabled) {
+            delete_option(self::OPTION . '_service_pending');
+        }
         $this->schedule();
         return $saved;
     }
@@ -178,8 +287,8 @@ final class InstallationReporting
     public function schedule(): void
     {
         $state = (array) get_option(self::OPTION, []);
-        if (! empty($state['enabled']) || ! empty($state['queue'])) {
-            $at = max(time() + 60, (int) ($state['nextAttempt'] ?? 0));
+        if (! empty($state['enabled']) || ! empty($state['queue']) || get_option(self::OPTION . '_service_pending', [])) {
+            $at = get_option(self::OPTION . '_service_pending', []) ? time() + 60 : max(time() + 60, (int) ($state['nextAttempt'] ?? 0));
             $scheduled = wp_next_scheduled(self::HOOK);
             if (! $scheduled || $scheduled > $at) {
                 if ($scheduled) {
@@ -197,6 +306,7 @@ final class InstallationReporting
 
     public function tick(bool $deliver = true): void
     {
+        $this->completeServiceRegistration();
         $this->locked(function () use ($deliver): void {
             $state = (array) get_option(self::OPTION, []);
             if (empty($state['enabled']) && empty($state['queue'])) {
